@@ -118,6 +118,85 @@ function matchesAgeGroup(athlete, group) {
 }
 
 const BLADE_TYPES = ["Smoothie 2","Fat 2","Fat2 Skinny","BigBlade","Macon","Bantam","Apex","Autre"];
+
+// ------ DONNÉES MORPHO & SUGGESTIONS RÉGLAGES (inspiré standards WRF/FISA) --------
+// Longueurs pelles standard (cm) : levier total = intérieur + extérieur
+const BLADE_SPECS = {
+  "Smoothie 2":    {total:288, inboard_default:88},
+  "Fat 2":         {total:290, inboard_default:88},
+  "Fat2 Skinny":   {total:288, inboard_default:88},
+  "BigBlade":      {total:290, inboard_default:90},
+  "Macon":         {total:292, inboard_default:88},
+  "Bantam":        {total:286, inboard_default:86},
+  "Apex":          {total:288, inboard_default:88},
+  "Autre":         {total:288, inboard_default:88},
+};
+
+function suggestRigging(athlete, bladeType, boatType) {
+  if(!athlete) return null;
+  const { envergure, longueur_bras, largeur_epaules, taille, taille_assise, weight } = athlete;
+  if(!envergure && !longueur_bras && !largeur_epaules) return null;
+
+  const blade = BLADE_SPECS[bladeType] || BLADE_SPECS["Smoothie 2"];
+  const suggestions = {};
+  const notes = [];
+
+  // --- ENTRAXE (span) ---
+  // Standard: largeur épaules + 2*delta selon type nage
+  // Couple: ~158-162cm / Pointe: ~85-88cm (demi-entraxe)
+  if(largeur_epaules) {
+    if(boatType === "couple") {
+      const span = Math.round(largeur_epaules * 1.12 + 100);
+      suggestions.entraxe = Math.min(Math.max(span, 155), 165);
+      notes.push("Entraxe calculé depuis largeur épaules (" + largeur_epaules + "cm)");
+    } else {
+      const halfSpan = Math.round(largeur_epaules * 0.56 + 50);
+      suggestions.entraxe = Math.min(Math.max(halfSpan, 83), 90);
+      notes.push("Demi-entraxe calculé (pointe)");
+    }
+  }
+
+  // --- LEVIER INTÉRIEUR ---
+  // Standard: longueur de bras / 2 + constante selon pelle
+  // Règle générale: plus le bras est long, plus le levier peut être court
+  if(longueur_bras) {
+    const base = boatType === "couple" ? blade.inboard_default : Math.round(blade.inboard_default * 0.62);
+    const adjust = Math.round((longueur_bras - 80) * 0.15);
+    suggestions.levier_interieur = Math.min(Math.max(base - adjust, base - 3), base + 3);
+    notes.push("Levier int. ajusté selon longueur de bras (" + longueur_bras + "cm)");
+  }
+
+  // --- LEVIER EXTÉRIEUR (longueur hors-bord) ---
+  if(suggestions.levier_interieur) {
+    suggestions.levier_exterieur = blade.total - suggestions.levier_interieur;
+    // Ratio levier int/ext : idéalement 1:2.2 à 1:2.5
+    const ratio = (suggestions.levier_exterieur / suggestions.levier_interieur).toFixed(2);
+    notes.push("Ratio int/ext: 1:" + ratio + " (idéal: 1:2.2 à 1:2.5)");
+  }
+
+  // --- LONGUEUR PÉDALE ---
+  // Basé sur taille assise ou taille * 0.27
+  if(taille_assise) {
+    suggestions.longueur_pedale = Math.round(taille_assise * 0.72);
+    notes.push("Longueur pédale depuis taille assise (" + taille_assise + "cm)");
+  } else if(taille) {
+    const estimated_sitting = Math.round(taille * 0.52);
+    suggestions.longueur_pedale = Math.round(estimated_sitting * 0.72);
+    notes.push("Longueur pédale estimée depuis taille (" + taille + "cm)");
+  }
+
+  // --- CROISEMENT ---
+  // Standard couple: 20-30cm selon morpho
+  if(envergure && taille) {
+    const ratio_env = envergure / taille;
+    if(boatType === "couple") {
+      suggestions.croisement = ratio_env > 1.05 ? 25 : ratio_env > 1.0 ? 22 : 20;
+      notes.push("Croisement selon ratio envergure/taille (" + ratio_env.toFixed(2) + ")");
+    }
+  }
+
+  return { suggestions, notes };
+}
 const CREW_SLOTS  = { "1x":1,"2x":2,"2-":2,"4x":4,"4-":4,"4+":4,"8+":8 };
 
 // ------ MINI COMPOSANTS ------------------------------------------------------------------------------------------------------------------
@@ -422,7 +501,7 @@ function CoachSpace({ currentUser, onLogout }) {
   const [showAddAth,setShowAddAth] = useState(false);
   const [editAth,setEditAth] = useState(null);
   const [newPerf,setNP] = useState({athleteId:"",date:"",time:"",watts:"",spm:"",hr:"",rpe:"",distance:""});
-  const [newAth,setNA]  = useState({name:"",age:"",category:"Senior H",weight:"",boat:"1x"});
+  const [newAth,setNA]  = useState({name:"",age:"",category:"Senior H",weight:"",boat:"1x",taille:"",envergure:"",longueur_bras:"",largeur_epaules:"",taille_assise:""});
   // Boats states
   const [selBoat,setSelBoat]   = useState(null);
   const [showAddBoat,setShowAddBoat] = useState(false);
@@ -462,14 +541,14 @@ function CoachSpace({ currentUser, onLogout }) {
   async function addAth() {
     try {
       const av=newAth.name.split(" ").map(w=>w[0]).join("").slice(0,2).toUpperCase();
-      await api.createAthlete({...newAth,age:+newAth.age,weight:+newAth.weight,avatar:av,crew_id:null});
+      await api.createAthlete({...newAth,age:+newAth.age,weight:+newAth.weight,avatar:av,crew_id:null,taille:newAth.taille?+newAth.taille:null,envergure:newAth.envergure?+newAth.envergure:null,longueur_bras:newAth.longueur_bras?+newAth.longueur_bras:null,largeur_epaules:newAth.largeur_epaules?+newAth.largeur_epaules:null,taille_assise:newAth.taille_assise?+newAth.taille_assise:null});
       setToast({m:"Athlète ajouté v",t:"success"}); load();
       setNA({name:"",age:"",category:"Senior H",weight:"",boat:"1x"}); setShowAddAth(false);
     } catch(e){setToast({m:"Erreur",t:"error"});}
   }
   async function saveEditAth() {
     try {
-      await api.updateAthlete(editAth.id,{name:editAth.name,age:+editAth.age,category:editAth.category,weight:+editAth.weight,boat:editAth.boat,photo_url:editAth.photo_url||null});
+      await api.updateAthlete(editAth.id,{name:editAth.name,age:+editAth.age,category:editAth.category,weight:+editAth.weight,boat:editAth.boat,photo_url:editAth.photo_url||null,taille:editAth.taille?+editAth.taille:null,envergure:editAth.envergure?+editAth.envergure:null,longueur_bras:editAth.longueur_bras?+editAth.longueur_bras:null,largeur_epaules:editAth.largeur_epaules?+editAth.largeur_epaules:null,taille_assise:editAth.taille_assise?+editAth.taille_assise:null});
       setToast({m:"Fiche modifiée v",t:"success"}); load(); setEditAth(null);
     } catch(e){setToast({m:"Erreur",t:"error"});}
   }
@@ -630,7 +709,7 @@ function CoachSpace({ currentUser, onLogout }) {
               return(<div key={a.id} style={{...S.card,cursor:"pointer"}}>
                 <div style={{display:"flex",alignItems:"center",gap:14,marginBottom:14}}>
                   {a.photo_url?<img src={a.photo_url} style={{...S.av,objectFit:"cover"}} onError={e=>{e.target.style.display="none";}}/>:<div style={S.av}>{a.avatar}</div>}
-                  <div style={{flex:1}} onClick={()=>{setSelAth(a.id);setTab("performances");}}><div style={{fontWeight:800,color:"#f1f5f9",fontSize:15,display:"flex",alignItems:"center",gap:8}}>{a.name}<span style={{fontSize:10,padding:"2px 7px",borderRadius:10,background:(AGE_CAT_COLORS[getAgeCategory(a.age)] ? AGE_CAT_COLORS[getAgeCategory(a.age)] : "#374151")+"25",color:(AGE_CAT_COLORS[getAgeCategory(a.age)] ? AGE_CAT_COLORS[getAgeCategory(a.age)] : "#94a3b8"),fontWeight:700}}>{getAgeCategory(a.age)}</span></div><div style={{color:"#7a95b0",fontSize:12}}>{a.category} - {a.boat} - {a.age}ans - {a.weight}kg</div>{aCrew&&<div style={{color:"#0ea5e9",fontSize:11,marginTop:2}}>~ {aCrew.name}</div>}</div>
+                  <div style={{flex:1}} onClick={()=>{setSelAth(a.id);setTab("performances");}}><div style={{fontWeight:800,color:"#f1f5f9",fontSize:15,display:"flex",alignItems:"center",gap:8}}>{a.name}<span style={{fontSize:10,padding:"2px 7px",borderRadius:10,background:(AGE_CAT_COLORS[getAgeCategory(a.age)] ? AGE_CAT_COLORS[getAgeCategory(a.age)] : "#374151")+"25",color:(AGE_CAT_COLORS[getAgeCategory(a.age)] ? AGE_CAT_COLORS[getAgeCategory(a.age)] : "#94a3b8"),fontWeight:700}}>{getAgeCategory(a.age)}</span></div><div style={{color:"#7a95b0",fontSize:12}}>{a.category} - {a.boat} - {a.age}ans - {a.weight}kg{a.taille?" - "+a.taille+"cm":""}{a.envergure?" - env."+a.envergure+"cm":""}</div>{aCrew&&<div style={{color:"#0ea5e9",fontSize:11,marginTop:2}}>~ {aCrew.name}</div>}</div>
                   <button style={{...S.actionBtn,color:"#0ea5e9",borderColor:"#22d3ee30",flexShrink:0}} onClick={e=>{e.stopPropagation();setEditAth({...a});}}>Edit Éditer</button>
                 </div>
                 {last?(<>
@@ -655,7 +734,15 @@ function CoachSpace({ currentUser, onLogout }) {
             </div>
             <FF label="Catégorie"><select style={S.inp} value={newAth.category} onChange={e=>setNA(p=>({...p,category:e.target.value}))}>{["Junior H","Junior F","Espoir H","Espoir F","Senior H","Senior F"].map(c=><option key={c}>{c}</option>)}</select></FF>
             <FF label="Bateau"><select style={S.inp} value={newAth.boat} onChange={e=>setNA(p=>({...p,boat:e.target.value}))}>{["1x","2x","2-","4x","4-","4+","8+"].map(b=><option key={b}>{b}</option>)}</select></FF>
-            <button style={{...S.btnP,width:"100%",marginTop:8}} onClick={addAth}>Créer la fiche</button>
+            <div style={{marginTop:12,padding:"12px",background:"#111827",borderRadius:8,border:"1px solid #334155"}}><div style={{color:"#64748b",fontSize:11,textTransform:"uppercase",letterSpacing:1,marginBottom:10}}>Données morphologiques (pour suggestions réglages)</div>
+            <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10}}>
+              <FF label="Taille (cm)"><input style={S.inp} type="number" value={newAth.taille} onChange={e=>setNA(p=>({...p,taille:e.target.value}))} placeholder="ex: 185"/></FF>
+              <FF label="Envergure (cm)"><input style={S.inp} type="number" value={newAth.envergure} onChange={e=>setNA(p=>({...p,envergure:e.target.value}))} placeholder="ex: 190"/></FF>
+              <FF label="Longueur bras (cm)"><input style={S.inp} type="number" value={newAth.longueur_bras} onChange={e=>setNA(p=>({...p,longueur_bras:e.target.value}))} placeholder="épaule-poignet"/></FF>
+              <FF label="Largeur épaules (cm)"><input style={S.inp} type="number" value={newAth.largeur_epaules} onChange={e=>setNA(p=>({...p,largeur_epaules:e.target.value}))} placeholder="ex: 46"/></FF>
+              <FF label="Taille assise (cm)"><input style={S.inp} type="number" value={newAth.taille_assise} onChange={e=>setNA(p=>({...p,taille_assise:e.target.value}))} placeholder="ex: 96"/></FF>
+            </div></div>
+            <button style={{...S.btnP,width:"100%",marginTop:12}} onClick={addAth}>Créer la fiche</button>
           </Modal>}
           {editAth&&<Modal title={`Éditer -- ${editAth.name}`} onClose={()=>setEditAth(null)}>
             <FF label="Nom complet"><input style={S.inp} value={editAth.name} onChange={e=>setEditAth(p=>({...p,name:e.target.value}))}/></FF>
@@ -666,7 +753,15 @@ function CoachSpace({ currentUser, onLogout }) {
             </div>
             <FF label="Catégorie"><select style={S.inp} value={editAth.category} onChange={e=>setEditAth(p=>({...p,category:e.target.value}))}>{["Junior H","Junior F","Espoir H","Espoir F","Senior H","Senior F"].map(c=><option key={c}>{c}</option>)}</select></FF>
             <FF label="Bateau"><select style={S.inp} value={editAth.boat} onChange={e=>setEditAth(p=>({...p,boat:e.target.value}))}>{["1x","2x","2-","4x","4-","4+","8+"].map(b=><option key={b}>{b}</option>)}</select></FF>
-            <button style={{...S.btnP,width:"100%",marginTop:8}} onClick={saveEditAth}>Enregistrer les modifications</button>
+            <div style={{marginTop:12,padding:"12px",background:"#111827",borderRadius:8,border:"1px solid #334155"}}><div style={{color:"#64748b",fontSize:11,textTransform:"uppercase",letterSpacing:1,marginBottom:10}}>Données morphologiques</div>
+            <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10}}>
+              <FF label="Taille (cm)"><input style={S.inp} type="number" value={editAth.taille||""} onChange={e=>setEditAth(p=>({...p,taille:e.target.value}))} placeholder="ex: 185"/></FF>
+              <FF label="Envergure (cm)"><input style={S.inp} type="number" value={editAth.envergure||""} onChange={e=>setEditAth(p=>({...p,envergure:e.target.value}))} placeholder="ex: 190"/></FF>
+              <FF label="Longueur bras (cm)"><input style={S.inp} type="number" value={editAth.longueur_bras||""} onChange={e=>setEditAth(p=>({...p,longueur_bras:e.target.value}))} placeholder="épaule-poignet"/></FF>
+              <FF label="Largeur épaules (cm)"><input style={S.inp} type="number" value={editAth.largeur_epaules||""} onChange={e=>setEditAth(p=>({...p,largeur_epaules:e.target.value}))} placeholder="ex: 46"/></FF>
+              <FF label="Taille assise (cm)"><input style={S.inp} type="number" value={editAth.taille_assise||""} onChange={e=>setEditAth(p=>({...p,taille_assise:e.target.value}))} placeholder="ex: 96"/></FF>
+            </div></div>
+            <button style={{...S.btnP,width:"100%",marginTop:12}} onClick={saveEditAth}>Enregistrer les modifications</button>
           </Modal>}
         </div>)}
 
@@ -907,6 +1002,31 @@ function CoachSpace({ currentUser, onLogout }) {
             const boat=boats.find(b=>b.id===selBoat);
             return(
               <Modal title={`Nouveau réglage -- ${boat?.name}`} onClose={()=>setShowAddSetting(false)} wide>
+                {(()=>{
+                  const posteAth = getAthleteAtPoste(selBoat, newSetting.poste);
+                  const rigging = posteAth ? suggestRigging(posteAth, newSetting.type_pelle||"Smoothie 2", boat?.type||"couple") : null;
+                  return rigging ? (
+                    <div style={{marginBottom:16,padding:"14px 16px",background:"#0ea5e908",border:"1px solid #0ea5e930",borderRadius:10}}>
+                      <div style={{color:"#0ea5e9",fontSize:12,fontWeight:700,marginBottom:10,display:"flex",alignItems:"center",gap:8}}>
+                        Suggestions pour {posteAth.name}
+                        <span style={{fontSize:10,background:"#0ea5e920",padding:"2px 8px",borderRadius:10}}>morpho disponible</span>
+                      </div>
+                      <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(130px,1fr))",gap:8,marginBottom:10}}>
+                        {rigging.suggestions.entraxe&&<div style={{background:"#182030",borderRadius:8,padding:"8px 10px",textAlign:"center"}}><div style={{color:"#64748b",fontSize:10,marginBottom:2}}>Entraxe</div><div style={{color:"#0ea5e9",fontWeight:700,fontSize:16}}>{rigging.suggestions.entraxe} cm</div></div>}
+                        {rigging.suggestions.levier_interieur&&<div style={{background:"#182030",borderRadius:8,padding:"8px 10px",textAlign:"center"}}><div style={{color:"#64748b",fontSize:10,marginBottom:2}}>Levier int.</div><div style={{color:"#a78bfa",fontWeight:700,fontSize:16}}>{rigging.suggestions.levier_interieur} cm</div></div>}
+                        {rigging.suggestions.levier_exterieur&&<div style={{background:"#182030",borderRadius:8,padding:"8px 10px",textAlign:"center"}}><div style={{color:"#64748b",fontSize:10,marginBottom:2}}>Levier ext.</div><div style={{color:"#f59e0b",fontWeight:700,fontSize:16}}>{rigging.suggestions.levier_exterieur} cm</div></div>}
+                        {rigging.suggestions.longueur_pedale&&<div style={{background:"#182030",borderRadius:8,padding:"8px 10px",textAlign:"center"}}><div style={{color:"#64748b",fontSize:10,marginBottom:2}}>Long. pédale</div><div style={{color:"#4ade80",fontWeight:700,fontSize:16}}>{rigging.suggestions.longueur_pedale} cm</div></div>}
+                        {rigging.suggestions.croisement&&<div style={{background:"#182030",borderRadius:8,padding:"8px 10px",textAlign:"center"}}><div style={{color:"#64748b",fontSize:10,marginBottom:2}}>Croisement</div><div style={{color:"#f97316",fontWeight:700,fontSize:16}}>{rigging.suggestions.croisement} cm</div></div>}
+                      </div>
+                      <button style={{...S.btnP,fontSize:11,padding:"6px 14px",background:"#0ea5e920",color:"#0ea5e9",border:"1px solid #0ea5e940"}} onClick={()=>{const sg=rigging.suggestions;setNS(p=>({...p,...(sg.entraxe?{entraxe:sg.entraxe}:{}),...(sg.levier_interieur?{levier_interieur:sg.levier_interieur}:{}),...(sg.levier_exterieur?{levier_exterieur:sg.levier_exterieur}:{}),...(sg.longueur_pedale?{longueur_pedale:sg.longueur_pedale}:{}),...(sg.croisement?{croisement:sg.croisement}:{})}));}}>Appliquer ces valeurs</button>
+                      <div style={{marginTop:8}}>{rigging.notes.map((n,i)=><div key={i} style={{color:"#64748b",fontSize:11}}>• {n}</div>)}</div>
+                    </div>
+                  ) : posteAth ? (
+                    <div style={{marginBottom:16,padding:"10px 14px",background:"#111827",border:"1px solid #334155",borderRadius:8,color:"#64748b",fontSize:12}}>
+                      Athlète: <strong style={{color:"#f1f5f9"}}>{posteAth.name}</strong> — Ajoute ses données morpho dans sa fiche pour obtenir des suggestions de réglage.
+                    </div>
+                  ) : null;
+                })()}
                 <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12}}>
                   <FF label="Poste">
                     <select style={S.inp} value={newSetting.poste} onChange={e=>setNS(p=>({...p,poste:+e.target.value}))}>
