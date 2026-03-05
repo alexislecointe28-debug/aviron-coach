@@ -92,7 +92,7 @@ function Sparkline({ data, color="#22d3ee", invert=false }) {
   return <svg width={w} height={h} style={{overflow:"visible"}}><polyline points={pts} fill="none" stroke={color} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/><circle cx={last[0]} cy={last[1]} r="3" fill={color}/></svg>;
 }
 function StatPill({ label, value, color }) {
-  return <div style={{background:color+"15",border:`1px solid ${color}`+"30",borderRadius:8,padding:"5px 10px",textAlign:"center"}}><div style={{color,fontWeight:700,fontSize:14}}>{value}</div><div style={{color:"#64748b",fontSize:10}}>{label}</div></div>;
+  return <div style={{background:color+"15",border:"1px solid "+(color)+"30",borderRadius:8,padding:"5px 10px",textAlign:"center"}}><div style={{color,fontWeight:700,fontSize:14}}>{value}</div><div style={{color:"#64748b",fontSize:10}}>{label}</div></div>;
 }
 function FF({ label, children }) {
   return <div style={{marginBottom:12}}><label style={{display:"block",color:"#64748b",fontSize:11,marginBottom:4,textTransform:"uppercase",letterSpacing:1}}>{label}</label>{children}</div>;
@@ -166,7 +166,7 @@ function LoginScreen({ onLogin }) {
 // ==========================================================================================================================================================
 // ADMIN PANEL
 // ==========================================================================================================================================================
-function AdminPanel({ currentUser, onLogout }) {
+function AdminSpace({ currentUser, onLogout }) {
   const [users,setUsers]     = useState([]);
   const [loading,setLoading] = useState(true);
   const [tab,setTab]         = useState("users");
@@ -240,7 +240,7 @@ function AdminPanel({ currentUser, onLogout }) {
             </div>
             <div style={{display:"flex",gap:8,marginBottom:20}}>
               {[["all","Tous"],["admin","Admins"],["coach","Coachs"],["athlete","Athlètes"]].map(([v,l])=>(
-                <button key={v} style={{...S.fb,...(filterRole===v?{...S.fbon,borderColor:(ROLE_COLORS[v]||"#22d3ee")+"60",color:ROLE_COLORS[v]||"#22d3ee",background:(ROLE_COLORS[v]||"#22d3ee")+"20"}:{})}} onClick={()=>setFilterRole(v)}>{l}</button>
+                <button key={v} style={{...S.fb,...(filterRole===v?{...S.fbon,borderColor:(ROLE_COLORS[v] ? ROLE_COLORS[v] : "#22d3ee")+"60",color:ROLE_COLORS[v] ? ROLE_COLORS[v] : "#22d3ee",background:(ROLE_COLORS[v] ? ROLE_COLORS[v] : "#22d3ee")+"20"}:{})}} onClick={()=>setFilterRole(v)}>{l}</button>
               ))}
             </div>
             {loading?<Loader/>:(
@@ -252,7 +252,7 @@ function AdminPanel({ currentUser, onLogout }) {
                       <tr key={u.id} style={{borderBottom:"1px solid #1e293b",opacity:u.active?1:0.5}}>
                         <td style={S.td}>
                           <div style={{display:"flex",alignItems:"center",gap:10}}>
-                            <div style={{...S.av,width:36,height:36,fontSize:13,background:ROLE_COLORS[u.role]+"22",border:`1px solid ${ROLE_COLORS[u.role]}`+"40",color:ROLE_COLORS[u.role]}}>{u.name.split(" ").map(w=>w[0]).join("").slice(0,2).toUpperCase()}</div>
+                            <div style={{...S.av,width:36,height:36,fontSize:13,background:ROLE_COLORS[u.role]+"22",border:"1px solid "+(ROLE_COLORS[u.role])+"40",color:ROLE_COLORS[u.role]}}>{u.name.split(" ").map(w=>w[0]).join("").slice(0,2).toUpperCase()}</div>
                             <div><div style={{color:"#f1f5f9",fontWeight:700,fontSize:14}}>{u.name}</div><div style={{color:"#475569",fontSize:11}}>{u.role==="athlete"&&u.athlete_id?`Athlète #${u.athlete_id}`:""}</div></div>
                           </div>
                         </td>
@@ -288,7 +288,7 @@ function AdminPanel({ currentUser, onLogout }) {
             {showAdd&&<Modal title="Créer un compte" onClose={()=>setShowAdd(false)}>
               <FF label="Rôle"><div style={{display:"flex",gap:8}}>
                 {[["admin","~ Admin"],["coach","~ Coach"],["athlete","~ Athlète"]].map(([v,l])=>(
-                  <button key={v} style={{...S.fb,flex:1,...(newUser.role===v?{background:ROLE_COLORS[v]+"20",border:`1px solid ${ROLE_COLORS[v]}`+"60",color:ROLE_COLORS[v]}:{})}} onClick={()=>setNU(p=>({...p,role:v}))}>{l}</button>
+                  <button key={v} style={{...S.fb,flex:1,...(newUser.role===v?{background:ROLE_COLORS[v]+"20",border:"1px solid "+(ROLE_COLORS[v])+"60",color:ROLE_COLORS[v]}:{})}} onClick={()=>setNU(p=>({...p,role:v}))}>{l}</button>
                 ))}
               </div></FF>
               <FF label="Nom complet"><input style={S.inp} value={newUser.name} onChange={e=>setNU(p=>({...p,name:e.target.value}))} placeholder="Prénom Nom"/></FF>
@@ -536,7 +536,7 @@ function CoachSpace({ currentUser, onLogout }) {
           <div style={{display:"grid",gridTemplateColumns:"repeat(7,1fr)",gap:10}}>
             {sessions.map(s=><div key={s.id} style={{...S.card,minHeight:110}}>
               <div style={{fontWeight:800,color:"#f1f5f9",fontSize:13,marginBottom:8}}>{s.day}</div>
-              <div style={{...S.badge,background:TYPE_COLORS[s.type]+"22",color:TYPE_COLORS[s.type]||"#94a3b8",border:`1px solid ${TYPE_COLORS[s.type]||"#94a3b8"}`+"44",marginBottom:8}}>{s.type}</div>
+              <div style={{...S.badge,background:TYPE_COLORS[s.type]+"22",color:TYPE_COLORS[s.type]?""+TYPE_COLORS[s.type]:"#94a3b8",border:"1px solid "+(TYPE_COLORS[s.type] ? TYPE_COLORS[s.type] : "#94a3b8")+"44",marginBottom:8}}>{s.type}</div>
               <div style={{color:"#94a3b8",fontSize:12}}>{s.duration}</div>
               <div style={{color:"#475569",fontSize:11,marginTop:4}}>{getSessionCrewsFor(s.id).length?`${getSessionCrewsFor(s.id).length} équipages`:"--"}</div>
             </div>)}
@@ -644,7 +644,7 @@ function CoachSpace({ currentUser, onLogout }) {
                 <div style={{display:"flex",flexDirection:"column",gap:5,maxHeight:240,overflowY:"auto"}}>
                   {athletes.map(a=>{const sel=newCrewMembers.includes(a.id),full=newCrewMembers.length>=(CREW_SLOTS[crewBoat]||4)&&!sel,{last}=aStats(a);return(<div key={a.id} style={{display:"flex",alignItems:"center",gap:8,padding:"7px 10px",borderRadius:8,border:`1px solid ${sel?"#22d3ee44":"#1e293b"}`,background:sel?"#22d3ee08":"transparent",cursor:full?"not-allowed":"pointer",opacity:full?0.4:1}} onClick={()=>!full&&setNewCrewMembers(prev=>prev.includes(a.id)?prev.filter(x=>x!==a.id):[...prev,a.id])}><div style={{width:16,height:16,borderRadius:"50%",border:`2px solid ${sel?"#22d3ee":"#334155"}`,display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}>{sel&&<div style={{width:7,height:7,borderRadius:"50%",background:"#22d3ee"}}/>}</div><div style={{...S.av,width:28,height:28,fontSize:11,flexShrink:0}}>{a.avatar}</div><div style={{flex:1,fontSize:13,color:"#f1f5f9",fontWeight:600}}>{a.name}</div>{last&&<div style={{color:"#22d3ee",fontSize:12}}>{last.watts}W</div>}</div>);})}
                 </div>
-                <button style={{...S.btnP,width:"100%",marginTop:12,opacity:!newCrewMembers.length?0.5:1}} onClick={saveNewCrew} disabled={!newCrewMembers.length}>Créer -></button>
+                <button style={{...S.btnP,width:"100%",marginTop:12,opacity:!newCrewMembers.length?0.5:1}} onClick={saveNewCrew} disabled={!newCrewMembers.length}>Créer -&gt;</button>
               </div>
             </div>
             <div>
@@ -658,7 +658,6 @@ function CoachSpace({ currentUser, onLogout }) {
           </div>
         </div>)}
 
-        </div>)}
 
         {tab==="boats"&&(<div style={S.page}>
           <div style={S.ph}>
@@ -840,13 +839,14 @@ function CoachSpace({ currentUser, onLogout }) {
         {tab==="planning"&&(<div style={S.page}>
           <div style={S.ph}><div><h1 style={S.ttl}>Planning</h1><p style={S.sub}>Semaine en cours</p></div></div>
           <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(200px,1fr))",gap:16}}>
-            {sessions.map(s=><div key={s.id} style={{...S.card,borderTop:`3px solid ${TYPE_COLORS[s.type]||"#374151"}`}}>
-              <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:10}}><div><div style={{fontWeight:800,fontSize:16,color:"#f1f5f9"}}>{s.day}</div><div style={{color:"#64748b",fontSize:12}}>{s.date}</div></div><div style={{...S.badge,background:(ZONE_COLORS[s.zone]||"#374151")+"22",color:ZONE_COLORS[s.zone]||"#374151",border:`1px solid ${ZONE_COLORS[s.zone]||"#374151"}44`}}>{s.zone}</div></div>
-              <div style={{...S.badge,marginBottom:8,background:(TYPE_COLORS[s.type]||"#374151")+"22",color:TYPE_COLORS[s.type]||"#94a3b8",border:`1px solid ${(TYPE_COLORS[s.type]||"#374151")}44`}}>{s.type}</div>
-              {s.duration&&s.duration!=="--"&&<div style={{color:"#94a3b8",fontSize:13,marginBottom:8}}>{s.duration}</div>}
-              {s.notes&&<div style={{background:"#1e293b50",borderRadius:6,padding:"8px 10px",fontSize:12,color:"#94a3b8",lineHeight:1.5}}>{s.notes}</div>}
-              {getSessionCrewsFor(s.id).map(cr=><div key={cr.id} style={{color:"#22d3ee",fontSize:12,marginTop:6}}>{cr.name}</div>)}
-            </div>)}
+            {sessions.map(s=>(
+              <div key={s.id} style={{...S.card}}>
+                <div style={{fontWeight:800,fontSize:16,color:"#f1f5f9"}}>{s.day}</div>
+                <div style={{color:"#64748b",fontSize:12}}>{s.date}</div>
+                <div style={{color:"#94a3b8",fontSize:13}}>{s.type}</div>
+                {s.duration&&<div style={{color:"#94a3b8",fontSize:13}}>{s.duration}</div>}
+              </div>
+            ))}
           </div>
         </div>)}
       </div>
@@ -1074,14 +1074,19 @@ function AthleteSpace({ currentUser, onLogout }) {
           })()}
         </div>)}
         {tab==="planning"&&(<div style={S.page}>
-          <div style={S.ph}><div><h1 style={S.ttl}>Mon Planning</h1><p style={S.sub}>Séances assignées par le coach</p></div></div>
-          {!myCrew?<div style={{...S.card,textAlign:"center",padding:"40px",color:"#475569"}}>Aucun équipage assigné.</div>:(
+          <div style={S.ph}><div><h1 style={S.ttl}>Mon Planning</h1><p style={S.sub}>Seances assignees par le coach</p></div></div>
+          {!myCrew?<div style={{...S.card,textAlign:"center",padding:"40px",color:"#475569"}}>Aucun equipage assigne.</div>:(
             <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(200px,1fr))",gap:14}}>
-              {sessions.map(s=>{const assigned=sessionCrews.some(sc=>sc.session_id===s.id&&sc.crew_id===myCrew.id);return(<div key={s.id} style={{...S.card,borderTop:`3px solid ${assigned?TYPE_COLORS[s.type]||"#374151":"#1e293b"}`,opacity:assigned?1:0.3}}>
-                <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:10}}><div><div style={{fontWeight:800,fontSize:16,color:"#f1f5f9"}}>{s.day}</div><div style={{color:"#64748b",fontSize:12}}>{s.date}</div></div><div style={{...S.badge,background:(ZONE_COLORS[s.zone]||"#374151")+"22",color:ZONE_COLORS[s.zone]||"#374151",border:`1px solid ${ZONE_COLORS[s.zone]||"#374151"}44`}}>{s.zone}</div></div>
-                <div style={{...S.badge,marginBottom:8,background:(TYPE_COLORS[s.type]||"#374151")+"22",color:TYPE_COLORS[s.type]||"#94a3b8",border:`1px solid ${TYPE_COLORS[s.type]||"#374151"}44`}}>{s.type}</div>
-                {assigned&&<>{s.duration&&s.duration!=="--"&&<div style={{color:"#94a3b8",fontSize:13,marginBottom:8}}>~ {s.duration}</div>}{s.notes&&<div style={{background:"#1e293b50",borderRadius:6,padding:"8px 10px",fontSize:12,color:"#94a3b8",lineHeight:1.5}}>{s.notes}</div>}</>}
-              </div>);})}
+              {sessions.map(s=>{
+                const assigned=sessionCrews.some(sc=>sc.session_id===s.id&&sc.crew_id===myCrew.id);
+                const tColor=TYPE_COLORS[s.type] ? TYPE_COLORS[s.type] : "#374151";
+                const zColor=ZONE_COLORS[s.zone] ? ZONE_COLORS[s.zone] : "#374151";
+                return(<div key={s.id} style={{...S.card,borderTop:"3px solid "+(assigned?tColor:"#1e293b"),opacity:assigned?1:0.3}}>
+                  <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:10}}><div><div style={{fontWeight:800,fontSize:16,color:"#f1f5f9"}}>{s.day}</div><div style={{color:"#64748b",fontSize:12}}>{s.date}</div></div><div style={{...S.badge,background:zColor+"22",color:zColor}}>{s.zone}</div></div>
+                  <div style={{...S.badge,marginBottom:8,background:tColor+"22",color:tColor}}>{s.type}</div>
+                  {assigned&&<>{s.duration&&<div style={{color:"#94a3b8",fontSize:13,marginBottom:8}}>{s.duration}</div>}{s.notes&&<div style={{background:"#1e293b50",borderRadius:6,padding:"8px 10px",fontSize:12,color:"#94a3b8",lineHeight:1.5}}>{s.notes}</div>}</>}
+                </div>);
+              })}
             </div>
           )}
         </div>)}
@@ -1095,8 +1100,8 @@ function AthleteSpace({ currentUser, onLogout }) {
 // ==========================================================================================================================================================
 export default function App() {
   const [session, setSession] = useState(null);
-  if(!session) return <LoginScreen onLogin={setSession}/>;
-  if(session.role==="admin")   return <AdminPanel   currentUser={session} onLogout={()=>setSession(null)}/>;
+  if(!session) return <Login onLogin={setSession}/>;
+  if(session.role==="admin")   return <AdminSpace currentUser={session} onLogout={()=>setSession(null)}/>;
   if(session.role==="coach")   return <CoachSpace   currentUser={session} onLogout={()=>setSession(null)}/>;
   return <AthleteSpace currentUser={session} onLogout={()=>setSession(null)}/>;
 }
