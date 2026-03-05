@@ -117,6 +117,26 @@ function matchesAgeGroup(athlete, group) {
   return cat === group;
 }
 
+function calcAgeFromDOB(dob) {
+  if(!dob) return null;
+  const today = new Date();
+  const birth = new Date(dob);
+  let age = today.getFullYear() - birth.getFullYear();
+  const m = today.getMonth() - birth.getMonth();
+  if(m < 0 || (m === 0 && today.getDate() < birth.getDate())) age--;
+  return age;
+}
+function getCategoryFromAge(age, genre="H") {
+  if(!age && age !== 0) return "Senior H";
+  const cat = getAgeCategory(age);
+  // Map age cat to rowing category
+  if(["U10","U12","J12","J13","J14"].includes(cat)) return `Jeune ${genre}`;
+  if(cat === "U17") return `Junior ${genre}`;
+  if(cat === "U19") return `Espoir ${genre}`;
+  if(cat.startsWith("Master")) return `${cat} ${genre}`;
+  return `Senior ${genre}`;
+}
+
 const BLADE_TYPES = ["Smoothie 2","Fat 2","Fat2 Skinny","BigBlade","Macon","Bantam","Apex","Autre"];
 
 // ------ DONNÉES MORPHO & SUGGESTIONS RÉGLAGES (inspiré standards WRF/FISA) --------
@@ -501,7 +521,7 @@ function CoachSpace({ currentUser, onLogout }) {
   const [showAddAth,setShowAddAth] = useState(false);
   const [editAth,setEditAth] = useState(null);
   const [newPerf,setNP] = useState({athleteId:"",date:"",time:"",watts:"",spm:"",hr:"",rpe:"",distance:""});
-  const [newAth,setNA]  = useState({name:"",age:"",category:"Senior H",weight:"",boat:"1x",taille:"",envergure:"",longueur_bras:"",largeur_epaules:"",taille_assise:""});
+  const [newAth,setNA]  = useState({name:"",date_naissance:"",genre:"H",weight:"",taille:"",envergure:"",longueur_bras:"",largeur_epaules:"",taille_assise:""});
   // Boats states
   const [selBoat,setSelBoat]   = useState(null);
   const [showAddBoat,setShowAddBoat] = useState(false);
@@ -541,17 +561,31 @@ function CoachSpace({ currentUser, onLogout }) {
   async function addAth() {
     try {
       const av=newAth.name.split(" ").map(w=>w[0]).join("").slice(0,2).toUpperCase();
-      await api.createAthlete({...newAth,age:+newAth.age,weight:+newAth.weight,avatar:av,crew_id:null,taille:newAth.taille?+newAth.taille:null,envergure:newAth.envergure?+newAth.envergure:null,longueur_bras:newAth.longueur_bras?+newAth.longueur_bras:null,largeur_epaules:newAth.largeur_epaules?+newAth.largeur_epaules:null,taille_assise:newAth.taille_assise?+newAth.taille_assise:null});
+      const computedAge = calcAgeFromDOB(newAth.date_naissance);
+      const computedCat = getCategoryFromAge(computedAge, newAth.genre);
+      await api.createAthlete({name:newAth.name,age:computedAge,category:computedCat,weight:+newAth.weight,boat:"1x",date_naissance:newAth.date_naissance,avatar:av,crew_id:null,taille:newAth.taille?+newAth.taille:null,envergure:newAth.envergure?+newAth.envergure:null,longueur_bras:newAth.longueur_bras?+newAth.longueur_bras:null,largeur_epaules:newAth.largeur_epaules?+newAth.largeur_epaules:null,taille_assise:newAth.taille_assise?+newAth.taille_assise:null});
       setToast({m:"Athlète ajouté v",t:"success"}); load();
-      setNA({name:"",age:"",category:"Senior H",weight:"",boat:"1x"}); setShowAddAth(false);
-    } catch(e){setToast({m:"Erreur",t:"error"});}
+      setNA({name:"",date_naissance:"",genre:"H",weight:"",taille:"",envergure:"",longueur_bras:"",largeur_epaules:"",taille_assise:""}); setShowAddAth(false);
+    } catch(e){setToast({m:"Erreur "+e.message,t:"error"});}
   }
   async function saveEditAth() {
     try {
-      await api.updateAthlete(editAth.id,{name:editAth.name,age:+editAth.age,category:editAth.category,weight:+editAth.weight,boat:editAth.boat,photo_url:editAth.photo_url||null,taille:editAth.taille?+editAth.taille:null,envergure:editAth.envergure?+editAth.envergure:null,longueur_bras:editAth.longueur_bras?+editAth.longueur_bras:null,largeur_epaules:editAth.largeur_epaules?+editAth.largeur_epaules:null,taille_assise:editAth.taille_assise?+editAth.taille_assise:null});
+      const dob = editAth.date_naissance || null;
+      const computedAge = dob ? calcAgeFromDOB(dob) : +editAth.age;
+      const genre = editAth.genre || (editAth.category?.includes("F") ? "F" : "H");
+      const computedCat = getCategoryFromAge(computedAge, genre);
+      await api.updateAthlete(editAth.id,{name:editAth.name,age:computedAge,category:computedCat,weight:+editAth.weight,boat:editAth.boat||"1x",photo_url:editAth.photo_url||null,date_naissance:dob,taille:editAth.taille?+editAth.taille:null,envergure:editAth.envergure?+editAth.envergure:null,longueur_bras:editAth.longueur_bras?+editAth.longueur_bras:null,largeur_epaules:editAth.largeur_epaules?+editAth.largeur_epaules:null,taille_assise:editAth.taille_assise?+editAth.taille_assise:null});
       setToast({m:"Fiche modifiée v",t:"success"}); load(); setEditAth(null);
-    } catch(e){setToast({m:"Erreur",t:"error"});}
+    } catch(e){setToast({m:"Erreur "+e.message,t:"error"});}
   }
+  async function deleteAth(id) {
+    try {
+      await api.deleteAthlete(id);
+      setToast({m:"Athlète supprimé",t:"success"}); load();
+      setEditAth(null);
+    } catch(e){setToast({m:"Erreur suppression",t:"error"});}
+  }
+
   async function saveNewCrew() {
     if(!newCrewMembers.length)return;
     try {
@@ -634,7 +668,7 @@ function CoachSpace({ currentUser, onLogout }) {
   const globalAvgW=performances.length?Math.round(performances.reduce((s,p)=>s+(p.watts||0),0)/performances.length):0;
   const globalBest=performances.reduce((b,p)=>timeToSeconds(p.time)<timeToSeconds(b)?p.time:b,"9:99");
 
-  const NAV=[{id:"dashboard",label:"Dashboard",icon:"*"},{id:"athletes",label:"Athlètes",icon:"o"},{id:"performances",label:"Performances",icon:"*"},{id:"compare",label:"Comparer",icon:"~~"},{id:"crew",label:"Équipages",icon:"~"},{id:"boats",label:"Bateaux",icon:"~"},{id:"planning",label:"Planning",icon:"#"}];
+  const NAV=[{id:"dashboard",label:"Dashboard",icon:"📊"},{id:"athletes",label:"Athlètes",icon:"👤"},{id:"performances",label:"Performances",icon:"⚡"},{id:"compare",label:"Comparer",icon:"⚖️"},{id:"crew",label:"Équipages",icon:"🚣"},{id:"boats",label:"Bateaux",icon:"🛶"},{id:"planning",label:"Planning",icon:"📅"}];
 
   if(loading) return <div style={{...S.root,alignItems:"center",justifyContent:"center"}}><Loader text="Chargement depuis Supabase..."/></div>;
 
@@ -642,14 +676,19 @@ function CoachSpace({ currentUser, onLogout }) {
     <div style={S.root}>
       {toast&&<Toast message={toast.m} type={toast.t} onDone={()=>setToast(null)}/>}
       <aside style={S.sidebar}>
-        <div style={S.logo}><span style={{fontSize:28}}>~</span><div><div style={S.logoT}>AvironCoach</div><div style={S.logoS}>Espace Coach</div></div></div>
-        <nav style={{flex:1,padding:"8px 12px"}}>{NAV.map(n=><button key={n.id} style={{...S.nb,...(tab===n.id?S.nba:{})}} onClick={()=>setTab(n.id)}><span style={{fontSize:16}}>{n.icon}</span>{n.label}</button>)}</nav>
-        <div style={{padding:"16px 20px",borderTop:"1px solid #1e293b"}}>
-          <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:14}}>
-            <div style={{...S.av,width:34,height:34,fontSize:14}}>{currentUser.name.split(" ").map(w=>w[0]).join("").slice(0,2).toUpperCase()}</div>
-            <div><div style={{fontSize:13,fontWeight:700,color:"#f1f5f9"}}>{currentUser.name}</div><div style={{fontSize:11,color:"#0ea5e9"}}>~ Coach</div></div>
+        <div style={S.logo}>
+          <div style={{width:38,height:38,borderRadius:10,background:"#0ea5e920",border:"1px solid #0ea5e940",display:"flex",alignItems:"center",justifyContent:"center",fontSize:20}}>🚣</div>
+          <div><div style={S.logoT}>AvironCoach</div><div style={S.logoS}>Espace Coach</div></div>
+        </div>
+        <div style={{padding:"6px 12px",marginBottom:4}}><div style={{fontSize:10,color:"#334155",textTransform:"uppercase",letterSpacing:1.5,fontWeight:700,padding:"0 6px"}}>Navigation</div></div>
+        <nav style={{flex:1,padding:"0 10px",overflowY:"auto"}}>{NAV.map(n=><button key={n.id} style={{...S.nb,...(tab===n.id?S.nba:{})}} onClick={()=>setTab(n.id)}><span style={{fontSize:17,width:24,textAlign:"center"}}>{n.icon}</span><span style={{flex:1}}>{n.label}</span>{tab===n.id&&<span style={{width:6,height:6,borderRadius:"50%",background:"#38bdf8",display:"inline-block"}}/>}</button>)}</nav>
+        <div style={{padding:"14px 12px",borderTop:"1px solid #1e293b",margin:"0 0"}}>
+          <div style={{display:"flex",alignItems:"center",gap:10,padding:"10px 10px",background:"#111827",borderRadius:10,marginBottom:10}}>
+            <div style={{width:36,height:36,borderRadius:"50%",background:"#0ea5e920",border:"1px solid #0ea5e940",display:"flex",alignItems:"center",justifyContent:"center",fontWeight:800,color:"#0ea5e9",fontSize:13,flexShrink:0}}>{currentUser.name.split(" ").map(w=>w[0]).join("").slice(0,2).toUpperCase()}</div>
+            <div style={{flex:1,minWidth:0}}><div style={{fontSize:13,fontWeight:700,color:"#f1f5f9",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{currentUser.name}</div><div style={{fontSize:10,color:"#0ea5e9",fontWeight:600}}>Coach</div></div>
+            <button title="Ma fiche" style={{background:"#0ea5e915",border:"1px solid #0ea5e930",borderRadius:6,color:"#0ea5e9",cursor:"pointer",fontSize:14,padding:"4px 8px"}} onClick={()=>{const me=athletes.find(a=>a.id===currentUser.athlete_id);if(me)setEditAth({...me});else setToast({m:"Aucune fiche liée à ce compte",t:"error"});}}>✏️</button>
           </div>
-          <button style={{...S.btnP,width:"100%",background:"transparent",color:"#7a95b0",border:"1px solid #1e293b",fontSize:12}} onClick={onLogout}>Deconnexion</button>
+          <button style={{...S.btnP,width:"100%",background:"transparent",color:"#64748b",border:"1px solid #1e293b",fontSize:12,padding:"8px"}} onClick={onLogout}>← Déconnexion</button>
         </div>
       </aside>
       <div style={S.main}>
@@ -710,7 +749,7 @@ function CoachSpace({ currentUser, onLogout }) {
                 <div style={{display:"flex",alignItems:"center",gap:14,marginBottom:14}}>
                   {a.photo_url?<img src={a.photo_url} style={{...S.av,objectFit:"cover"}} onError={e=>{e.target.style.display="none";}}/>:<div style={S.av}>{a.avatar}</div>}
                   <div style={{flex:1}} onClick={()=>{setSelAth(a.id);setTab("performances");}}><div style={{fontWeight:800,color:"#f1f5f9",fontSize:15,display:"flex",alignItems:"center",gap:8}}>{a.name}<span style={{fontSize:10,padding:"2px 7px",borderRadius:10,background:(AGE_CAT_COLORS[getAgeCategory(a.age)] ? AGE_CAT_COLORS[getAgeCategory(a.age)] : "#374151")+"25",color:(AGE_CAT_COLORS[getAgeCategory(a.age)] ? AGE_CAT_COLORS[getAgeCategory(a.age)] : "#94a3b8"),fontWeight:700}}>{getAgeCategory(a.age)}</span></div><div style={{color:"#7a95b0",fontSize:12}}>{a.category} - {a.boat} - {a.age}ans - {a.weight}kg{a.taille?" - "+a.taille+"cm":""}{a.envergure?" - env."+a.envergure+"cm":""}</div>{aCrew&&<div style={{color:"#0ea5e9",fontSize:11,marginTop:2}}>~ {aCrew.name}</div>}</div>
-                  <button style={{...S.actionBtn,color:"#0ea5e9",borderColor:"#22d3ee30",flexShrink:0}} onClick={e=>{e.stopPropagation();setEditAth({...a});}}>Edit Éditer</button>
+                  <button style={{...S.actionBtn,color:"#0ea5e9",borderColor:"#22d3ee30",flexShrink:0}} onClick={e=>{e.stopPropagation();setEditAth({...a});}}>✏️ Edit</button>
                 </div>
                 {last?(<>
                   <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8,marginBottom:10}} onClick={()=>{setSelAth(a.id);setTab("performances");}}>
@@ -729,11 +768,11 @@ function CoachSpace({ currentUser, onLogout }) {
           {showAddAth&&<Modal title="Nouvel athlète" onClose={()=>setShowAddAth(false)}>
             <FF label="Nom"><input style={S.inp} value={newAth.name} onChange={e=>setNA(p=>({...p,name:e.target.value}))} placeholder="Prénom Nom"/></FF>
             <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12}}>
-              <FF label="Âge"><input style={S.inp} type="number" value={newAth.age} onChange={e=>setNA(p=>({...p,age:e.target.value}))}/></FF>
-              <FF label="Poids"><input style={S.inp} type="number" value={newAth.weight} onChange={e=>setNA(p=>({...p,weight:e.target.value}))}/></FF>
+              <FF label="Date de naissance"><input style={S.inp} type="date" value={newAth.date_naissance} onChange={e=>setNA(p=>({...p,date_naissance:e.target.value}))}/></FF>
+              <FF label="Genre"><select style={S.inp} value={newAth.genre} onChange={e=>setNA(p=>({...p,genre:e.target.value}))}><option value="H">Homme</option><option value="F">Femme</option></select></FF>
             </div>
-            <FF label="Catégorie"><select style={S.inp} value={newAth.category} onChange={e=>setNA(p=>({...p,category:e.target.value}))}>{["Junior H","Junior F","Espoir H","Espoir F","Senior H","Senior F"].map(c=><option key={c}>{c}</option>)}</select></FF>
-            <FF label="Bateau"><select style={S.inp} value={newAth.boat} onChange={e=>setNA(p=>({...p,boat:e.target.value}))}>{["1x","2x","2-","4x","4-","4+","8+"].map(b=><option key={b}>{b}</option>)}</select></FF>
+            {newAth.date_naissance&&(()=>{const age=calcAgeFromDOB(newAth.date_naissance);const cat=getCategoryFromAge(age,newAth.genre);return(<div style={{padding:"8px 12px",background:"#0ea5e910",border:"1px solid #0ea5e930",borderRadius:8,marginBottom:12,fontSize:13}}><span style={{color:"#64748b"}}>Catégorie auto : </span><span style={{color:"#0ea5e9",fontWeight:700}}>{cat}</span><span style={{color:"#64748b"}}> · {age} ans</span></div>);})()}
+            <FF label="Poids (kg)"><input style={S.inp} type="number" value={newAth.weight} onChange={e=>setNA(p=>({...p,weight:e.target.value}))} placeholder="ex: 75"/></FF>
             <div style={{marginTop:12,padding:"12px",background:"#111827",borderRadius:8,border:"1px solid #334155"}}><div style={{color:"#64748b",fontSize:11,textTransform:"uppercase",letterSpacing:1,marginBottom:10}}>Données morphologiques (pour suggestions réglages)</div>
             <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10}}>
               <FF label="Taille (cm)"><input style={S.inp} type="number" value={newAth.taille} onChange={e=>setNA(p=>({...p,taille:e.target.value}))} placeholder="ex: 185"/></FF>
@@ -744,16 +783,19 @@ function CoachSpace({ currentUser, onLogout }) {
             </div></div>
             <button style={{...S.btnP,width:"100%",marginTop:12}} onClick={addAth}>Créer la fiche</button>
           </Modal>}
-          {editAth&&<Modal title={`Éditer -- ${editAth.name}`} onClose={()=>setEditAth(null)}>
+          {editAth&&<Modal title={`✏️ ${editAth.name}`} onClose={()=>setEditAth(null)}>
             <FF label="Nom complet"><input style={S.inp} value={editAth.name} onChange={e=>setEditAth(p=>({...p,name:e.target.value}))}/></FF>
             <FF label="Photo (URL)"><input style={S.inp} type="url" value={editAth.photo_url||""} onChange={e=>setEditAth(p=>({...p,photo_url:e.target.value}))} placeholder="https://... (lien image)"/></FF>
             <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12}}>
-              <FF label="Âge"><input style={S.inp} type="number" value={editAth.age} onChange={e=>setEditAth(p=>({...p,age:e.target.value}))}/></FF>
-              <FF label="Poids (kg)"><input style={S.inp} type="number" value={editAth.weight} onChange={e=>setEditAth(p=>({...p,weight:e.target.value}))}/></FF>
+              <FF label="Date de naissance"><input style={S.inp} type="date" value={editAth.date_naissance||""} onChange={e=>setEditAth(p=>({...p,date_naissance:e.target.value}))}/></FF>
+              <FF label="Genre"><select style={S.inp} value={editAth.genre||(editAth.category?.includes("F")?"F":"H")} onChange={e=>setEditAth(p=>({...p,genre:e.target.value}))}><option value="H">Homme</option><option value="F">Femme</option></select></FF>
             </div>
-            <FF label="Catégorie"><select style={S.inp} value={editAth.category} onChange={e=>setEditAth(p=>({...p,category:e.target.value}))}>{["Junior H","Junior F","Espoir H","Espoir F","Senior H","Senior F"].map(c=><option key={c}>{c}</option>)}</select></FF>
-            <FF label="Bateau"><select style={S.inp} value={editAth.boat} onChange={e=>setEditAth(p=>({...p,boat:e.target.value}))}>{["1x","2x","2-","4x","4-","4+","8+"].map(b=><option key={b}>{b}</option>)}</select></FF>
-            <div style={{marginTop:12,padding:"12px",background:"#111827",borderRadius:8,border:"1px solid #334155"}}><div style={{color:"#64748b",fontSize:11,textTransform:"uppercase",letterSpacing:1,marginBottom:10}}>Données morphologiques</div>
+            {(editAth.date_naissance||(editAth.age&&editAth.age>0))&&(()=>{const age=editAth.date_naissance?calcAgeFromDOB(editAth.date_naissance):editAth.age;const genre=editAth.genre||(editAth.category?.includes("F")?"F":"H");const cat=getCategoryFromAge(age,genre);return(<div style={{padding:"8px 12px",background:"#0ea5e910",border:"1px solid #0ea5e930",borderRadius:8,marginBottom:12,fontSize:13}}><span style={{color:"#64748b"}}>Catégorie : </span><span style={{color:"#0ea5e9",fontWeight:700}}>{cat}</span><span style={{color:"#64748b"}}> · {age} ans</span></div>);})()}
+            <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12}}>
+              <FF label="Poids (kg)"><input style={S.inp} type="number" value={editAth.weight} onChange={e=>setEditAth(p=>({...p,weight:e.target.value}))}/></FF>
+              <FF label="Bateau"><select style={S.inp} value={editAth.boat||"1x"} onChange={e=>setEditAth(p=>({...p,boat:e.target.value}))}>{["1x","2x","2-","4x","4-","4+","8+"].map(b=><option key={b}>{b}</option>)}</select></FF>
+            </div>
+            <div style={{marginTop:12,padding:"12px",background:"#111827",borderRadius:8,border:"1px solid #334155"}}><div style={{color:"#64748b",fontSize:11,textTransform:"uppercase",letterSpacing:1,marginBottom:10}}>📏 Données morphologiques</div>
             <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10}}>
               <FF label="Taille (cm)"><input style={S.inp} type="number" value={editAth.taille||""} onChange={e=>setEditAth(p=>({...p,taille:e.target.value}))} placeholder="ex: 185"/></FF>
               <FF label="Envergure (cm)"><input style={S.inp} type="number" value={editAth.envergure||""} onChange={e=>setEditAth(p=>({...p,envergure:e.target.value}))} placeholder="ex: 190"/></FF>
@@ -761,7 +803,10 @@ function CoachSpace({ currentUser, onLogout }) {
               <FF label="Largeur épaules (cm)"><input style={S.inp} type="number" value={editAth.largeur_epaules||""} onChange={e=>setEditAth(p=>({...p,largeur_epaules:e.target.value}))} placeholder="ex: 46"/></FF>
               <FF label="Taille assise (cm)"><input style={S.inp} type="number" value={editAth.taille_assise||""} onChange={e=>setEditAth(p=>({...p,taille_assise:e.target.value}))} placeholder="ex: 96"/></FF>
             </div></div>
-            <button style={{...S.btnP,width:"100%",marginTop:12}} onClick={saveEditAth}>Enregistrer les modifications</button>
+            <div style={{display:"flex",gap:10,marginTop:12}}>
+              <button style={{...S.btnP,flex:1}} onClick={saveEditAth}>Enregistrer</button>
+              <button style={{...S.btnP,background:"#ef444415",color:"#ef4444",border:"1px solid #ef444430"}} onClick={()=>{if(window.confirm(`Supprimer la fiche de ${editAth.name} ?`))deleteAth(editAth.id);}}>🗑️ Supprimer</button>
+            </div>
           </Modal>}
         </div>)}
 
@@ -770,7 +815,7 @@ function CoachSpace({ currentUser, onLogout }) {
             <button style={{...S.fb,...(selAth===null?S.fbon:{})}} onClick={()=>setSelAth(null)}>Tous</button>
             {athletes.map(a=><button key={a.id} style={{...S.fb,...(selAth===a.id?S.fbon:{})}} onClick={()=>setSelAth(a.id)}>{a.name}</button>)}
           </div>
-          {selAth&&(()=>{const a=athletes.find(x=>x.id===selAth);if(!a)return null;const perfs=getPerfFor(selAth),best=getBestTime(perfs),last=getLastPerf(perfs),wpkg=last&&a.weight?(last.watts/a.weight).toFixed(2):null;return(<div style={{...S.card,display:"flex",alignItems:"center",gap:16,marginBottom:16}}><div style={S.av}>{a.avatar}</div><div style={{flex:1}}><div style={{fontSize:18,fontWeight:800,color:"#f1f5f9"}}>{a.name}</div><div style={{color:"#7a95b0",fontSize:13}}>{a.category} - {a.weight}kg - {a.boat}</div></div><button style={{...S.actionBtn,color:"#0ea5e9",borderColor:"#22d3ee30"}} onClick={()=>setEditAth({...a})}>Edit Éditer la fiche</button><div style={{display:"flex",gap:10}}><div style={{background:"#4ade8015",border:"1px solid #4ade8030",borderRadius:10,padding:"10px 16px",textAlign:"center"}}><div style={{color:"#7a95b0",fontSize:10,textTransform:"uppercase",letterSpacing:1}}>Best 2k</div><div style={{color:"#4ade80",fontWeight:900,fontSize:22}}>{best?.time??"-"}</div></div><div style={{background:"#a78bfa15",border:"1px solid #a78bfa30",borderRadius:10,padding:"10px 16px",textAlign:"center"}}><div style={{color:"#7a95b0",fontSize:10,textTransform:"uppercase",letterSpacing:1}}>W/kg</div><div style={{color:"#a78bfa",fontWeight:900,fontSize:22}}>{wpkg??"-"}</div></div></div></div>);})()}
+          {selAth&&(()=>{const a=athletes.find(x=>x.id===selAth);if(!a)return null;const perfs=getPerfFor(selAth),best=getBestTime(perfs),last=getLastPerf(perfs),wpkg=last&&a.weight?(last.watts/a.weight).toFixed(2):null;return(<div style={{...S.card,display:"flex",alignItems:"center",gap:16,marginBottom:16}}><div style={S.av}>{a.avatar}</div><div style={{flex:1}}><div style={{fontSize:18,fontWeight:800,color:"#f1f5f9"}}>{a.name}</div><div style={{color:"#7a95b0",fontSize:13}}>{a.category} - {a.weight}kg - {a.boat}</div></div><button style={{...S.actionBtn,color:"#0ea5e9",borderColor:"#22d3ee30"}} onClick={()=>setEditAth({...a})}>✏️ Edit</button><div style={{display:"flex",gap:10}}><div style={{background:"#4ade8015",border:"1px solid #4ade8030",borderRadius:10,padding:"10px 16px",textAlign:"center"}}><div style={{color:"#7a95b0",fontSize:10,textTransform:"uppercase",letterSpacing:1}}>Best 2k</div><div style={{color:"#4ade80",fontWeight:900,fontSize:22}}>{best?.time??"-"}</div></div><div style={{background:"#a78bfa15",border:"1px solid #a78bfa30",borderRadius:10,padding:"10px 16px",textAlign:"center"}}><div style={{color:"#7a95b0",fontSize:10,textTransform:"uppercase",letterSpacing:1}}>W/kg</div><div style={{color:"#a78bfa",fontWeight:900,fontSize:22}}>{wpkg??"-"}</div></div></div></div>);})()}
           <div style={{overflowX:"auto",borderRadius:12,border:"1px solid #1e293b"}}>
             <table style={{width:"100%",borderCollapse:"collapse",background:"#182030"}}>
               <thead><tr>{["Athlète","Date","2000m","Best 2k","W/kg","Watts","SPM","FC","RPE","Km",""].map(h=><th key={h} style={S.th}>{h}</th>)}</tr></thead>
@@ -1139,7 +1184,7 @@ function AthleteSpace({ currentUser, onLogout }) {
       </aside>
       <div style={S.main}>
         {tab==="dashboard"&&(<div style={S.page}>
-          <div style={S.ph}><div><h1 style={S.ttl}>Bonjour, {athlete.name.split(" ")[0]} </h1><p style={S.sub}>Ton espace personnel</p></div><button style={{...S.btnP,background:"#a78bfa",color:"#0f1923"}} onClick={()=>setEditing(true)}>Edit Éditer ma fiche</button></div>
+          <div style={S.ph}><div><h1 style={S.ttl}>Bonjour, {athlete.name.split(" ")[0]} </h1><p style={S.sub}>Ton espace personnel</p></div><button style={{...S.btnP,background:"#a78bfa",color:"#0f1923"}} onClick={()=>setEditing(true)}>✏️ Ma fiche</button></div>
           <div style={{...S.card,marginBottom:24,borderColor:"#2d1b4e"}}>
             <div style={{display:"flex",alignItems:"center",gap:20}}>
               <div style={{...S.av,width:64,height:64,fontSize:22,background:"#a78bfa22",border:"2px solid #a78bfa44",color:"#a78bfa"}}>{athlete.avatar}</div>
@@ -1322,14 +1367,14 @@ export default function App() {
 
 const S={
   root:      {display:"flex",minHeight:"100vh",background:"#111827",fontFamily:"-apple-system,BlinkMacSystemFont,'Segoe UI','Inter',Helvetica,sans-serif",color:"#e2e8f0"},
-  sidebar:   {width:235,background:"#1e293b",borderRight:"1px solid #334155",display:"flex",flexDirection:"column",padding:"24px 0",position:"sticky",top:0,height:"100vh"},
-  logo:      {display:"flex",alignItems:"center",gap:12,padding:"0 20px 28px",borderBottom:"1px solid #334155",marginBottom:16},
+  sidebar:   {width:240,minWidth:240,background:"#1e293b",borderRight:"1px solid #334155",display:"flex",flexDirection:"column",padding:"20px 0 0",position:"sticky",top:0,height:"100vh",flexShrink:0},
+  logo:      {display:"flex",alignItems:"center",gap:12,padding:"0 16px 20px",borderBottom:"1px solid #334155",marginBottom:12},
   logoT:     {fontSize:15,fontWeight:800,color:"#38bdf8",letterSpacing:0.5},
   logoS:     {fontSize:10,color:"#64748b",letterSpacing:2,textTransform:"uppercase"},
-  nb:        {display:"flex",alignItems:"center",gap:10,width:"100%",padding:"11px 14px",borderRadius:8,border:"none",background:"transparent",color:"#64748b",cursor:"pointer",fontSize:13,fontWeight:500,textAlign:"left",marginBottom:2,fontFamily:"inherit"},
-  nba:       {background:"#38bdf815",color:"#38bdf8",borderLeft:"3px solid #38bdf8"},
-  main:      {flex:1,minHeight:"100vh",overflowY:"auto",background:"#111827"},
-  page:      {padding:"36px 40px",maxWidth:1300},
+  nb:        {display:"flex",alignItems:"center",gap:10,width:"100%",padding:"10px 12px",borderRadius:9,border:"none",background:"transparent",color:"#64748b",cursor:"pointer",fontSize:13,fontWeight:500,textAlign:"left",marginBottom:3,fontFamily:"inherit",transition:"all 0.15s"},
+  nba:       {background:"#38bdf818",color:"#38bdf8",fontWeight:700},
+  main:      {flex:1,minHeight:"100vh",overflowY:"auto",background:"#111827",minWidth:0},
+  page:      {padding:"32px 36px",maxWidth:"100%"},
   ph:        {display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:32},
   ttl:       {fontSize:28,fontWeight:800,color:"#f8fafc",margin:0},
   sub:       {color:"#64748b",fontSize:14,marginTop:4},
