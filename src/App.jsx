@@ -125,7 +125,7 @@ function Toast({ message, type="success", onDone }) {
 // ==========================================================================================================================================================
 // LOGIN
 // ==========================================================================================================================================================
-function LoginScreen({ onLogin }) {
+function Login({ onLogin }) {
   const [email,setEmail]=useState(""); const [pwd,setPwd]=useState(""); const [err,setErr]=useState(""); const [loading,setLoading]=useState(false);
   async function login() {
     setErr(""); setLoading(true);
