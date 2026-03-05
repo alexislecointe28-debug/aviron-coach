@@ -226,7 +226,7 @@ function AdminPanel({ currentUser, onLogout }) {
           <button style={{...S.btnP,width:"100%",background:"transparent",color:"#64748b",border:"1px solid #1e293b",fontSize:12}} onClick={onLogout}>← Déconnexion</button>
         </div>
       </aside>
-      <main style={S.main}>
+      <div style={S.main}>
         {tab==="users"&&(
           <div style={S.page}>
             <div style={S.ph}>
@@ -351,7 +351,7 @@ function AdminPanel({ currentUser, onLogout }) {
             </div>
           </div>
         )}
-      </main>
+      </div>
     </div>
   );
 }
@@ -511,7 +511,7 @@ function CoachSpace({ currentUser, onLogout }) {
           <button style={{...S.btnP,width:"100%",background:"transparent",color:"#64748b",border:"1px solid #1e293b",fontSize:12}} onClick={onLogout}>← Déconnexion</button>
         </div>
       </aside>
-      <main style={S.main}>
+      <div style={S.main}>
 
         {tab==="dashboard"&&(<div style={S.page}>
           <div style={S.ph}><div><h1 style={S.ttl}>Dashboard</h1><p style={S.sub}>{athletes.length} athlètes · données en direct</p></div></div>
@@ -849,7 +849,7 @@ function CoachSpace({ currentUser, onLogout }) {
             </div>)}
           </div>
         </div>)}
-      </main>
+      </div>
     </div>
   );
 }
@@ -923,7 +923,7 @@ function AthleteSpace({ currentUser, onLogout }) {
           <button style={{...S.btnP,width:"100%",background:"transparent",color:"#64748b",border:"1px solid #1e293b",fontSize:12}} onClick={onLogout}>← Déconnexion</button>
         </div>
       </aside>
-      <main style={S.main}>
+      <div style={S.main}>
         {tab==="dashboard"&&(<div style={S.page}>
           <div style={S.ph}><div><h1 style={S.ttl}>Bonjour, {athlete.name.split(" ")[0]} 👋</h1><p style={S.sub}>Ton espace personnel</p></div><button style={{...S.btnP,background:"#a78bfa",color:"#070d1a"}} onClick={()=>setEditing(true)}>✏️ Éditer ma fiche</button></div>
           <div style={{...S.card,marginBottom:24,borderColor:"#2d1b4e"}}>
@@ -1085,7 +1085,7 @@ function AthleteSpace({ currentUser, onLogout }) {
             </div>
           )}
         </div>)}
-      </main>
+      </div>
     </div>
   );
 }
