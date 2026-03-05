@@ -842,10 +842,10 @@ function CoachSpace({ currentUser, onLogout }) {
           <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(200px,1fr))",gap:16}}>
             {sessions.map(s=><div key={s.id} style={{...S.card,borderTop:`3px solid ${TYPE_COLORS[s.type]||"#374151"}`}}>
               <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:10}}><div><div style={{fontWeight:800,fontSize:16,color:"#f1f5f9"}}>{s.day}</div><div style={{color:"#64748b",fontSize:12}}>{s.date}</div></div><div style={{...S.badge,background:(ZONE_COLORS[s.zone]||"#374151")+"22",color:ZONE_COLORS[s.zone]||"#374151",border:`1px solid ${ZONE_COLORS[s.zone]||"#374151"}44`}}>{s.zone}</div></div>
-              <div style={{...S.badge,marginBottom:8,background:(TYPE_COLORS[s.type]||"#374151")+"22",color:TYPE_COLORS[s.type]||"#94a3b8",border:`1px solid ${TYPE_COLORS[s.type]||"#374151"}44`}}>{s.type}</div>
-              {s.duration&&s.duration!=="—"&&<div style={{color:"#94a3b8",fontSize:13,marginBottom:8}}>⏱ {s.duration}</div>}
+              <div style={{...S.badge,marginBottom:8,background:(TYPE_COLORS[s.type]||"#374151")+"22",color:TYPE_COLORS[s.type]||"#94a3b8",border:`1px solid ${(TYPE_COLORS[s.type]||"#374151")}44`}}>{s.type}</div>
+              {s.duration&&s.duration!=="--"&&<div style={{color:"#94a3b8",fontSize:13,marginBottom:8}}>{s.duration}</div>}
               {s.notes&&<div style={{background:"#1e293b50",borderRadius:6,padding:"8px 10px",fontSize:12,color:"#94a3b8",lineHeight:1.5}}>{s.notes}</div>}
-              {getSessionCrewsFor(s.id).map(cr=><div key={cr.id} style={{color:"#22d3ee",fontSize:12,marginTop:6}}>⛵ {cr.name}</div>)}
+              {getSessionCrewsFor(s.id).map(cr=><div key={cr.id} style={{color:"#22d3ee",fontSize:12,marginTop:6}}>{cr.name}</div>)}
             </div>)}
           </div>
         </div>)}
