@@ -223,7 +223,7 @@ function AdminPanel({ currentUser, onLogout }) {
             <div style={{...S.av,background:"#f59e0b22",border:"1px solid #f59e0b44",color:"#f59e0b",width:34,height:34,fontSize:14}}>A</div>
             <div><div style={{fontSize:13,fontWeight:700,color:"#f1f5f9"}}>{currentUser.name}</div><div style={{fontSize:11,color:"#64748b"}}>Super Admin</div></div>
           </div>
-          <button style={{...S.btnP,width:"100%",background:"transparent",color:"#64748b",border:"1px solid #1e293b",fontSize:12}} onClick={onLogout}><- Déconnexion</button>
+          <button style={{...S.btnP,width:"100%",background:"transparent",color:"#64748b",border:"1px solid #1e293b",fontSize:12}} onClick={onLogout}>Deconnexion</button>
         </div>
       </aside>
       <div style={S.main}>
@@ -508,7 +508,7 @@ function CoachSpace({ currentUser, onLogout }) {
             <div style={{...S.av,width:34,height:34,fontSize:14}}>{currentUser.name.split(" ").map(w=>w[0]).join("").slice(0,2).toUpperCase()}</div>
             <div><div style={{fontSize:13,fontWeight:700,color:"#f1f5f9"}}>{currentUser.name}</div><div style={{fontSize:11,color:"#22d3ee"}}>~ Coach</div></div>
           </div>
-          <button style={{...S.btnP,width:"100%",background:"transparent",color:"#64748b",border:"1px solid #1e293b",fontSize:12}} onClick={onLogout}><- Déconnexion</button>
+          <button style={{...S.btnP,width:"100%",background:"transparent",color:"#64748b",border:"1px solid #1e293b",fontSize:12}} onClick={onLogout}>Deconnexion</button>
         </div>
       </aside>
       <div style={S.main}>
@@ -920,7 +920,7 @@ function AthleteSpace({ currentUser, onLogout }) {
             <div style={{...S.av,background:"#a78bfa22",border:"1px solid #a78bfa44",color:"#a78bfa"}}>{athlete.avatar}</div>
             <div><div style={{fontSize:13,fontWeight:700,color:"#f1f5f9"}}>{athlete.name}</div><div style={{fontSize:11,color:"#64748b"}}>{athlete.category}</div></div>
           </div>
-          <button style={{...S.btnP,width:"100%",background:"transparent",color:"#64748b",border:"1px solid #1e293b",fontSize:12}} onClick={onLogout}><- Déconnexion</button>
+          <button style={{...S.btnP,width:"100%",background:"transparent",color:"#64748b",border:"1px solid #1e293b",fontSize:12}} onClick={onLogout}>Deconnexion</button>
         </div>
       </aside>
       <div style={S.main}>
