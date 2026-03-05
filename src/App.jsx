@@ -146,7 +146,7 @@ function LoginScreen({ onLogin }) {
         </div>
         <div style={{background:"#0d1628",border:"1px solid #1e293b",borderRadius:16,padding:"36px 32px"}}>
           <div style={{fontSize:18,fontWeight:800,color:"#f1f5f9",marginBottom:4}}>Connexion</div>
-          <div style={{fontSize:13,color:"#475569",marginBottom:28}}>Admin · Coach · Athlète</div>
+          <div style={{fontSize:13,color:"#475569",marginBottom:28}}>Admin - Coach - Athlète</div>
           <FF label="Email"><input style={{...S.inp,width:"100%"}} type="email" placeholder="email@club.fr" value={email} onChange={e=>setEmail(e.target.value)} onKeyDown={e=>e.key==="Enter"&&login()}/></FF>
           <FF label="Mot de passe / PIN"><input style={{...S.inp,width:"100%"}} type="password" placeholder="****" value={pwd} onChange={e=>setPwd(e.target.value)} onKeyDown={e=>e.key==="Enter"&&login()}/></FF>
           {err&&<div style={{color:"#ef4444",fontSize:13,marginBottom:14,padding:"8px 12px",background:"#ef444415",borderRadius:8,border:"1px solid #ef444430"}}>{err}</div>}
@@ -230,7 +230,7 @@ function AdminPanel({ currentUser, onLogout }) {
         {tab==="users"&&(
           <div style={S.page}>
             <div style={S.ph}>
-              <div><h1 style={S.ttl}>Gestion des comptes</h1><p style={S.sub}>{users.filter(u=>u.active).length}/{users.length} actifs · données en direct depuis Supabase</p></div>
+              <div><h1 style={S.ttl}>Gestion des comptes</h1><p style={S.sub}>{users.filter(u=>u.active).length}/{users.length} actifs - données en direct depuis Supabase</p></div>
               <button style={{...S.btnP,background:"#f59e0b",color:"#070d1a"}} onClick={()=>setShowAdd(true)}>+ Nouveau compte</button>
             </div>
             <div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:14,marginBottom:28}}>
@@ -268,10 +268,10 @@ function AdminPanel({ currentUser, onLogout }) {
                         <td style={S.td}><span style={{...S.badge,background:u.active?"#4ade8020":"#ef444420",color:u.active?"#4ade80":"#ef4444",border:`1px solid ${u.active?"#4ade8040":"#ef444440"}`}}>{u.active?"* Actif":"o Inactif"}</span></td>
                         <td style={S.td}>
                           <div style={{display:"flex",gap:6}}>
-                            <button style={{...S.actionBtn,color:"#22d3ee",borderColor:"#22d3ee30"}} onClick={()=>setEditUser({...u,_newpw:""})}>✏️</button>
+                            <button style={{...S.actionBtn,color:"#22d3ee",borderColor:"#22d3ee30"}} onClick={()=>setEditUser({...u,_newpw:""})}>Edit</button>
                             {u.id!==currentUser.id&&<>
-                              <button style={{...S.actionBtn,color:u.active?"#f59e0b":"#4ade80",borderColor:u.active?"#f59e0b30":"#4ade8030"}} onClick={()=>setConfirm({u,action:u.active?"deactivate":"activate"})}>{u.active?"⏸":"▶"}</button>
-                              <button style={{...S.actionBtn,color:"#ef4444",borderColor:"#ef444430"}} onClick={()=>setConfirm({u,action:"delete"})}>🗑</button>
+                              <button style={{...S.actionBtn,color:u.active?"#f59e0b":"#4ade80",borderColor:u.active?"#f59e0b30":"#4ade8030"}} onClick={()=>setConfirm({u,action:u.active?"deactivate":"activate"})}>{u.active?"||":">"}</button>
+                              <button style={{...S.actionBtn,color:"#ef4444",borderColor:"#ef444430"}} onClick={()=>setConfirm({u,action:"delete"})}>X</button>
                             </>}
                           </div>
                         </td>
@@ -282,7 +282,7 @@ function AdminPanel({ currentUser, onLogout }) {
               </div>
             )}
             <div style={{marginTop:20,padding:"14px 18px",background:"#0d1628",border:"1px solid #1e293b",borderRadius:10,fontSize:12,color:"#64748b"}}>
-              💡 Les changements de rôle sont <strong style={{color:"#94a3b8"}}>immédiats et persistants</strong> dans Supabase.
+               Les changements de rôle sont <strong style={{color:"#94a3b8"}}>immédiats et persistants</strong> dans Supabase.
             </div>
 
             {showAdd&&<Modal title="Créer un compte" onClose={()=>setShowAdd(false)}>
@@ -309,7 +309,7 @@ function AdminPanel({ currentUser, onLogout }) {
 
             {confirm&&<Modal title="Confirmation" onClose={()=>setConfirm(null)}>
               <div style={{textAlign:"center",padding:"10px 0 20px"}}>
-                <div style={{fontSize:40,marginBottom:12}}>{confirm.action==="delete"?"🗑️":confirm.action==="deactivate"?"⏸️":"▶️"}</div>
+                <div style={{fontSize:40,marginBottom:12}}>{confirm.action==="delete"?"X":confirm.action==="deactivate"?"||":">"}</div>
                 <div style={{color:"#f1f5f9",fontSize:16,marginBottom:20}}>{confirm.action==="delete"?`Supprimer ${confirm.u.name} ?`:confirm.action==="deactivate"?`Désactiver ${confirm.u.name} ?`:`Réactiver ${confirm.u.name} ?`}</div>
                 <div style={{display:"flex",gap:12,justifyContent:"center"}}>
                   <button style={{...S.btnP,background:"transparent",color:"#64748b",border:"1px solid #1e293b"}} onClick={()=>setConfirm(null)}>Annuler</button>
@@ -514,7 +514,7 @@ function CoachSpace({ currentUser, onLogout }) {
       <div style={S.main}>
 
         {tab==="dashboard"&&(<div style={S.page}>
-          <div style={S.ph}><div><h1 style={S.ttl}>Dashboard</h1><p style={S.sub}>{athletes.length} athlètes · données en direct</p></div></div>
+          <div style={S.ph}><div><h1 style={S.ttl}>Dashboard</h1><p style={S.sub}>{athletes.length} athlètes - données en direct</p></div></div>
           <div style={{display:"grid",gridTemplateColumns:"repeat(5,1fr)",gap:14,marginBottom:36}}>
             {[{l:"Athlètes",v:athletes.length,c:"#22d3ee",ic:"o"},{l:"Sessions",v:performances.length,c:"#f59e0b",ic:"*"},{l:"Puissance moy.",v:`${globalAvgW}W`,c:"#a78bfa",ic:"~"},{l:"Meilleur 2k",v:globalBest,c:"#4ade80",ic:"~"},{l:"Équipages",v:crews.length,c:"#f97316",ic:"~"}].map((k,i)=>(
               <div key={i} style={S.kpi}><div style={{color:k.c,fontSize:22,marginBottom:8}}>{k.ic}</div><div style={{color:k.c,fontSize:26,fontWeight:900,letterSpacing:-1}}>{k.v}</div><div style={{color:"#94a3b8",fontSize:11,textTransform:"uppercase",letterSpacing:1,marginTop:4}}>{k.l}</div></div>
@@ -526,7 +526,7 @@ function CoachSpace({ currentUser, onLogout }) {
               <div key={a.id} style={S.topCard} onClick={()=>{setSelAth(a.id);setTab("performances");}}>
                 <div style={{width:28,color:"#22d3ee",fontWeight:900,fontSize:18}}>#{i+1}</div>
                 <div style={S.av}>{a.avatar}</div>
-                <div style={{flex:1}}><div style={{fontWeight:700,color:"#f1f5f9"}}>{a.name}</div><div style={{color:"#64748b",fontSize:12}}>{a.category} · {a.boat}</div></div>
+                <div style={{flex:1}}><div style={{fontWeight:700,color:"#f1f5f9"}}>{a.name}</div><div style={{color:"#64748b",fontSize:12}}>{a.category} - {a.boat}</div></div>
                 <div style={{textAlign:"right",minWidth:90}}><div style={{color:"#a78bfa",fontWeight:800,fontSize:18}}>{a.wpkg.toFixed(2)} W/kg</div><div style={{color:"#64748b",fontSize:12}}>{a.watts}W</div></div>
                 <div style={{marginLeft:14}}><Sparkline data={a.wT} color="#22d3ee"/></div>
               </div>
@@ -552,8 +552,8 @@ function CoachSpace({ currentUser, onLogout }) {
               return(<div key={a.id} style={{...S.card,cursor:"pointer"}}>
                 <div style={{display:"flex",alignItems:"center",gap:14,marginBottom:14}}>
                   <div style={S.av}>{a.avatar}</div>
-                  <div style={{flex:1}} onClick={()=>{setSelAth(a.id);setTab("performances");}}><div style={{fontWeight:800,color:"#f1f5f9",fontSize:15}}>{a.name}</div><div style={{color:"#64748b",fontSize:12}}>{a.category} · {a.boat} · {a.age}ans · {a.weight}kg</div>{aCrew&&<div style={{color:"#22d3ee",fontSize:11,marginTop:2}}>~ {aCrew.name}</div>}</div>
-                  <button style={{...S.actionBtn,color:"#22d3ee",borderColor:"#22d3ee30",flexShrink:0}} onClick={e=>{e.stopPropagation();setEditAth({...a});}}>✏️ Éditer</button>
+                  <div style={{flex:1}} onClick={()=>{setSelAth(a.id);setTab("performances");}}><div style={{fontWeight:800,color:"#f1f5f9",fontSize:15}}>{a.name}</div><div style={{color:"#64748b",fontSize:12}}>{a.category} - {a.boat} - {a.age}ans - {a.weight}kg</div>{aCrew&&<div style={{color:"#22d3ee",fontSize:11,marginTop:2}}>~ {aCrew.name}</div>}</div>
+                  <button style={{...S.actionBtn,color:"#22d3ee",borderColor:"#22d3ee30",flexShrink:0}} onClick={e=>{e.stopPropagation();setEditAth({...a});}}>Edit Éditer</button>
                 </div>
                 {last?(<>
                   <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8,marginBottom:10}} onClick={()=>{setSelAth(a.id);setTab("performances");}}>
@@ -596,11 +596,11 @@ function CoachSpace({ currentUser, onLogout }) {
             <button style={{...S.fb,...(selAth===null?S.fbon:{})}} onClick={()=>setSelAth(null)}>Tous</button>
             {athletes.map(a=><button key={a.id} style={{...S.fb,...(selAth===a.id?S.fbon:{})}} onClick={()=>setSelAth(a.id)}>{a.name}</button>)}
           </div>
-          {selAth&&(()=>{const a=athletes.find(x=>x.id===selAth);if(!a)return null;const perfs=getPerfFor(selAth),best=getBestTime(perfs),last=getLastPerf(perfs),wpkg=last&&a.weight?(last.watts/a.weight).toFixed(2):null;return(<div style={{...S.card,display:"flex",alignItems:"center",gap:16,marginBottom:16}}><div style={S.av}>{a.avatar}</div><div style={{flex:1}}><div style={{fontSize:18,fontWeight:800,color:"#f1f5f9"}}>{a.name}</div><div style={{color:"#64748b",fontSize:13}}>{a.category} · {a.weight}kg · {a.boat}</div></div><button style={{...S.actionBtn,color:"#22d3ee",borderColor:"#22d3ee30"}} onClick={()=>setEditAth({...a})}>✏️ Éditer la fiche</button><div style={{display:"flex",gap:10}}><div style={{background:"#4ade8015",border:"1px solid #4ade8030",borderRadius:10,padding:"10px 16px",textAlign:"center"}}><div style={{color:"#64748b",fontSize:10,textTransform:"uppercase",letterSpacing:1}}>Best 2k</div><div style={{color:"#4ade80",fontWeight:900,fontSize:22}}>{best?.time??"-"}</div></div><div style={{background:"#a78bfa15",border:"1px solid #a78bfa30",borderRadius:10,padding:"10px 16px",textAlign:"center"}}><div style={{color:"#64748b",fontSize:10,textTransform:"uppercase",letterSpacing:1}}>W/kg</div><div style={{color:"#a78bfa",fontWeight:900,fontSize:22}}>{wpkg??"-"}</div></div></div></div>);})()}
+          {selAth&&(()=>{const a=athletes.find(x=>x.id===selAth);if(!a)return null;const perfs=getPerfFor(selAth),best=getBestTime(perfs),last=getLastPerf(perfs),wpkg=last&&a.weight?(last.watts/a.weight).toFixed(2):null;return(<div style={{...S.card,display:"flex",alignItems:"center",gap:16,marginBottom:16}}><div style={S.av}>{a.avatar}</div><div style={{flex:1}}><div style={{fontSize:18,fontWeight:800,color:"#f1f5f9"}}>{a.name}</div><div style={{color:"#64748b",fontSize:13}}>{a.category} - {a.weight}kg - {a.boat}</div></div><button style={{...S.actionBtn,color:"#22d3ee",borderColor:"#22d3ee30"}} onClick={()=>setEditAth({...a})}>Edit Éditer la fiche</button><div style={{display:"flex",gap:10}}><div style={{background:"#4ade8015",border:"1px solid #4ade8030",borderRadius:10,padding:"10px 16px",textAlign:"center"}}><div style={{color:"#64748b",fontSize:10,textTransform:"uppercase",letterSpacing:1}}>Best 2k</div><div style={{color:"#4ade80",fontWeight:900,fontSize:22}}>{best?.time??"-"}</div></div><div style={{background:"#a78bfa15",border:"1px solid #a78bfa30",borderRadius:10,padding:"10px 16px",textAlign:"center"}}><div style={{color:"#64748b",fontSize:10,textTransform:"uppercase",letterSpacing:1}}>W/kg</div><div style={{color:"#a78bfa",fontWeight:900,fontSize:22}}>{wpkg??"-"}</div></div></div></div>);})()}
           <div style={{overflowX:"auto",borderRadius:12,border:"1px solid #1e293b"}}>
             <table style={{width:"100%",borderCollapse:"collapse",background:"#0d1628"}}>
               <thead><tr>{["Athlète","Date","2000m","Best 2k","W/kg","Watts","SPM","FC","RPE","Km",""].map(h=><th key={h} style={S.th}>{h}</th>)}</tr></thead>
-              <tbody>{performances.filter(p=>selAth===null||p.athlete_id===selAth).sort((a,b)=>b.date.localeCompare(a.date)).map(p=>{const a=athletes.find(x=>x.id===p.athlete_id);const best=getBestTime(getPerfFor(p.athlete_id));return(<tr key={p.id} style={{borderBottom:"1px solid #1e293b"}}><td style={S.td}><div style={{display:"flex",alignItems:"center",gap:8}}><div style={{...S.av,width:28,height:28,fontSize:11}}>{a?.avatar}</div>{a?.name}</div></td><td style={{...S.td,color:"#64748b"}}>{p.date}</td><td style={{...S.td,color:"#22d3ee",fontWeight:700}}>{p.time}</td><td style={{...S.td,color:"#4ade80",fontWeight:700}}>{best?.time??"-"}</td><td style={{...S.td,color:"#a78bfa",fontWeight:700}}>{a&&a.weight?(p.watts/a.weight).toFixed(2):"--"}</td><td style={{...S.td,color:"#22d3ee"}}>{p.watts}W</td><td style={S.td}>{p.spm}</td><td style={{...S.td,color:"#ef4444"}}>{p.hr}</td><td style={S.td}><div style={{...S.badge,background:`hsl(${(10-p.rpe)*12},80%,40%)`,color:"#fff"}}>{p.rpe}/10</div></td><td style={{...S.td,color:"#f97316"}}>{p.distance}km</td><td style={S.td}><button style={{...S.actionBtn,color:"#ef4444",borderColor:"#ef444430"}} onClick={async()=>{await api.deletePerf(p.id);load();setToast({m:"Performance supprimée",t:"success"});}}>🗑</button></td></tr>);})}
+              <tbody>{performances.filter(p=>selAth===null||p.athlete_id===selAth).sort((a,b)=>b.date.localeCompare(a.date)).map(p=>{const a=athletes.find(x=>x.id===p.athlete_id);const best=getBestTime(getPerfFor(p.athlete_id));return(<tr key={p.id} style={{borderBottom:"1px solid #1e293b"}}><td style={S.td}><div style={{display:"flex",alignItems:"center",gap:8}}><div style={{...S.av,width:28,height:28,fontSize:11}}>{a?.avatar}</div>{a?.name}</div></td><td style={{...S.td,color:"#64748b"}}>{p.date}</td><td style={{...S.td,color:"#22d3ee",fontWeight:700}}>{p.time}</td><td style={{...S.td,color:"#4ade80",fontWeight:700}}>{best?.time??"-"}</td><td style={{...S.td,color:"#a78bfa",fontWeight:700}}>{a&&a.weight?(p.watts/a.weight).toFixed(2):"--"}</td><td style={{...S.td,color:"#22d3ee"}}>{p.watts}W</td><td style={S.td}>{p.spm}</td><td style={{...S.td,color:"#ef4444"}}>{p.hr}</td><td style={S.td}><div style={{...S.badge,background:`hsl(${(10-p.rpe)*12},80%,40%)`,color:"#fff"}}>{p.rpe}/10</div></td><td style={{...S.td,color:"#f97316"}}>{p.distance}km</td><td style={S.td}><button style={{...S.actionBtn,color:"#ef4444",borderColor:"#ef444430"}} onClick={async()=>{await api.deletePerf(p.id);load();setToast({m:"Performance supprimée",t:"success"});}}>X</button></td></tr>);})}
               </tbody>
             </table>
           </div>
@@ -636,7 +636,7 @@ function CoachSpace({ currentUser, onLogout }) {
           <div style={S.ph}><div><h1 style={S.ttl}>Équipages</h1><p style={S.sub}>Composer et assigner</p></div></div>
           <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:24}}>
             <div>
-              <div style={S.st}>➕ Créer un équipage</div>
+              <div style={S.st}>+ Créer un équipage</div>
               <div style={S.card}>
                 <FF label="Nom"><input style={S.inp} value={crewName} onChange={e=>setCrewName(e.target.value)}/></FF>
                 <FF label="Bateau"><div style={{display:"flex",gap:6,flexWrap:"wrap"}}>{Object.keys(CREW_SLOTS).map(b=><button key={b} style={{...S.fb,...(crewBoat===b?S.fbon:{})}} onClick={()=>{setCrewBoat(b);setNewCrewMembers([]);}}>{b}</button>)}</div></FF>
@@ -651,8 +651,8 @@ function CoachSpace({ currentUser, onLogout }) {
               <div style={S.st}>~ Équipages actifs ({crews.length})</div>
               {crews.map(cr=><div key={cr.id} style={{...S.card,marginBottom:12,borderTop:"3px solid #22d3ee"}}>
                 <div style={{fontWeight:800,color:"#f1f5f9",fontSize:16,marginBottom:2}}>{cr.name}</div>
-                <div style={{color:"#64748b",fontSize:12,marginBottom:12}}>{cr.boat} · {getCrewMembersFor(cr.id).length} rameurs</div>
-                <div style={{display:"flex",gap:6,flexWrap:"wrap"}}>{getCrewMembersFor(cr.id).map(a=>{const{last,wpkg}=aStats(a);return(<div key={a.id} style={{background:"#1e293b",borderRadius:8,padding:"5px 10px",display:"flex",alignItems:"center",gap:8}}><div style={{...S.av,width:26,height:26,fontSize:10}}>{a.avatar}</div><div><div style={{color:"#f1f5f9",fontSize:12,fontWeight:600}}>{a.name.split(" ")[0]}</div>{last&&<div style={{color:"#22d3ee",fontSize:10}}>{last.watts}W · {wpkg}W/kg</div>}</div></div>);})}</div>
+                <div style={{color:"#64748b",fontSize:12,marginBottom:12}}>{cr.boat} - {getCrewMembersFor(cr.id).length} rameurs</div>
+                <div style={{display:"flex",gap:6,flexWrap:"wrap"}}>{getCrewMembersFor(cr.id).map(a=>{const{last,wpkg}=aStats(a);return(<div key={a.id} style={{background:"#1e293b",borderRadius:8,padding:"5px 10px",display:"flex",alignItems:"center",gap:8}}><div style={{...S.av,width:26,height:26,fontSize:10}}>{a.avatar}</div><div><div style={{color:"#f1f5f9",fontSize:12,fontWeight:600}}>{a.name.split(" ")[0]}</div>{last&&<div style={{color:"#22d3ee",fontSize:10}}>{last.watts}W - {wpkg}W/kg</div>}</div></div>);})}</div>
               </div>)}
             </div>
           </div>
@@ -662,7 +662,7 @@ function CoachSpace({ currentUser, onLogout }) {
 
         {tab==="boats"&&(<div style={S.page}>
           <div style={S.ph}>
-            <div><h1 style={S.ttl}>Bateaux</h1><p style={S.sub}>{boats.length} bateaux · réglages par poste</p></div>
+            <div><h1 style={S.ttl}>Bateaux</h1><p style={S.sub}>{boats.length} bateaux - réglages par poste</p></div>
             <button style={S.btnP} onClick={()=>setShowAddBoat(true)}>+ Nouveau bateau</button>
           </div>
 
@@ -676,16 +676,16 @@ function CoachSpace({ currentUser, onLogout }) {
                   <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:10}}>
                     <div>
                       <div style={{fontWeight:900,color:"#f1f5f9",fontSize:17}}>{b.name}</div>
-                      <div style={{color:"#64748b",fontSize:12,marginTop:2}}>{b.brand} {b.model} · {b.seats} postes</div>
+                      <div style={{color:"#64748b",fontSize:12,marginTop:2}}>{b.brand} {b.model} - {b.seats} postes</div>
                     </div>
                     <div style={{display:"flex",gap:6,alignItems:"center"}}>
                       <span style={{...S.badge,background:b.type==="couple"?"#22d3ee20":"#a78bfa20",color:b.type==="couple"?"#22d3ee":"#a78bfa",border:`1px solid ${b.type==="couple"?"#22d3ee40":"#a78bfa40"}`}}>{b.type==="couple"?"~ Couple":"~ Pointe"}</span>
-                      <button style={{...S.actionBtn,color:"#22d3ee",borderColor:"#22d3ee30"}} onClick={e=>{e.stopPropagation();setEditBoat({...b});}}>✏️</button>
+                      <button style={{...S.actionBtn,color:"#22d3ee",borderColor:"#22d3ee30"}} onClick={e=>{e.stopPropagation();setEditBoat({...b});}}>Edit</button>
                     </div>
                   </div>
                   {b.avg_buoyancy&&<div style={{color:"#f59e0b",fontSize:13,marginBottom:8}}>~ Portance moy. : {b.avg_buoyancy} kg</div>}
                   {linked.length>0&&<div style={{marginBottom:8}}>{linked.map(cr=><div key={cr.id} style={{color:"#22d3ee",fontSize:12}}>~ {cr.name}</div>)}</div>}
-                  {lastSetting&&<div style={{color:"#475569",fontSize:11}}>Dernier réglage : {lastSetting.date_reglage} · {lastSetting.regle_par}</div>}
+                  {lastSetting&&<div style={{color:"#475569",fontSize:11}}>Dernier réglage : {lastSetting.date_reglage} - {lastSetting.regle_par}</div>}
                   {b.notes&&<div style={{background:"#1e293b50",borderRadius:6,padding:"6px 10px",fontSize:12,color:"#94a3b8",marginTop:8}}>{b.notes}</div>}
                 </div>
               );
@@ -722,7 +722,7 @@ function CoachSpace({ currentUser, onLogout }) {
                 <div style={{overflowX:"auto",borderRadius:12,border:"1px solid #1e293b",marginBottom:28}}>
                   <table style={{width:"100%",borderCollapse:"collapse",background:"#0d1628"}}>
                     <thead>
-                      <tr>{["Poste","Rameur","Date","Réglé par","Entraxe","Long. pédale","Levier int.","N° pelle","Type pelle","Observations"].map(h=><th key={h} style={S.th}>{h}</th>)}</tr>
+                      <tr>{["Poste","Rameur","Date","Réglé par","Entraxe","Long. pédale","Levier int.","Ndeg pelle","Type pelle","Observations"].map(h=><th key={h} style={S.th}>{h}</th>)}</tr>
                     </thead>
                     <tbody>
                       {postes.map(s=>{
@@ -759,7 +759,7 @@ function CoachSpace({ currentUser, onLogout }) {
                   <div style={S.st}>~ Historique complet des réglages</div>
                   <div style={{overflowX:"auto",borderRadius:12,border:"1px solid #1e293b"}}>
                     <table style={{width:"100%",borderCollapse:"collapse",background:"#0d1628"}}>
-                      <thead><tr>{["Poste","Date","Réglé par","Entraxe","Long. pédale","Levier int.","N° pelle","Type pelle","Observations",""].map(h=><th key={h} style={S.th}>{h}</th>)}</tr></thead>
+                      <thead><tr>{["Poste","Date","Réglé par","Entraxe","Long. pédale","Levier int.","Ndeg pelle","Type pelle","Observations",""].map(h=><th key={h} style={S.th}>{h}</th>)}</tr></thead>
                       <tbody>
                         {allSettings.map(s=>(
                           <tr key={s.id} style={{borderBottom:"1px solid #1e293b"}}>
@@ -772,7 +772,7 @@ function CoachSpace({ currentUser, onLogout }) {
                             <td style={S.td}>{s.numero_pelle||"--"}</td>
                             <td style={S.td}>{s.type_pelle||"--"}</td>
                             <td style={{...S.td,color:"#94a3b8"}}>{s.observations||"--"}</td>
-                            <td style={S.td}><button style={{...S.actionBtn,color:"#ef4444",borderColor:"#ef444430"}} onClick={async()=>{await api.deleteBoatSetting(s.id);load();setToast({m:"Réglage supprimé",t:"success"});}}>🗑</button></td>
+                            <td style={S.td}><button style={{...S.actionBtn,color:"#ef4444",borderColor:"#ef444430"}} onClick={async()=>{await api.deleteBoatSetting(s.id);load();setToast({m:"Réglage supprimé",t:"success"});}}>X</button></td>
                           </tr>
                         ))}
                       </tbody>
@@ -827,7 +827,7 @@ function CoachSpace({ currentUser, onLogout }) {
                   <FF label="Entraxe (cm)"><input style={S.inp} type="number" value={newSetting.entraxe} onChange={e=>setNS(p=>({...p,entraxe:e.target.value}))}/></FF>
                   <FF label="Longueur pédale (cm)"><input style={S.inp} type="number" value={newSetting.longueur_pedale} onChange={e=>setNS(p=>({...p,longueur_pedale:e.target.value}))}/></FF>
                   <FF label="Levier intérieur (cm)"><input style={S.inp} type="number" value={newSetting.levier_interieur} onChange={e=>setNS(p=>({...p,levier_interieur:e.target.value}))}/></FF>
-                  <FF label="N° pelle"><input style={S.inp} value={newSetting.numero_pelle} onChange={e=>setNS(p=>({...p,numero_pelle:e.target.value}))}/></FF>
+                  <FF label="Ndeg pelle"><input style={S.inp} value={newSetting.numero_pelle} onChange={e=>setNS(p=>({...p,numero_pelle:e.target.value}))}/></FF>
                   <FF label="Type de pelle"><input style={S.inp} value={newSetting.type_pelle} onChange={e=>setNS(p=>({...p,type_pelle:e.target.value}))} placeholder="ex: Smoothie2, Apex..."/></FF>
                 </div>
                 <FF label="Observations"><textarea style={{...S.inp,height:72,resize:"vertical"}} value={newSetting.observations} onChange={e=>setNS(p=>({...p,observations:e.target.value}))}/></FF>
@@ -925,14 +925,14 @@ function AthleteSpace({ currentUser, onLogout }) {
       </aside>
       <div style={S.main}>
         {tab==="dashboard"&&(<div style={S.page}>
-          <div style={S.ph}><div><h1 style={S.ttl}>Bonjour, {athlete.name.split(" ")[0]} 👋</h1><p style={S.sub}>Ton espace personnel</p></div><button style={{...S.btnP,background:"#a78bfa",color:"#070d1a"}} onClick={()=>setEditing(true)}>✏️ Éditer ma fiche</button></div>
+          <div style={S.ph}><div><h1 style={S.ttl}>Bonjour, {athlete.name.split(" ")[0]} </h1><p style={S.sub}>Ton espace personnel</p></div><button style={{...S.btnP,background:"#a78bfa",color:"#070d1a"}} onClick={()=>setEditing(true)}>Edit Éditer ma fiche</button></div>
           <div style={{...S.card,marginBottom:24,borderColor:"#2d1b4e"}}>
             <div style={{display:"flex",alignItems:"center",gap:20}}>
               <div style={{...S.av,width:64,height:64,fontSize:22,background:"#a78bfa22",border:"2px solid #a78bfa44",color:"#a78bfa"}}>{athlete.avatar}</div>
-              <div style={{flex:1}}><div style={{fontSize:22,fontWeight:900,color:"#f1f5f9"}}>{athlete.name}</div><div style={{color:"#64748b",fontSize:14,marginTop:2}}>{athlete.category} · {athlete.boat} · {athlete.age}ans · {athlete.weight}kg</div></div>
+              <div style={{flex:1}}><div style={{fontSize:22,fontWeight:900,color:"#f1f5f9"}}>{athlete.name}</div><div style={{color:"#64748b",fontSize:14,marginTop:2}}>{athlete.category} - {athlete.boat} - {athlete.age}ans - {athlete.weight}kg</div></div>
               <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12}}>
                 <div style={{background:"#4ade8015",border:"1px solid #4ade8030",borderRadius:10,padding:"12px 18px",textAlign:"center"}}><div style={{color:"#64748b",fontSize:10,textTransform:"uppercase",letterSpacing:1}}>Best 2000m</div><div style={{color:"#4ade80",fontWeight:900,fontSize:26}}>{best?.time??"--"}</div><div style={{color:"#475569",fontSize:11}}>{best?.date??""}</div></div>
-                <div style={{background:"#a78bfa15",border:"1px solid #a78bfa30",borderRadius:10,padding:"12px 18px",textAlign:"center"}}><div style={{color:"#64748b",fontSize:10,textTransform:"uppercase",letterSpacing:1}}>W/kg</div><div style={{color:"#a78bfa",fontWeight:900,fontSize:26}}>{wpkg??"--"}</div><div style={{color:"#475569",fontSize:11}}>{last?.watts}W · {athlete.weight}kg</div></div>
+                <div style={{background:"#a78bfa15",border:"1px solid #a78bfa30",borderRadius:10,padding:"12px 18px",textAlign:"center"}}><div style={{color:"#64748b",fontSize:10,textTransform:"uppercase",letterSpacing:1}}>W/kg</div><div style={{color:"#a78bfa",fontWeight:900,fontSize:26}}>{wpkg??"--"}</div><div style={{color:"#475569",fontSize:11}}>{last?.watts}W - {athlete.weight}kg</div></div>
               </div>
             </div>
           </div>
@@ -960,7 +960,7 @@ function AthleteSpace({ currentUser, onLogout }) {
               <FF label="Watts"><input style={S.inp} type="number" value={newPerf.watts} onChange={e=>setNP(p=>({...p,watts:e.target.value}))}/></FF>
               <FF label="SPM"><input style={S.inp} type="number" value={newPerf.spm} onChange={e=>setNP(p=>({...p,spm:e.target.value}))}/></FF>
               <FF label="FC (bpm)"><input style={S.inp} type="number" value={newPerf.hr} onChange={e=>setNP(p=>({...p,hr:e.target.value}))}/></FF>
-              <FF label="RPE (1–10)"><input style={S.inp} type="number" min="1" max="10" value={newPerf.rpe} onChange={e=>setNP(p=>({...p,rpe:e.target.value}))}/></FF>
+              <FF label="RPE (1-10)"><input style={S.inp} type="number" min="1" max="10" value={newPerf.rpe} onChange={e=>setNP(p=>({...p,rpe:e.target.value}))}/></FF>
               <FF label="Distance (km)"><input style={S.inp} type="number" value={newPerf.distance} onChange={e=>setNP(p=>({...p,distance:e.target.value}))}/></FF>
             </div>
             <button style={{...S.btnP,width:"100%",marginTop:8,background:"#a78bfa",color:"#070d1a"}} onClick={addPerf}>Enregistrer</button>
@@ -980,13 +980,13 @@ function AthleteSpace({ currentUser, onLogout }) {
         {tab==="crew"&&(<div style={S.page}>
           <div style={S.ph}><div><h1 style={S.ttl}>Mon Équipage</h1><p style={S.sub}>Assigné par le coach</p></div></div>
           {!myCrew?<div style={{...S.card,textAlign:"center",padding:"40px",color:"#475569"}}>Aucun équipage assigné pour le moment.</div>:(<>
-            <div style={{...S.card,marginBottom:20}}><div style={{fontSize:22,fontWeight:900,color:"#f1f5f9",marginBottom:4}}>{myCrew.name}</div><div style={{color:"#64748b",fontSize:14,marginBottom:12}}>{myCrew.boat}</div>{myCrew.notes&&<div style={{background:"#1e293b50",borderRadius:8,padding:"10px",color:"#94a3b8",fontSize:13}}>💬 {myCrew.notes}</div>}</div>
+            <div style={{...S.card,marginBottom:20}}><div style={{fontSize:22,fontWeight:900,color:"#f1f5f9",marginBottom:4}}>{myCrew.name}</div><div style={{color:"#64748b",fontSize:14,marginBottom:12}}>{myCrew.boat}</div>{myCrew.notes&&<div style={{background:"#1e293b50",borderRadius:8,padding:"10px",color:"#94a3b8",fontSize:13}}> {myCrew.notes}</div>}</div>
             <div style={{display:"flex",flexDirection:"column",gap:10}}>
               {allAthletes.filter(a=>crewMembers.some(m=>m.crew_id===myCrew.id&&m.athlete_id===a.id)).map(a=>{
                 const perfs=myPerfs.filter(p=>p.athlete_id===a.id),lp=getLastPerf(a.id===athlete.id?myPerfs:[]),isMe=a.id===athlete.id;
                 return(<div key={a.id} style={{...S.card,display:"flex",alignItems:"center",gap:14,padding:"14px 18px",borderColor:isMe?"#a78bfa44":"#1e293b",background:isMe?"#a78bfa08":"#0d1628"}}>
                   <div style={{...S.av,background:isMe?"#a78bfa22":"#22d3ee15",border:`1px solid ${isMe?"#a78bfa44":"#22d3ee30"}`,color:isMe?"#a78bfa":"#22d3ee"}}>{a.avatar}</div>
-                  <div style={{flex:1}}><div style={{fontWeight:700,color:"#f1f5f9"}}>{a.name} {isMe&&<span style={{color:"#a78bfa",fontSize:12}}>(toi)</span>}</div><div style={{color:"#64748b",fontSize:12}}>{a.category} · {a.weight}kg</div></div>
+                  <div style={{flex:1}}><div style={{fontWeight:700,color:"#f1f5f9"}}>{a.name} {isMe&&<span style={{color:"#a78bfa",fontSize:12}}>(toi)</span>}</div><div style={{color:"#64748b",fontSize:12}}>{a.category} - {a.weight}kg</div></div>
                   {isMe&&last&&<div style={{display:"flex",gap:10}}><StatPill label="2000m" value={last.time} color="#4ade80"/><StatPill label="Watts" value={`${last.watts}W`} color="#22d3ee"/><StatPill label="W/kg" value={wpkg} color="#a78bfa"/></div>}
                 </div>);
               })}
@@ -1014,7 +1014,7 @@ function AthleteSpace({ currentUser, onLogout }) {
                   <div style={{fontSize:48}}>~</div>
                   <div style={{flex:1}}>
                     <div style={{fontSize:22,fontWeight:900,color:"#f1f5f9"}}>{myBoat.name}</div>
-                    <div style={{color:"#64748b",fontSize:14,marginTop:2}}>{myBoat.brand} {myBoat.model} · {myBoat.type==="couple"?"Couple":"Pointe"} · {myBoat.seats} postes</div>
+                    <div style={{color:"#64748b",fontSize:14,marginTop:2}}>{myBoat.brand} {myBoat.model} - {myBoat.type==="couple"?"Couple":"Pointe"} - {myBoat.seats} postes</div>
                     {myBoat.avg_buoyancy&&<div style={{color:"#f59e0b",fontSize:13,marginTop:4}}>~ Portance moyenne : {myBoat.avg_buoyancy} kg</div>}
                     {myBoat.notes&&<div style={{color:"#94a3b8",fontSize:13,marginTop:6}}>{myBoat.notes}</div>}
                   </div>
@@ -1035,7 +1035,7 @@ function AthleteSpace({ currentUser, onLogout }) {
                     {l:"Entraxe",v:lastSetting.entraxe?`${lastSetting.entraxe} cm`:"--",c:"#22d3ee"},
                     {l:"Long. pédale",v:lastSetting.longueur_pedale?`${lastSetting.longueur_pedale} cm`:"--",c:"#a78bfa"},
                     {l:"Levier int.",v:lastSetting.levier_interieur?`${lastSetting.levier_interieur} cm`:"--",c:"#f59e0b"},
-                    {l:"N° pelle",v:lastSetting.numero_pelle||"--",c:"#f97316"},
+                    {l:"Ndeg pelle",v:lastSetting.numero_pelle||"--",c:"#f97316"},
                     {l:"Type de pelle",v:lastSetting.type_pelle||"--",c:"#4ade80"},
                   ].map((k,i)=>(
                     <div key={i} style={S.kpi}>
@@ -1052,7 +1052,7 @@ function AthleteSpace({ currentUser, onLogout }) {
                 <div style={S.st}>~ Historique de mes réglages</div>
                 <div style={{overflowX:"auto",borderRadius:12,border:"1px solid #1e293b"}}>
                   <table style={{width:"100%",borderCollapse:"collapse",background:"#0d1628"}}>
-                    <thead><tr>{["Date","Réglé par","Entraxe","Long. pédale","Levier int.","N° pelle","Type pelle","Observations"].map(h=><th key={h} style={S.th}>{h}</th>)}</tr></thead>
+                    <thead><tr>{["Date","Réglé par","Entraxe","Long. pédale","Levier int.","Ndeg pelle","Type pelle","Observations"].map(h=><th key={h} style={S.th}>{h}</th>)}</tr></thead>
                     <tbody>
                       {mySettings.map(s=>(
                         <tr key={s.id} style={{borderBottom:"1px solid #1e293b"}}>
