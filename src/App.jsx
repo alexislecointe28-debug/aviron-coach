@@ -889,12 +889,7 @@ function CoachSpace({ currentUser, onLogout }) {
 
   function getPerfFor(id) { return performances.filter(p=>p.athlete_id===id).sort((a,b)=>a.date.localeCompare(b.date)); }
   function aStats(a) { const perfs=getPerfFor(a.id),best=getBestTime(perfs),last=getLastPerf(perfs); const w=best?concept2WattsFast(best.time):null; return{perfs,best,last,watts:w,wpkg:w&&a.weight?(w/a.weight).toFixed(2):null}; }
-  function getCrewForAthlete(a) {
-    const allCm = crewMembers.filter(m=>m.athlete_id===a.id);
-    const cmWithBoat = allCm.find(m=>boatCrews.some(bc=>bc.crew_id===m.crew_id));
-    const cm = cmWithBoat || allCm[0];
-    return cm ? crews.find(c=>c.id===cm.crew_id) : null;
-  }
+  function getCrewForAthlete(a) { const cm=crewMembers.find(m=>m.athlete_id===a.id); return cm?crews.find(c=>c.id===cm.crew_id):null; }
   function getCrewMembersFor(crewId) { return crewMembers.filter(m=>m.crew_id===crewId).map(m=>athletes.find(a=>a.id===m.athlete_id)).filter(Boolean); }
   function getSessionCrewsFor(sessionId) { return sessionCrews.filter(sc=>sc.session_id===sessionId).map(sc=>crews.find(c=>c.id===sc.crew_id)).filter(Boolean); }
 
@@ -1525,7 +1520,7 @@ function CoachSpace({ currentUser, onLogout }) {
           <div style={S.ph}><div><h1 style={S.ttl}>Comparer</h1><p style={S.sub}>2 à 4 athlètes</p></div></div>
           <div style={{display:"flex",gap:8,marginBottom:24,flexWrap:"wrap"}}>{athletes.map(a=>{const on=compareIds.includes(a.id);return(<button key={a.id} style={{...S.fb,...(on?{background:"#22d3ee20",border:"1px solid #22d3ee60",color:"#0ea5e9"}:{})}} onClick={()=>setCompareIds(prev=>prev.includes(a.id)?(prev.length>2?prev.filter(x=>x!==a.id):prev):prev.length<4?[...prev,a.id]:prev)}>{on?"v ":""}{a.name}</button>);})}</div>
           {compareIds.length>=2&&(()=>{
-            const cmp=compareIds.map(id=>{const a=athletes.find(x=>x.id===id);const perfs=getPerfFor(id),last=getLastPerf(perfs),best=getBestTime(perfs);return{...a,last,best,wpkg:last&&a.weight?(last.watts/a.weight).toFixed(2):null,perfs};});
+            const cmp=compareIds.map(id=>{const a=athletes.find(x=>x.id===id);const perfs=getPerfFor(id),last=getLastPerf(perfs),best=getBestTime(perfs);const bestWatts=best?concept2WattsFast(best.time):null;return{...a,last,best,wpkg:bestWatts&&a.weight?(bestWatts/a.weight).toFixed(2):null,perfs};});
             const rows=[{label:"Meilleur 2k",fn:c=>c.best?.time??"--",bfn:c=>c.best?timeToSeconds(c.best.time):9999,lower:true,c:"#4ade80"},{label:"Puissance",fn:c=>c.best?`${concept2WattsFast(c.best.time)||0}W`:"--",bfn:c=>c.best?concept2WattsFast(c.best.time)||0:0,lower:false,c:"#0ea5e9"},{label:"W/kg",fn:c=>c.wpkg??"-",bfn:c=>parseFloat(c.wpkg)||0,lower:false,c:"#a78bfa"},{label:"Sessions",fn:c=>c.perfs.length,bfn:c=>c.perfs.length,lower:false,c:"#f97316"}];
             return(<>
               <div style={{display:"grid",gridTemplateColumns:`140px repeat(${cmp.length},1fr)`,gap:2,marginBottom:2}}><div/>{cmp.map((c,i)=><div key={c.id} style={{...S.card,textAlign:"center",borderTop:`3px solid ${CMP_COLORS[i]}`,padding:"12px 8px"}}><div style={{...S.av,margin:"0 auto 8px",border:`2px solid ${CMP_COLORS[i]}`}}>{c.avatar}</div><div style={{fontWeight:800,color:"#f1f5f9",fontSize:13}}>{c.name}</div><div style={{color:"#7a95b0",fontSize:11}}>{c.category}</div></div>)}</div>
