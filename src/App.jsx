@@ -381,7 +381,7 @@ function Login({ onLogin }) {
     setLoading(false);
   }
   return (
-    <div style={{minHeight:"100vh",background:"#0f1923",display:"flex",alignItems:"center",justifyContent:"center",fontFamily:"-apple-system,BlinkMacSystemFont,'Segoe UI','Inter',sans-serif"}}>
+    <div style={{minHeight:"100vh",width:"100%",background:"#0f1923",display:"flex",alignItems:"center",justifyContent:"center",fontFamily:"-apple-system,BlinkMacSystemFont,'Segoe UI','Inter',sans-serif"}}>
       <div style={{width:420}}>
         <div style={{textAlign:"center",marginBottom:48}}>
           <div style={{fontSize:52,marginBottom:12}}>~</div>
@@ -635,15 +635,18 @@ function CoachSpace({ currentUser, onLogout }) {
 
   const load = useCallback(async()=>{
     setLoading(true);
-    const [aths,perfs,cr,cm,sess,sc,bt,bc,bs] = await Promise.all([
-      api.getAthletes(),api.getPerformances(),api.getCrews(),api.getCrewMembers(),
-      api.getSessions(),api.getSessionCrews(),
-      api.getBoats(),api.getBoatCrews(),api.getBoatSettings()
-    ]);
-    setAthletes(aths); setPerformances(perfs); setCrews(cr); setCrewMembers(cm);
-    setSessions(sess); setSessionCrews(sc);
-    setBoats(bt); setBoatCrews(bc); setBoatSettings(bs);
-    if(aths.length>=2) setCompareIds([aths[0].id,aths[1].id]);
+    try {
+      const safe = (p) => p.catch(()=>[]);
+      const [aths,perfs,cr,cm,sess,sc,bt,bc,bs] = await Promise.all([
+        safe(api.getAthletes()),safe(api.getPerformances()),safe(api.getCrews()),safe(api.getCrewMembers()),
+        safe(api.getSessions()),safe(api.getSessionCrews()),
+        safe(api.getBoats()),safe(api.getBoatCrews()),safe(api.getBoatSettings())
+      ]);
+      setAthletes(aths||[]); setPerformances(perfs||[]); setCrews(cr||[]); setCrewMembers(cm||[]);
+      setSessions(sess||[]); setSessionCrews(sc||[]);
+      setBoats(bt||[]); setBoatCrews(bc||[]); setBoatSettings(bs||[]);
+      if((aths||[]).length>=2) setCompareIds([aths[0].id,aths[1].id]);
+    } catch(e){ console.error("Load error:", e); }
     setLoading(false);
   },[]);
   useEffect(()=>{ load(); },[]);
@@ -1339,13 +1342,16 @@ function AthleteSpace({ currentUser, onLogout }) {
 
   const load = useCallback(async()=>{
     setLoading(true);
-    const [aths,perfs,cr,cm,sess,sc,bt,bc,bs]=await Promise.all([api.getAthletes(),api.getPerformances(),api.getCrews(),api.getCrewMembers(),api.getSessions(),api.getSessionCrews(),api.getBoats(),api.getBoatCrews(),api.getBoatSettings()]);
-    const me=aths.find(a=>a.id===currentUser.athlete_id);
-    setAthlete(me); setAllAthletes(aths);
-    setMyPerfs(perfs.filter(p=>p.athlete_id===currentUser.athlete_id).sort((a,b)=>a.date.localeCompare(b.date)));
-    setCrews(cr); setCrewMembers(cm); setSessions(sess); setSessionCrews(sc);
-    setBoats(bt); setBoatCrews(bc); setBoatSettings(bs);
-    if(me) setEditForm({weight:me.weight,boat:me.boat,age:me.age});
+    try {
+      const safe = (p) => p.catch(()=>[]);
+      const [aths,perfs,cr,cm,sess,sc,bt,bc,bs]=await Promise.all([safe(api.getAthletes()),safe(api.getPerformances()),safe(api.getCrews()),safe(api.getCrewMembers()),safe(api.getSessions()),safe(api.getSessionCrews()),safe(api.getBoats()),safe(api.getBoatCrews()),safe(api.getBoatSettings())]);
+      const me=(aths||[]).find(a=>a.id===currentUser.athlete_id);
+      setAthlete(me); setAllAthletes(aths||[]);
+      setMyPerfs((perfs||[]).filter(p=>p.athlete_id===currentUser.athlete_id).sort((a,b)=>a.date.localeCompare(b.date)));
+      setCrews(cr||[]); setCrewMembers(cm||[]); setSessions(sess||[]); setSessionCrews(sc||[]);
+      setBoats(bt||[]); setBoatCrews(bc||[]); setBoatSettings(bs||[]);
+      if(me) setEditForm({weight:me.weight,boat:me.boat,age:me.age});
+    } catch(e){ console.error("Load error:", e); }
     setLoading(false);
   },[currentUser.athlete_id]);
   useEffect(()=>{ load(); },[]);
