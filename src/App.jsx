@@ -85,6 +85,24 @@ const api = {
   createUserProfile:(data)     => sb("user_profiles", { method:"POST", body:JSON.stringify(data) }),
   updateUserProfile:(id, data) => sb(`user_profiles?id=eq.${id}`, { method:"PATCH", body:JSON.stringify(data) }),
 
+  // Photo upload to Supabase Storage
+  uploadPhoto: async (file, athleteId) => {
+    const ext = file.name.split('.').pop();
+    const path = `avatars/${athleteId}_${Date.now()}.${ext}`;
+    const res = await fetch(`${SUPABASE_URL}/storage/v1/object/avatars/${path}`, {
+      method: "POST",
+      headers: {
+        "apikey": SUPABASE_KEY,
+        "Authorization": `Bearer ${SUPABASE_KEY}`,
+        "Content-Type": file.type,
+        "x-upsert": "true"
+      },
+      body: file
+    });
+    if(!res.ok) { const e = await res.text(); throw new Error(e); }
+    return `${SUPABASE_URL}/storage/v1/object/public/avatars/${path}`;
+  },
+
   // Users (legacy + compat)
   getUsers:        ()          => sb("users?select=*&order=created_at"),
   createUser:      (data)      => sb("users", { method:"POST", body:JSON.stringify(data) }),
@@ -197,23 +215,29 @@ function matchesAgeGroup(athlete, group) {
 }
 
 function calcAgeFromDOB(dob) {
+  // Aviron : on utilise l'année en cours - année de naissance (pas l'âge au jour J)
   if(!dob) return null;
-  const today = new Date();
-  const birth = new Date(dob);
-  let age = today.getFullYear() - birth.getFullYear();
-  const m = today.getMonth() - birth.getMonth();
-  if(m < 0 || (m === 0 && today.getDate() < birth.getDate())) age--;
-  return age;
+  const currentYear = new Date().getFullYear();
+  const birthYear = new Date(dob).getFullYear();
+  return currentYear - birthYear;
 }
 function getCategoryFromAge(age, genre="H") {
-  if(!age && age !== 0) return "Senior H";
-  const cat = getAgeCategory(age);
-  // Map age cat to rowing category
-  if(["U10","U12","J12","J13","J14"].includes(cat)) return `Jeune ${genre}`;
-  if(cat === "U17") return `Junior ${genre}`;
-  if(cat === "U19") return `Espoir ${genre}`;
-  if(cat.startsWith("Master")) return `${cat} ${genre}`;
-  return `Senior ${genre}`;
+  if(!age && age !== 0) return `Senior ${genre}`;
+  const g = genre || "H";
+  if(age <= 13)  return `Jeune ${g}`;
+  if(age === 14) return `Jeune ${g}`;
+  if(age === 15) return `Junior ${g}`;  // J15
+  if(age === 16) return `Junior ${g}`;  // J16
+  if(age <= 18)  return `Junior ${g}`;  // J18
+  if(age <= 22)  return `Espoir ${g}`;  // U23
+  if(age >= 27 && age <= 35)  return `Master A ${g}`;
+  if(age >= 36 && age <= 42)  return `Master B ${g}`;
+  if(age >= 43 && age <= 49)  return `Master C ${g}`;
+  if(age >= 50 && age <= 54)  return `Master D ${g}`;
+  if(age >= 55 && age <= 59)  return `Master E ${g}`;
+  if(age >= 60 && age <= 64)  return `Master F ${g}`;
+  if(age >= 65)               return `Master G ${g}`;
+  return `Senior ${g}`;
 }
 
 const BLADE_TYPES = ["Smoothie 2","Fat 2","Fat2 Skinny","BigBlade","Macon","Bantam","Apex","Autre"];
@@ -651,18 +675,26 @@ function CoachSpace({ currentUser, onLogout }) {
       const av=newAth.name.split(" ").map(w=>w[0]).join("").slice(0,2).toUpperCase();
       const computedAge = calcAgeFromDOB(newAth.date_naissance);
       const computedCat = getCategoryFromAge(computedAge, newAth.genre);
-      await api.createAthlete({name:newAth.name,age:computedAge,category:computedCat,weight:+newAth.weight,boat:"1x",date_naissance:newAth.date_naissance,avatar:av,crew_id:null,taille:newAth.taille?+newAth.taille:null,envergure:newAth.envergure?+newAth.envergure:null,longueur_bras:newAth.longueur_bras?+newAth.longueur_bras:null,largeur_epaules:newAth.largeur_epaules?+newAth.largeur_epaules:null,taille_assise:newAth.taille_assise?+newAth.taille_assise:null});
+      let photo_url = null;
+      if(newAth.photo_file) {
+        try { photo_url = await api.uploadPhoto(newAth.photo_file, `new_${Date.now()}`); } catch(e) { console.warn("Photo upload failed:", e); }
+      }
+      await api.createAthlete({name:newAth.name,age:computedAge,category:computedCat,weight:+newAth.weight,genre:newAth.genre||"H",photo_url,date_naissance:newAth.date_naissance,avatar:av,crew_id:null,taille:newAth.taille?+newAth.taille:null,envergure:newAth.envergure?+newAth.envergure:null,longueur_bras:newAth.longueur_bras?+newAth.longueur_bras:null,largeur_epaules:newAth.largeur_epaules?+newAth.largeur_epaules:null,taille_assise:newAth.taille_assise?+newAth.taille_assise:null});
       setToast({m:"Athlète ajouté v",t:"success"}); load();
-      setNA({name:"",date_naissance:"",genre:"H",weight:"",taille:"",envergure:"",longueur_bras:"",largeur_epaules:"",taille_assise:""}); setShowAddAth(false);
+      setNA({name:"",date_naissance:"",genre:"H",weight:"",taille:"",envergure:"",longueur_bras:"",largeur_epaules:"",taille_assise:"",photo_file:null,photo_preview:null}); setShowAddAth(false);
     } catch(e){setToast({m:"Erreur "+e.message,t:"error"});}
   }
   async function saveEditAth() {
     try {
+      let photo_url = editAth.photo_url || null;
+      if(editAth.photo_file) {
+        try { photo_url = await api.uploadPhoto(editAth.photo_file, editAth.id); } catch(e) { console.warn("Photo upload failed:", e); }
+      }
       const dob = editAth.date_naissance || null;
       const computedAge = dob ? calcAgeFromDOB(dob) : +editAth.age;
       const genre = editAth.genre || (editAth.category?.includes("F") ? "F" : "H");
       const computedCat = getCategoryFromAge(computedAge, genre);
-      await api.updateAthlete(editAth.id,{name:editAth.name,age:computedAge,category:computedCat,weight:+editAth.weight,boat:editAth.boat||"1x",photo_url:editAth.photo_url||null,date_naissance:dob,taille:editAth.taille?+editAth.taille:null,envergure:editAth.envergure?+editAth.envergure:null,longueur_bras:editAth.longueur_bras?+editAth.longueur_bras:null,largeur_epaules:editAth.largeur_epaules?+editAth.largeur_epaules:null,taille_assise:editAth.taille_assise?+editAth.taille_assise:null});
+      await api.updateAthlete(editAth.id,{name:editAth.name,age:computedAge,category:computedCat,weight:+editAth.weight,genre,photo_url,date_naissance:dob,taille:editAth.taille?+editAth.taille:null,envergure:editAth.envergure?+editAth.envergure:null,longueur_bras:editAth.longueur_bras?+editAth.longueur_bras:null,largeur_epaules:editAth.largeur_epaules?+editAth.largeur_epaules:null,taille_assise:editAth.taille_assise?+editAth.taille_assise:null});
       setToast({m:"Fiche modifiée v",t:"success"}); load(); setEditAth(null);
     } catch(e){setToast({m:"Erreur "+e.message,t:"error"});}
   }
@@ -826,7 +858,7 @@ function CoachSpace({ currentUser, onLogout }) {
                   const ageCat=getAgeCategory(a.age);
                   return(<div key={a.id} style={S.topCard} onClick={()=>{setSelAth(a.id);setTab("performances");}}>
                     <div style={{width:28,color:"#0ea5e9",fontWeight:900,fontSize:18}}>#{i+1}</div>
-                    {a.photo_url?<img src={a.photo_url} style={{...S.av,objectFit:"cover"}} onError={e=>{e.target.style.display="none";}}/>:<div style={S.av}>{a.avatar}</div>}
+                    {a.photo_url?<img src={a.photo_url} style={{...S.av,objectFit:"cover"}} onError={e=>{e.target.style.display="none";}}/>:<div style={{...S.av,backgroundImage:a.photo_url?`url(${a.photo_url})`:"none",backgroundSize:"cover",backgroundPosition:"center"}}>{!a.photo_url&&a.avatar}</div>}
                     <div style={{flex:1}}><div style={{fontWeight:700,color:"#f1f5f9",display:"flex",alignItems:"center",gap:6}}>{a.name}<span style={{fontSize:10,padding:"2px 6px",borderRadius:8,background:(AGE_CAT_COLORS[ageCat] ? AGE_CAT_COLORS[ageCat] : "#374151")+"25",color:(AGE_CAT_COLORS[ageCat] ? AGE_CAT_COLORS[ageCat] : "#94a3b8")}}>{ageCat}</span></div><div style={{color:"#7a95b0",fontSize:12}}>{a.category} - {a.boat}</div></div>
                     <div style={{textAlign:"right",minWidth:90}}><div style={{color:col,fontWeight:800,fontSize:18}}>{val}</div><div style={{color:"#7a95b0",fontSize:12}}>{sub}</div></div>
                     <div style={{marginLeft:14}}><Sparkline data={a.wT} color="#0ea5e9"/></div>
@@ -856,7 +888,7 @@ function CoachSpace({ currentUser, onLogout }) {
               const{perfs,best,last,wpkg}=aStats(a);const wTrend=perfs.length>=2?last.watts-perfs[perfs.length-2].watts:0;const aCrew=getCrewForAthlete(a);
               return(<div key={a.id} style={{...S.card,cursor:"pointer"}}>
                 <div style={{display:"flex",alignItems:"center",gap:14,marginBottom:14}}>
-                  {a.photo_url?<img src={a.photo_url} style={{...S.av,objectFit:"cover"}} onError={e=>{e.target.style.display="none";}}/>:<div style={S.av}>{a.avatar}</div>}
+                  {a.photo_url?<img src={a.photo_url} style={{...S.av,objectFit:"cover"}} onError={e=>{e.target.style.display="none";}}/>:<div style={{...S.av,backgroundImage:a.photo_url?`url(${a.photo_url})`:"none",backgroundSize:"cover",backgroundPosition:"center"}}>{!a.photo_url&&a.avatar}</div>}
                   <div style={{flex:1}} onClick={()=>{setSelAth(a.id);setTab("performances");}}><div style={{fontWeight:800,color:"#f1f5f9",fontSize:15,display:"flex",alignItems:"center",gap:8}}>{a.name}<span style={{fontSize:10,padding:"2px 7px",borderRadius:10,background:(AGE_CAT_COLORS[getAgeCategory(a.age)] ? AGE_CAT_COLORS[getAgeCategory(a.age)] : "#374151")+"25",color:(AGE_CAT_COLORS[getAgeCategory(a.age)] ? AGE_CAT_COLORS[getAgeCategory(a.age)] : "#94a3b8"),fontWeight:700}}>{getAgeCategory(a.age)}</span></div><div style={{color:"#7a95b0",fontSize:12}}>{a.category} — {a.age} ans — {a.weight} kg{a.taille?" — "+a.taille+"cm":""}</div>{aCrew&&<div style={{color:"#0ea5e9",fontSize:11,marginTop:2}}>~ {aCrew.name}</div>}</div>
                   <button style={{...S.actionBtn,color:"#0ea5e9",borderColor:"#22d3ee30",flexShrink:0}} onClick={e=>{e.stopPropagation();setEditAth({...a});}}>✏️ Edit</button>
                 </div>
@@ -882,6 +914,21 @@ function CoachSpace({ currentUser, onLogout }) {
             </div>
             {newAth.date_naissance&&(()=>{const age=calcAgeFromDOB(newAth.date_naissance);const cat=getCategoryFromAge(age,newAth.genre);return(<div style={{padding:"8px 12px",background:"#0ea5e910",border:"1px solid #0ea5e930",borderRadius:8,marginBottom:12,fontSize:13}}><span style={{color:"#64748b"}}>Catégorie auto : </span><span style={{color:"#0ea5e9",fontWeight:700}}>{cat}</span><span style={{color:"#64748b"}}> · {age} ans</span></div>);})()}
             <FF label="Poids (kg)"><input style={S.inp} type="number" value={newAth.weight} onChange={e=>setNA(p=>({...p,weight:e.target.value}))} placeholder="ex: 75"/></FF>
+            <FF label="Photo">
+              <div style={{display:"flex",gap:10,alignItems:"center"}}>
+                {newAth.photo_preview&&<img src={newAth.photo_preview} style={{width:44,height:44,borderRadius:8,objectFit:"cover"}} alt="preview"/>}
+                <label style={{...S.actionBtn,color:"#0ea5e9",borderColor:"#22d3ee30",cursor:"pointer"}}>
+                  📷 Choisir une photo
+                  <input type="file" accept="image/*" capture="environment" style={{display:"none"}} onChange={e=>{
+                    const f=e.target.files[0]; if(!f) return;
+                    const reader=new FileReader();
+                    reader.onload=ev=>setNA(p=>({...p,photo_preview:ev.target.result,photo_file:f}));
+                    reader.readAsDataURL(f);
+                  }}/>
+                </label>
+                {newAth.photo_preview&&<button style={{...S.actionBtn,color:"#ef4444",borderColor:"#ef444430"}} onClick={()=>setNA(p=>({...p,photo_preview:null,photo_file:null}))}>✕</button>}
+              </div>
+            </FF>
             <div style={{marginTop:12,padding:"12px",background:"#111827",borderRadius:8,border:"1px solid #334155"}}><div style={{color:"#64748b",fontSize:11,textTransform:"uppercase",letterSpacing:1,marginBottom:10}}>Données morphologiques (pour suggestions réglages)</div>
             <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10}}>
               <FF label="Taille (cm)"><input style={S.inp} type="number" value={newAth.taille} onChange={e=>setNA(p=>({...p,taille:e.target.value}))} placeholder="ex: 185"/></FF>
@@ -894,7 +941,21 @@ function CoachSpace({ currentUser, onLogout }) {
           </Modal>}
           {editAth&&<Modal title={`✏️ ${editAth.name}`} onClose={()=>setEditAth(null)}>
             <FF label="Nom complet"><input style={S.inp} value={editAth.name} onChange={e=>setEditAth(p=>({...p,name:e.target.value}))}/></FF>
-            <FF label="Photo (URL)"><input style={S.inp} type="url" value={editAth.photo_url||""} onChange={e=>setEditAth(p=>({...p,photo_url:e.target.value}))} placeholder="https://... (lien image)"/></FF>
+            <FF label="Photo">
+              <div style={{display:"flex",gap:10,alignItems:"center"}}>
+                {(editAth.photo_preview||editAth.photo_url)&&<img src={editAth.photo_preview||editAth.photo_url} style={{width:44,height:44,borderRadius:8,objectFit:"cover"}} alt="preview"/>}
+                <label style={{...S.actionBtn,color:"#0ea5e9",borderColor:"#22d3ee30",cursor:"pointer"}}>
+                  📷 {editAth.photo_url?"Changer":"Ajouter"} photo
+                  <input type="file" accept="image/*" capture="environment" style={{display:"none"}} onChange={e=>{
+                    const f=e.target.files[0]; if(!f) return;
+                    const reader=new FileReader();
+                    reader.onload=ev=>setEditAth(p=>({...p,photo_preview:ev.target.result,photo_file:f}));
+                    reader.readAsDataURL(f);
+                  }}/>
+                </label>
+                {(editAth.photo_preview||editAth.photo_url)&&<button style={{...S.actionBtn,color:"#ef4444",borderColor:"#ef444430"}} onClick={()=>setEditAth(p=>({...p,photo_preview:null,photo_file:null,photo_url:null}))}>✕ Retirer</button>}
+              </div>
+            </FF>
             <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12}}>
               <FF label="Date de naissance"><input style={S.inp} type="date" value={editAth.date_naissance||""} onChange={e=>setEditAth(p=>({...p,date_naissance:e.target.value}))}/></FF>
               <FF label="Genre"><select style={S.inp} value={editAth.genre||(editAth.category?.includes("F")?"F":"H")} onChange={e=>setEditAth(p=>({...p,genre:e.target.value}))}><option value="H">Homme</option><option value="F">Femme</option></select></FF>
@@ -924,7 +985,7 @@ function CoachSpace({ currentUser, onLogout }) {
             <button style={{...S.fb,...(selAth===null?S.fbon:{})}} onClick={()=>setSelAth(null)}>Tous</button>
             {athletes.map(a=><button key={a.id} style={{...S.fb,...(selAth===a.id?S.fbon:{})}} onClick={()=>setSelAth(a.id)}>{a.name}</button>)}
           </div>
-          {selAth&&(()=>{const a=athletes.find(x=>x.id===selAth);if(!a)return null;const perfs=getPerfFor(selAth),best=getBestTime(perfs),last=getLastPerf(perfs),wpkg=best&&a.weight?(concept2WattsFast(best.time)/a.weight).toFixed(2):null;return(<div style={{...S.card,display:"flex",alignItems:"center",gap:16,marginBottom:16}}><div style={S.av}>{a.avatar}</div><div style={{flex:1}}><div style={{fontSize:18,fontWeight:800,color:"#f1f5f9"}}>{a.name}</div><div style={{color:"#7a95b0",fontSize:13}}>{a.category} - {a.weight}kg - {a.boat}</div></div><button style={{...S.actionBtn,color:"#0ea5e9",borderColor:"#22d3ee30"}} onClick={()=>setEditAth({...a})}>✏️ Edit</button><div style={{display:"flex",gap:10}}><div style={{background:"#4ade8015",border:"1px solid #4ade8030",borderRadius:10,padding:"10px 16px",textAlign:"center"}}><div style={{color:"#7a95b0",fontSize:10,textTransform:"uppercase",letterSpacing:1}}>Best 2k</div><div style={{color:"#4ade80",fontWeight:900,fontSize:22}}>{best?.time??"-"}</div></div><div style={{background:"#a78bfa15",border:"1px solid #a78bfa30",borderRadius:10,padding:"10px 16px",textAlign:"center"}}><div style={{color:"#7a95b0",fontSize:10,textTransform:"uppercase",letterSpacing:1}}>W/kg</div><div style={{color:"#a78bfa",fontWeight:900,fontSize:22}}>{wpkg??"-"}</div></div></div></div>);})()}
+          {selAth&&(()=>{const a=athletes.find(x=>x.id===selAth);if(!a)return null;const perfs=getPerfFor(selAth),best=getBestTime(perfs),last=getLastPerf(perfs),wpkg=best&&a.weight?(concept2WattsFast(best.time)/a.weight).toFixed(2):null;return(<div style={{...S.card,display:"flex",alignItems:"center",gap:16,marginBottom:16}}><div style={{...S.av,backgroundImage:a.photo_url?`url(${a.photo_url})`:"none",backgroundSize:"cover",backgroundPosition:"center"}}>{!a.photo_url&&a.avatar}</div><div style={{flex:1}}><div style={{fontSize:18,fontWeight:800,color:"#f1f5f9"}}>{a.name}</div><div style={{color:"#7a95b0",fontSize:13}}>{a.category} - {a.weight}kg - {a.boat}</div></div><button style={{...S.actionBtn,color:"#0ea5e9",borderColor:"#22d3ee30"}} onClick={()=>setEditAth({...a})}>✏️ Edit</button><div style={{display:"flex",gap:10}}><div style={{background:"#4ade8015",border:"1px solid #4ade8030",borderRadius:10,padding:"10px 16px",textAlign:"center"}}><div style={{color:"#7a95b0",fontSize:10,textTransform:"uppercase",letterSpacing:1}}>Best 2k</div><div style={{color:"#4ade80",fontWeight:900,fontSize:22}}>{best?.time??"-"}</div></div><div style={{background:"#a78bfa15",border:"1px solid #a78bfa30",borderRadius:10,padding:"10px 16px",textAlign:"center"}}><div style={{color:"#7a95b0",fontSize:10,textTransform:"uppercase",letterSpacing:1}}>W/kg</div><div style={{color:"#a78bfa",fontWeight:900,fontSize:22}}>{wpkg??"-"}</div></div></div></div>);})()}
           <div style={{overflowX:"auto",borderRadius:12,border:"1px solid #1e293b"}}>
             <table style={{width:"100%",borderCollapse:"collapse",background:"#182030"}}>
               <thead><tr>{["Athlète","Date","2000m","Best 2k","W/kg","Watts","FC","RPE","Km",""].map(h=><th key={h} style={S.th}>{h}</th>)}</tr></thead>
@@ -993,8 +1054,21 @@ function CoachSpace({ currentUser, onLogout }) {
                   <div style={{fontWeight:800,color:"#f1f5f9",fontSize:16}}>{cr.name}</div>
                   <div style={{display:"flex",gap:6}}><button style={{...S.actionBtn,color:"#0ea5e9",borderColor:"#22d3ee30"}} onClick={()=>{setEditCrew({...cr});setEditCrewMembers(getCrewMembersFor(cr.id).map(a=>a.id));}}>✏️ Modifier</button><button style={{...S.actionBtn,color:"#ef4444",borderColor:"#ef444430"}} onClick={()=>deleteCrew(cr.id)}>🗑️</button></div>
                 </div>
-                <div style={{color:"#7a95b0",fontSize:12,marginBottom:12}}>{cr.boat} - {getCrewMembersFor(cr.id).length} rameurs</div>
-                <div style={{display:"flex",gap:6,flexWrap:"wrap"}}>{getCrewMembersFor(cr.id).map(a=>{const{last,wpkg}=aStats(a);return(<div key={a.id} style={{background:"#263547",borderRadius:8,padding:"5px 10px",display:"flex",alignItems:"center",gap:8}}><div style={{...S.av,width:26,height:26,fontSize:10}}>{a.avatar}</div><div><div style={{color:"#f1f5f9",fontSize:12,fontWeight:600}}>{a.name.split(" ")[0]}</div>{last&&<div style={{color:"#0ea5e9",fontSize:10}}>{last.watts}W - {wpkg}W/kg</div>}</div></div>);})}</div>
+                {(()=>{
+                  const members = getCrewMembersFor(cr.id);
+                  const ages = members.map(a=>a.date_naissance?calcAgeFromDOB(a.date_naissance):a.age).filter(Boolean);
+                  const avgAge = ages.length ? Math.round(ages.reduce((s,a)=>s+a,0)/ages.length) : null;
+                  const avgW = members.map(a=>{const{best}=aStats(a);return best?concept2WattsFast(best.time):null;}).filter(Boolean);
+                  const avgWatts = avgW.length ? Math.round(avgW.reduce((s,w)=>s+w,0)/avgW.length) : null;
+                  return (<>
+                    <div style={{color:"#7a95b0",fontSize:12,marginBottom:8,display:"flex",gap:12,flexWrap:"wrap"}}>
+                      <span>{cr.boat} · {members.length} rameur{members.length>1?"s":""}</span>
+                      {avgAge&&<span style={{color:"#f59e0b"}}>⌀ {avgAge} ans</span>}
+                      {avgWatts&&<span style={{color:"#0ea5e9"}}>⌀ {avgWatts}W</span>}
+                    </div>
+                    <div style={{display:"flex",gap:6,flexWrap:"wrap"}}>{members.map(a=>{const{last,watts,wpkg}=aStats(a);const ageA=a.date_naissance?calcAgeFromDOB(a.date_naissance):a.age;return(<div key={a.id} style={{background:"#263547",borderRadius:8,padding:"5px 10px",display:"flex",alignItems:"center",gap:8}}><div style={{...S.av,width:26,height:26,fontSize:10}}>{a.avatar}</div><div><div style={{color:"#f1f5f9",fontSize:12,fontWeight:600}}>{a.name.split(" ")[0]}{ageA?<span style={{color:"#64748b",fontSize:10,marginLeft:4}}>{ageA}ans</span>:""}</div>{last&&<div style={{color:"#0ea5e9",fontSize:10}}>{watts||0}W · {wpkg}W/kg</div>}</div></div>);})}</div>
+                  </>);
+                })()}
               </div>)}
             </div>
           </div>
