@@ -838,6 +838,7 @@ function CoachSpace({ currentUser, onLogout }) {
   const [newAth,setNA]  = useState({name:"",date_naissance:"",genre:"H",weight:"",taille:"",envergure:"",longueur_bras:"",largeur_epaules:"",taille_assise:""});
   const [bodyMeasurements,setBodyMeasurements] = useState([]);
   const [showMorphoForm,setShowMorphoForm] = useState(false);
+  const [selBoatDetail,setSelBoatDetail] = useState(null);
   const [newMorpho,setNewMorpho] = useState({date:new Date().toISOString().split("T")[0],poids:"",taille:"",masse_grasse:""});
   // Boats states
   const [selBoat,setSelBoat]   = useState(null);
@@ -1095,7 +1096,7 @@ function CoachSpace({ currentUser, onLogout }) {
                   const sub=rankMode==="wpkg"?a.watts+"W":rankMode==="time"?a.wpkg+" W/kg":rankMode==="km"?a.sessions+" sessions":a.km+"km";
                   const col=rankMode==="wpkg"?"#a78bfa":rankMode==="time"?"#4ade80":rankMode==="km"?"#f97316":"#0ea5e9";
                   const ageCat=a.date_naissance?getAgeCatFromBirthYear(new Date(a.date_naissance).getFullYear()):getAgeCategory(a.age);
-                  return(<div key={a.id} style={S.topCard} onClick={()=>{setSelAth(a.id);setTab("athlete_detail");}}>
+                  return(<div key={a.id} style={S.topCard} onClick={()=>{setSelAth(a.id);setSelBoatDetail(null);setTab("athlete_detail");}}>
                     <div style={{width:28,color:"#0ea5e9",fontWeight:900,fontSize:18}}>#{i+1}</div>
                     {a.photo_url?<img src={a.photo_url} style={{...S.av,objectFit:"cover"}} onError={e=>{e.target.style.display="none";}}/>:<div style={{...S.av,backgroundImage:a.photo_url?`url(${a.photo_url})`:"none",backgroundSize:"cover",backgroundPosition:"center"}}>{!a.photo_url&&a.avatar}</div>}
                     <div style={{flex:1}}><div style={{fontWeight:700,color:"#f1f5f9",display:"flex",alignItems:"center",gap:6}}>{a.name}<span style={{fontSize:10,padding:"2px 6px",borderRadius:8,background:(AGE_CAT_COLORS[ageCat] ? AGE_CAT_COLORS[ageCat] : "#374151")+"25",color:(AGE_CAT_COLORS[ageCat] ? AGE_CAT_COLORS[ageCat] : "#94a3b8")}}>{ageCat}</span></div><div style={{color:"#7a95b0",fontSize:12}}>{a.category}</div></div>
@@ -1128,20 +1129,20 @@ function CoachSpace({ currentUser, onLogout }) {
               return(<div key={a.id} style={{...S.card,cursor:"pointer"}}>
                 <div style={{display:"flex",alignItems:"center",gap:14,marginBottom:14}}>
                   {a.photo_url?<img src={a.photo_url} style={{...S.av,objectFit:"cover"}} onError={e=>{e.target.style.display="none";}}/>:<div style={{...S.av,backgroundImage:a.photo_url?`url(${a.photo_url})`:"none",backgroundSize:"cover",backgroundPosition:"center"}}>{!a.photo_url&&a.avatar}</div>}
-                  <div style={{flex:1}} onClick={()=>{setSelAth(a.id);setTab("athlete_detail");}}><div style={{fontWeight:800,color:"#f1f5f9",fontSize:15,display:"flex",alignItems:"center",gap:8}}>{a.name}<span style={{fontSize:10,padding:"2px 7px",borderRadius:10,background:(AGE_CAT_COLORS[a.date_naissance?getAgeCatFromBirthYear(new Date(a.date_naissance).getFullYear()):getAgeCategory(a.age)] || "#374151")+"25",color:(AGE_CAT_COLORS[a.date_naissance?getAgeCatFromBirthYear(new Date(a.date_naissance).getFullYear()):getAgeCategory(a.age)] || "#94a3b8"),fontWeight:700}}>{a.date_naissance?getAgeCatFromBirthYear(new Date(a.date_naissance).getFullYear()):getAgeCategory(a.age)}</span></div><div style={{color:"#7a95b0",fontSize:12}}>{a.category} — {a.date_naissance?calcRealAge(a.date_naissance):a.age} ans — {a.weight} kg{a.taille?" — "+a.taille+"cm":""}</div>{aCrew&&<div style={{color:"#0ea5e9",fontSize:11,marginTop:2}}>~ {aCrew.name}</div>}</div>
+                  <div style={{flex:1}} onClick={()=>{setSelAth(a.id);setSelBoatDetail(null);setTab("athlete_detail");}}><div style={{fontWeight:800,color:"#f1f5f9",fontSize:15,display:"flex",alignItems:"center",gap:8}}>{a.name}<span style={{fontSize:10,padding:"2px 7px",borderRadius:10,background:(AGE_CAT_COLORS[a.date_naissance?getAgeCatFromBirthYear(new Date(a.date_naissance).getFullYear()):getAgeCategory(a.age)] || "#374151")+"25",color:(AGE_CAT_COLORS[a.date_naissance?getAgeCatFromBirthYear(new Date(a.date_naissance).getFullYear()):getAgeCategory(a.age)] || "#94a3b8"),fontWeight:700}}>{a.date_naissance?getAgeCatFromBirthYear(new Date(a.date_naissance).getFullYear()):getAgeCategory(a.age)}</span></div><div style={{color:"#7a95b0",fontSize:12}}>{a.category} — {a.date_naissance?calcRealAge(a.date_naissance):a.age} ans — {a.weight} kg{a.taille?" — "+a.taille+"cm":""}</div>{aCrew&&<div style={{color:"#0ea5e9",fontSize:11,marginTop:2}}>~ {aCrew.name}</div>}</div>
                   <button style={{...S.actionBtn,color:"#0ea5e9",borderColor:"#22d3ee30",flexShrink:0}} onClick={e=>{e.stopPropagation();setEditAth({...a});}}>✏️ Edit</button>
                 </div>
                 {last?(<>
-                  <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8,marginBottom:10}} onClick={()=>{setSelAth(a.id);setTab("athlete_detail");}}>
+                  <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8,marginBottom:10}} onClick={()=>{setSelAth(a.id);setSelBoatDetail(null);setTab("athlete_detail");}}>
                     <div style={{background:"#4ade8015",border:"1px solid #4ade8030",borderRadius:8,padding:"7px 10px"}}><div style={{color:"#7a95b0",fontSize:10,textTransform:"uppercase",letterSpacing:1}}>Best 2k</div><div style={{color:"#4ade80",fontWeight:900,fontSize:20}}>{best?.time??"--"}</div></div>
                     <div style={{background:"#a78bfa15",border:"1px solid #a78bfa30",borderRadius:8,padding:"7px 10px"}}><div style={{color:"#7a95b0",fontSize:10,textTransform:"uppercase",letterSpacing:1}}>W/kg</div><div style={{color:"#a78bfa",fontWeight:900,fontSize:20}}>{wpkg??"--"}</div></div>
                   </div>
-                  <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginTop:8}} onClick={()=>{setSelAth(a.id);setTab("athlete_detail");}}>
+                  <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginTop:8}} onClick={()=>{setSelAth(a.id);setSelBoatDetail(null);setTab("athlete_detail");}}>
                     <span style={{color:"#7a95b0",fontSize:12}}>{perfs.length} sessions</span>
                     <span style={{color:wTrend>=0?"#4ade80":"#ef4444",fontSize:13,fontWeight:700}}>{wTrend>=0?"^":"v"} {Math.abs(wTrend)}W</span>
                     <Sparkline data={perfs.map(p=>p.watts)} color="#0ea5e9"/>
                   </div>
-                </>):<div style={{color:"#5a7a9a",fontSize:13,textAlign:"center",padding:"12px 0"}} onClick={()=>{setSelAth(a.id);setTab("athlete_detail");}}>Aucune performance</div>}
+                </>):<div style={{color:"#5a7a9a",fontSize:13,textAlign:"center",padding:"12px 0"}} onClick={()=>{setSelAth(a.id);setSelBoatDetail(null);setTab("athlete_detail");}}>Aucune performance</div>}
               </div>);
             })}
           </div>
@@ -1229,10 +1230,23 @@ function CoachSpace({ currentUser, onLogout }) {
           const wpkg=bestW&&a.weight?(bestW/a.weight).toFixed(2):null;
           const aCrew=getCrewForAthlete(a);
           const crewMemberList=aCrew?athletes.filter(x=>crewMembers.some(m=>m.crew_id===aCrew.id&&m.athlete_id===x.id)):[];
-          const myBoatCrew=aCrew?boatCrews.find(bc=>bc.crew_id===aCrew.id):null;
-          const myBoat=myBoatCrew?boats.find(b=>b.id===myBoatCrew.boat_id):null;
-          const poste=aCrew?crewMembers.filter(m=>m.crew_id===aCrew.id).findIndex(m=>m.athlete_id===a.id)+1:null;
-          const mySettings=myBoat?boatSettings.filter(s=>s.boat_id===myBoat.id&&s.poste===poste).sort((x,y)=>y.date_reglage.localeCompare(x.date_reglage)):[];
+          // Tous les bateaux de l'athlète (via tous ses équipages)
+          const allCrewsAth = crewMembers.filter(m=>m.athlete_id===a.id).map(m=>({
+            crew: crews.find(c=>c.id===m.crew_id),
+            poste: crewMembers.filter(x=>x.crew_id===m.crew_id).findIndex(x=>x.athlete_id===a.id)+1
+          })).filter(x=>x.crew);
+          const athBoats = allCrewsAth.reduce((acc,{crew,poste})=>{
+            const bc = boatCrews.find(x=>x.crew_id===crew.id);
+            if(!bc) return acc;
+            const boat = boats.find(b=>b.id===bc.boat_id);
+            if(!boat || acc.find(x=>x.boat.id===boat.id)) return acc;
+            return [...acc,{boat,poste,crew}];
+          },[]);
+          const activeBId = selBoatDetail && athBoats.find(x=>x.boat.id===selBoatDetail) ? selBoatDetail : (athBoats[0]?.boat.id||null);
+          const activeBEntry = athBoats.find(x=>x.boat.id===activeBId)||null;
+          const myBoat = activeBEntry?.boat||null;
+          const poste = activeBEntry?.poste||null;
+          const mySettings = myBoat?boatSettings.filter(s=>s.boat_id===myBoat.id&&s.poste===poste).sort((x,y)=>y.date_reglage.localeCompare(x.date_reglage)):[];
           const lastSetting=mySettings[0]||null;
           const ageDisplay=a.date_naissance?calcRealAge(a.date_naissance):a.age;
           const ageFederal=a.date_naissance?calcAgeFromDOB(a.date_naissance):a.age;
@@ -1370,13 +1384,22 @@ function CoachSpace({ currentUser, onLogout }) {
                     </div>
                     <div style={S.card}>
                       <div style={{...S.st,marginBottom:12}}>🛶 Réglages bateau</div>
+                      {athBoats.length>1&&(
+                        <div style={{display:"flex",gap:6,marginBottom:12,flexWrap:"wrap"}}>
+                          {athBoats.map(({boat})=>(
+                            <button key={boat.id} style={{...S.fb,...(activeBId===boat.id?S.fbon:{})}} onClick={()=>setSelBoatDetail(boat.id)}>
+                              {boat.name}
+                            </button>
+                          ))}
+                        </div>
+                      )}
                       {lastSetting
                         ?<div style={{display:"flex",flexDirection:"column",gap:6}}>
                           {[
                             {l:"Bateau",v:myBoat?.name||"--"},
                             {l:"Poste",v:poste?"#"+poste:"--"},
                             {l:"Entraxe",v:lastSetting.entraxe?lastSetting.entraxe+" cm":"--"},
-                            {l:"Long. Pelle",v:lastSetting.longueur_pedale?lastSetting.longueur_pedale+" cm":"--"},
+                            {l:"Long. Pelles",v:lastSetting.longueur_pedale?lastSetting.longueur_pedale+" cm":"--"},
                             {l:"Levier int.",v:lastSetting.levier_interieur?lastSetting.levier_interieur+" cm":"--"},
                           ].map((k,i)=>(
                             <div key={i} style={{display:"flex",justifyContent:"space-between",padding:"4px 0",borderBottom:"1px solid #1e293b50"}}>
@@ -1385,8 +1408,21 @@ function CoachSpace({ currentUser, onLogout }) {
                             </div>
                           ))}
                           <div style={{color:"#7a95b0",fontSize:10,marginTop:4}}>Réglé le {lastSetting.date_reglage}</div>
+                          {mySettings.length>1&&(
+                            <div style={{marginTop:8,borderTop:"1px solid #1e293b",paddingTop:8}}>
+                              <div style={{color:"#5a7a9a",fontSize:10,textTransform:"uppercase",letterSpacing:1,marginBottom:6}}>Historique</div>
+                              {mySettings.slice(1,4).map((s,i)=>(
+                                <div key={i} style={{display:"flex",gap:8,fontSize:11,color:"#7a95b0",padding:"3px 0",borderBottom:"1px solid #1e293b30"}}>
+                                  <span style={{minWidth:80}}>{s.date_reglage}</span>
+                                  {s.entraxe&&<span>Entr. {s.entraxe}cm</span>}
+                                  {s.longueur_pedale&&<span>Pelles {s.longueur_pedale}cm</span>}
+                                  {s.regle_par&&<span style={{marginLeft:"auto",color:"#5a7a9a"}}>par {s.regle_par}</span>}
+                                </div>
+                              ))}
+                            </div>
+                          )}
                         </div>
-                        :<div style={{color:"#5a7a9a",fontSize:12,textAlign:"center",padding:"12px 0"}}>Aucun réglage</div>
+                        :<div style={{color:"#5a7a9a",fontSize:12,textAlign:"center",padding:"12px 0"}}>{athBoats.length===0?"Aucun bateau lié à cet athlète":"Aucun réglage pour ce bateau"}</div>
                       }
                     </div>
                   </div>
@@ -1520,7 +1556,7 @@ function CoachSpace({ currentUser, onLogout }) {
           <div style={S.ph}><div><h1 style={S.ttl}>Comparer</h1><p style={S.sub}>2 à 4 athlètes</p></div></div>
           <div style={{display:"flex",gap:8,marginBottom:24,flexWrap:"wrap"}}>{athletes.map(a=>{const on=compareIds.includes(a.id);return(<button key={a.id} style={{...S.fb,...(on?{background:"#22d3ee20",border:"1px solid #22d3ee60",color:"#0ea5e9"}:{})}} onClick={()=>setCompareIds(prev=>prev.includes(a.id)?(prev.length>2?prev.filter(x=>x!==a.id):prev):prev.length<4?[...prev,a.id]:prev)}>{on?"v ":""}{a.name}</button>);})}</div>
           {compareIds.length>=2&&(()=>{
-            const cmp=compareIds.map(id=>{const a=athletes.find(x=>x.id===id);const perfs=getPerfFor(id),last=getLastPerf(perfs),best=getBestTime(perfs);const bestWatts=best?concept2WattsFast(best.time):null;return{...a,last,best,wpkg:bestWatts&&a.weight?(bestWatts/a.weight).toFixed(2):null,perfs};});
+            const cmp=compareIds.map(id=>{const a=athletes.find(x=>x.id===id);const perfs=getPerfFor(id),last=getLastPerf(perfs),best=getBestTime(perfs);return{...a,last,best,wpkg:last&&a.weight?(last.watts/a.weight).toFixed(2):null,perfs};});
             const rows=[{label:"Meilleur 2k",fn:c=>c.best?.time??"--",bfn:c=>c.best?timeToSeconds(c.best.time):9999,lower:true,c:"#4ade80"},{label:"Puissance",fn:c=>c.best?`${concept2WattsFast(c.best.time)||0}W`:"--",bfn:c=>c.best?concept2WattsFast(c.best.time)||0:0,lower:false,c:"#0ea5e9"},{label:"W/kg",fn:c=>c.wpkg??"-",bfn:c=>parseFloat(c.wpkg)||0,lower:false,c:"#a78bfa"},{label:"Sessions",fn:c=>c.perfs.length,bfn:c=>c.perfs.length,lower:false,c:"#f97316"}];
             return(<>
               <div style={{display:"grid",gridTemplateColumns:`140px repeat(${cmp.length},1fr)`,gap:2,marginBottom:2}}><div/>{cmp.map((c,i)=><div key={c.id} style={{...S.card,textAlign:"center",borderTop:`3px solid ${CMP_COLORS[i]}`,padding:"12px 8px"}}><div style={{...S.av,margin:"0 auto 8px",border:`2px solid ${CMP_COLORS[i]}`}}>{c.avatar}</div><div style={{fontWeight:800,color:"#f1f5f9",fontSize:13}}>{c.name}</div><div style={{color:"#7a95b0",fontSize:11}}>{c.category}</div></div>)}</div>
