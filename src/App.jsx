@@ -193,14 +193,14 @@ function getAgeCatFromBirthYear(birthYear) {
   if(y >= currentYear - 14) return "U15";  // 12-14 ans (2014-2012) → U15
   if(y >= currentYear - 16) return "U17";  // 15-16 ans (2011-2010) → U17
   if(y >= currentYear - 18) return "U19";  // 17-18 ans (2009-2008) → U19
-  if(y >= currentYear - 22) return "U23";  // 19-22 ans (2007-2004) → U23
-  if(y >= currentYear - 35) return "Senior";
-  if(y >= currentYear - 42) return "Master A";
-  if(y >= currentYear - 49) return "Master B";
-  if(y >= currentYear - 54) return "Master C";
-  if(y >= currentYear - 59) return "Master D";
-  if(y >= currentYear - 64) return "Master E";
-  return "Master F";
+  if(y >= currentYear - 22) return "U23";   // 19-22 ans (2007-2004)
+  if(y >= currentYear - 26) return "Senior"; // 23-26 ans
+  if(y >= currentYear - 35) return "Master A"; // 27-35 ans
+  if(y >= currentYear - 42) return "Master B"; // 36-42 ans
+  if(y >= currentYear - 49) return "Master C"; // 43-49 ans
+  if(y >= currentYear - 54) return "Master D"; // 50-54 ans
+  if(y >= currentYear - 59) return "Master E"; // 55-59 ans
+  return "Master F";                           // 60 ans et plus
 }
 // Compatibilité : accepte une année de naissance ou un âge (legacy)
 function getAgeCategory(ageOrYear) {
