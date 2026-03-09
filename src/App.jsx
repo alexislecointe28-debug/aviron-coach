@@ -1294,7 +1294,7 @@ function CoachSpace({ currentUser, onLogout }) {
                 ))}
               </div>
 
-              {ficheTab==="general"&&<div style={{display:"grid",gridTemplateColumns:"320px 1fr",gap:20,marginBottom:20}}>
+              <div style={{display:ficheTab==="general"?"grid":"none",gridTemplateColumns:"320px 1fr",gap:20,marginBottom:20}}>
                 {/* Left: Identity card */}
                 <div style={{display:"flex",flexDirection:"column",gap:16}}>
                   <div style={{...S.card,borderTop:"3px solid #0ea5e9",textAlign:"center",padding:"24px 20px"}}>
@@ -1440,7 +1440,6 @@ function CoachSpace({ currentUser, onLogout }) {
                   </div>
                 </div>
               </div>
-            </div>}
             {ficheTab==="muscu"&&(()=>{
               const EXOS=["Squat","Hip Thrust","RDL","Soulevé de terre","Développé couché","Tirades rowing","Tractions lestées","Leg press","Fentes","Rowing barre"];
               const athStrength=strengthSessions;
@@ -1561,6 +1560,7 @@ function CoachSpace({ currentUser, onLogout }) {
                 </div>
               );
             })()}
+            </div>
           );
         })()}
         {tab==="performances"&&(<div style={S.page}>
