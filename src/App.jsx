@@ -1456,10 +1456,13 @@ function CoachSpace({ currentUser, onLogout }) {
                   const avgAge = ages.length ? Math.round(ages.reduce((s,a)=>s+a,0)/ages.length) : null;
                   const avgW = members.map(a=>{const{best}=aStats(a);return best?concept2WattsFast(best.time):null;}).filter(Boolean);
                   const avgWatts = avgW.length ? Math.round(avgW.reduce((s,w)=>s+w,0)/avgW.length) : null;
+                  const crewCat = avgAge ? getAgeCatFromBirthYear(new Date().getFullYear() - avgAge) : null;
+                  const crewCatColor = crewCat ? (AGE_CAT_COLORS[crewCat] || "#94a3b8") : null;
                   return (<>
-                    <div style={{color:"#7a95b0",fontSize:12,marginBottom:8,display:"flex",gap:12,flexWrap:"wrap"}}>
+                    <div style={{color:"#7a95b0",fontSize:12,marginBottom:8,display:"flex",gap:12,flexWrap:"wrap",alignItems:"center"}}>
                       <span>{cr.boat} · {members.length} rameur{members.length>1?"s":""}</span>
                       {avgAge&&<span style={{color:"#f59e0b"}}>⌀ {avgAge} ans</span>}
+                      {crewCat&&<span style={{fontSize:10,padding:"2px 8px",borderRadius:10,background:crewCatColor+"25",color:crewCatColor,fontWeight:700,border:"1px solid "+crewCatColor+"40"}}>{crewCat}</span>}
                       {avgWatts&&<span style={{color:"#0ea5e9"}}>⌀ {avgWatts}W</span>}
                     </div>
                     <div style={{display:"flex",gap:6,flexWrap:"wrap"}}>{members.map(a=>{const{last,watts,wpkg}=aStats(a);const ageA=a.date_naissance?calcRealAge(a.date_naissance):a.age;return(<div key={a.id} style={{background:"#263547",borderRadius:8,padding:"5px 10px",display:"flex",alignItems:"center",gap:8}}><div style={{...S.av,width:26,height:26,fontSize:10}}>{a.avatar}</div><div><div style={{color:"#f1f5f9",fontSize:12,fontWeight:600}}>{a.name.split(" ")[0]}{ageA?<span style={{color:"#64748b",fontSize:10,marginLeft:4}}>{ageA}ans</span>:""}</div>{last&&<div style={{color:"#0ea5e9",fontSize:10}}>{watts||0}W · {wpkg}W/kg</div>}</div></div>);})}</div>
