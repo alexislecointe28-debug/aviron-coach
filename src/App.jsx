@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from "react";
+import { LineChart, Line, XAxis, YAxis, Tooltip, Legend, ResponsiveContainer } from "recharts";
 
 // ------ SUPABASE CONFIG --------------------------------------------------------------------------------------------------------------------
 const SUPABASE_URL = "https://kiyhjgikyjduyupnubuc.supabase.co";
@@ -144,6 +145,9 @@ const api = {
   addBoatCrew:     (data)      => sb("boat_crews", { method:"POST", body:JSON.stringify(data) }),
   removeBoatCrew:  (boatId, crewId) => sb(`boat_crews?boat_id=eq.${boatId}&crew_id=eq.${crewId}`, { method:"DELETE", prefer:"" }),
   getBoatSettings: ()          => sb("boat_settings?select=*&order=date_reglage.desc"),
+  getBodyMeasurements: (athleteId) => sb(`body_measurements?athlete_id=eq.${athleteId}&order=date.desc`),
+  createBodyMeasurement: (data) => sb("body_measurements", { method:"POST", body:JSON.stringify(data) }),
+  deleteBodyMeasurement: (id)   => sb(`body_measurements?id=eq.${id}`, { method:"DELETE", prefer:"" }),
   createBoatSetting: (data)    => sb("boat_settings", { method:"POST", body:JSON.stringify(data) }),
   updateBoatSetting: (id, data)=> sb(`boat_settings?id=eq.${id}`, { method:"PATCH", body:JSON.stringify(data) }),
   deleteBoatSetting: (id)      => sb(`boat_settings?id=eq.${id}`, { method:"DELETE", prefer:"" }),
@@ -836,6 +840,10 @@ function CoachSpace({ currentUser, onLogout }) {
   const [editAth,setEditAth] = useState(null);
   const [newPerf,setNP] = useState({athleteId:"",date:"",time:"",hr:"",rpe:"",distance:""});
   const [newAth,setNA]  = useState({name:"",date_naissance:"",genre:"H",weight:"",taille:"",envergure:"",longueur_bras:"",largeur_epaules:"",taille_assise:""});
+  // Body measurements
+  const [bodyMeasurements,setBodyMeasurements] = useState([]);
+  const [showMorphoForm,setShowMorphoForm] = useState(false);
+  const [newMorpho,setNewMorpho] = useState({date:new Date().toISOString().split("T")[0],poids:"",taille:"",masse_grasse:""});
   // Boats states
   const [selBoat,setSelBoat]   = useState(null);
   const [showAddBoat,setShowAddBoat] = useState(false);
@@ -861,6 +869,28 @@ function CoachSpace({ currentUser, onLogout }) {
     setLoading(false);
   },[]);
   useEffect(()=>{ load(); },[]);
+
+  useEffect(()=>{
+    if(selAth) api.getBodyMeasurements(selAth).then(d=>setBodyMeasurements(d||[])).catch(()=>{});
+  },[selAth]);
+
+  async function addMorpho() {
+    if(!newMorpho.poids && !newMorpho.taille) return;
+    const poids = newMorpho.poids ? parseFloat(newMorpho.poids) : null;
+    const taille = newMorpho.taille ? parseFloat(newMorpho.taille) : null;
+    const imc = (poids && taille) ? parseFloat((poids / ((taille/100)**2)).toFixed(1)) : null;
+    const masse_grasse = newMorpho.masse_grasse ? parseFloat(newMorpho.masse_grasse) : null;
+    await api.createBodyMeasurement({athlete_id:selAth, date:newMorpho.date, poids, taille, masse_grasse, imc});
+    setToast({m:"Mesure enregistrée v",t:"success"});
+    setNewMorpho({date:new Date().toISOString().split("T")[0],poids:"",taille:"",masse_grasse:""});
+    setShowMorphoForm(false);
+    api.getBodyMeasurements(selAth).then(d=>setBodyMeasurements(d||[]));
+  }
+
+  async function deleteMorpho(id) {
+    await api.deleteBodyMeasurement(id);
+    api.getBodyMeasurements(selAth).then(d=>setBodyMeasurements(d||[]));
+  }
 
   function getPerfFor(id) { return performances.filter(p=>p.athlete_id===id).sort((a,b)=>a.date.localeCompare(b.date)); }
   function aStats(a) { const perfs=getPerfFor(a.id),best=getBestTime(perfs),last=getLastPerf(perfs); const w=best?concept2WattsFast(best.time):null; return{perfs,best,last,watts:w,wpkg:w&&a.weight?(w/a.weight).toFixed(2):null}; }
@@ -1073,7 +1103,7 @@ function CoachSpace({ currentUser, onLogout }) {
                   return(<div key={a.id} style={S.topCard} onClick={()=>{setSelAth(a.id);setTab("athlete_detail");}}>
                     <div style={{width:28,color:"#0ea5e9",fontWeight:900,fontSize:18}}>#{i+1}</div>
                     {a.photo_url?<img src={a.photo_url} style={{...S.av,objectFit:"cover"}} onError={e=>{e.target.style.display="none";}}/>:<div style={{...S.av,backgroundImage:a.photo_url?`url(${a.photo_url})`:"none",backgroundSize:"cover",backgroundPosition:"center"}}>{!a.photo_url&&a.avatar}</div>}
-                    <div style={{flex:1}}><div style={{fontWeight:700,color:"#f1f5f9",display:"flex",alignItems:"center",gap:6}}>{a.name}<span style={{fontSize:10,padding:"2px 6px",borderRadius:8,background:(AGE_CAT_COLORS[ageCat] ? AGE_CAT_COLORS[ageCat] : "#374151")+"25",color:(AGE_CAT_COLORS[ageCat] ? AGE_CAT_COLORS[ageCat] : "#94a3b8")}}>{ageCat}</span></div><div style={{color:"#7a95b0",fontSize:12}}>{a.category} - {a.boat}</div></div>
+                    <div style={{flex:1}}><div style={{fontWeight:700,color:"#f1f5f9",display:"flex",alignItems:"center",gap:6}}>{a.name}<span style={{fontSize:10,padding:"2px 6px",borderRadius:8,background:(AGE_CAT_COLORS[ageCat] ? AGE_CAT_COLORS[ageCat] : "#374151")+"25",color:(AGE_CAT_COLORS[ageCat] ? AGE_CAT_COLORS[ageCat] : "#94a3b8")}}>{ageCat}</span></div><div style={{color:"#7a95b0",fontSize:12}}>{a.category}</div></div>
                     <div style={{textAlign:"right",minWidth:90}}><div style={{color:col,fontWeight:800,fontSize:18}}>{val}</div><div style={{color:"#7a95b0",fontSize:12}}>{sub}</div></div>
                     <div style={{marginLeft:14}}><Sparkline data={a.wT} color="#0ea5e9"/></div>
                   </div>);
@@ -1177,7 +1207,7 @@ function CoachSpace({ currentUser, onLogout }) {
             {(editAth.date_naissance||(editAth.age&&editAth.age>0))&&(()=>{const age=editAth.date_naissance?calcAgeFromDOB(editAth.date_naissance):editAth.age;const genre=editAth.genre||(editAth.category?.includes("F")?"F":"H");const cat=getCategoryFromAge(age,genre);return(<div style={{padding:"8px 12px",background:"#0ea5e910",border:"1px solid #0ea5e930",borderRadius:8,marginBottom:12,fontSize:13}}><span style={{color:"#64748b"}}>Catégorie : </span><span style={{color:"#0ea5e9",fontWeight:700}}>{cat}</span><span style={{color:"#64748b"}}> · {age} ans</span></div>);})()}
             <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12}}>
               <FF label="Poids (kg)"><input style={S.inp} type="number" value={editAth.weight} onChange={e=>setEditAth(p=>({...p,weight:e.target.value}))}/></FF>
-              <FF label="Bateau"><select style={S.inp} value={editAth.boat||"1x"} onChange={e=>setEditAth(p=>({...p,boat:e.target.value}))}>{["1x","2x","2-","4x","4-","4+","8+"].map(b=><option key={b}>{b}</option>)}</select></FF>
+              
             </div>
             <div style={{marginTop:12,padding:"12px",background:"#111827",borderRadius:8,border:"1px solid #334155"}}><div style={{color:"#64748b",fontSize:11,textTransform:"uppercase",letterSpacing:1,marginBottom:10}}>📏 Données morphologiques</div>
             <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10}}>
@@ -1235,7 +1265,7 @@ function CoachSpace({ currentUser, onLogout }) {
                     <div style={{display:"flex",gap:6,justifyContent:"center",flexWrap:"wrap",marginBottom:12}}>
                       <span style={{...S.badge,background:"#0ea5e920",color:"#0ea5e9",border:"1px solid #0ea5e940"}}>{a.category}</span>
                       <span style={{...S.badge,background:(AGE_CAT_COLORS[ageCat]||"#374151")+"25",color:AGE_CAT_COLORS[ageCat]||"#94a3b8",border:"1px solid "+(AGE_CAT_COLORS[ageCat]||"#374151")+"40"}}>{ageCat}</span>
-                      <span style={{...S.badge,background:"#a78bfa20",color:"#a78bfa",border:"1px solid #a78bfa40"}}>{a.boat}</span>
+                      
                     </div>
                     <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8,textAlign:"left"}}>
                       {[
@@ -1244,7 +1274,7 @@ function CoachSpace({ currentUser, onLogout }) {
                         {l:"Taille",v:a.taille?a.taille+" cm":"--"},
                         {l:"Date naiss.",v:a.date_naissance||"--"},
                         {l:"Genre",v:a.genre||"--"},
-                        {l:"Bateau",v:a.boat||"--"},
+                        
                       ].map((k,i)=>(
                         <div key={i} style={{background:"#1e293b50",borderRadius:8,padding:"8px 10px"}}>
                           <div style={{color:"#5a7a9a",fontSize:10,textTransform:"uppercase",letterSpacing:1}}>{k.l}</div>
@@ -1375,7 +1405,7 @@ function CoachSpace({ currentUser, onLogout }) {
             <button style={{...S.fb,...(selAth===null?S.fbon:{})}} onClick={()=>setSelAth(null)}>Tous</button>
             {athletes.map(a=><button key={a.id} style={{...S.fb,...(selAth===a.id?S.fbon:{})}} onClick={()=>setSelAth(a.id)}>{a.name}</button>)}
           </div>
-          {selAth&&(()=>{const a=athletes.find(x=>x.id===selAth);if(!a)return null;const perfs=getPerfFor(selAth),best=getBestTime(perfs),last=getLastPerf(perfs),wpkg=best&&a.weight?(concept2WattsFast(best.time)/a.weight).toFixed(2):null;return(<div style={{...S.card,display:"flex",alignItems:"center",gap:16,marginBottom:16}}><div style={{...S.av,backgroundImage:a.photo_url?`url(${a.photo_url})`:"none",backgroundSize:"cover",backgroundPosition:"center"}}>{!a.photo_url&&a.avatar}</div><div style={{flex:1}}><div style={{fontSize:18,fontWeight:800,color:"#f1f5f9"}}>{a.name}</div><div style={{color:"#7a95b0",fontSize:13}}>{a.category} - {a.weight}kg - {a.boat}</div></div><button style={{...S.actionBtn,color:"#0ea5e9",borderColor:"#22d3ee30"}} onClick={()=>setEditAth({...a})}>✏️ Edit</button><div style={{display:"flex",gap:10}}><div style={{background:"#4ade8015",border:"1px solid #4ade8030",borderRadius:10,padding:"10px 16px",textAlign:"center"}}><div style={{color:"#7a95b0",fontSize:10,textTransform:"uppercase",letterSpacing:1}}>Best 2k</div><div style={{color:"#4ade80",fontWeight:900,fontSize:22}}>{best?.time??"-"}</div></div><div style={{background:"#a78bfa15",border:"1px solid #a78bfa30",borderRadius:10,padding:"10px 16px",textAlign:"center"}}><div style={{color:"#7a95b0",fontSize:10,textTransform:"uppercase",letterSpacing:1}}>W/kg</div><div style={{color:"#a78bfa",fontWeight:900,fontSize:22}}>{wpkg??"-"}</div></div></div></div>);})()}
+          {selAth&&(()=>{const a=athletes.find(x=>x.id===selAth);if(!a)return null;const perfs=getPerfFor(selAth),best=getBestTime(perfs),last=getLastPerf(perfs),wpkg=best&&a.weight?(concept2WattsFast(best.time)/a.weight).toFixed(2):null;return(<div style={{...S.card,display:"flex",alignItems:"center",gap:16,marginBottom:16}}><div style={{...S.av,backgroundImage:a.photo_url?`url(${a.photo_url})`:"none",backgroundSize:"cover",backgroundPosition:"center"}}>{!a.photo_url&&a.avatar}</div><div style={{flex:1}}><div style={{fontSize:18,fontWeight:800,color:"#f1f5f9"}}>{a.name}</div><div style={{color:"#7a95b0",fontSize:13}}>{a.category} - {a.weight}kg</div></div><button style={{...S.actionBtn,color:"#0ea5e9",borderColor:"#22d3ee30"}} onClick={()=>setEditAth({...a})}>✏️ Edit</button><div style={{display:"flex",gap:10}}><div style={{background:"#4ade8015",border:"1px solid #4ade8030",borderRadius:10,padding:"10px 16px",textAlign:"center"}}><div style={{color:"#7a95b0",fontSize:10,textTransform:"uppercase",letterSpacing:1}}>Best 2k</div><div style={{color:"#4ade80",fontWeight:900,fontSize:22}}>{best?.time??"-"}</div></div><div style={{background:"#a78bfa15",border:"1px solid #a78bfa30",borderRadius:10,padding:"10px 16px",textAlign:"center"}}><div style={{color:"#7a95b0",fontSize:10,textTransform:"uppercase",letterSpacing:1}}>W/kg</div><div style={{color:"#a78bfa",fontWeight:900,fontSize:22}}>{wpkg??"-"}</div></div></div></div>);})()}
           <div style={{overflowX:"auto",borderRadius:12,border:"1px solid #1e293b"}}>
             <table style={{width:"100%",borderCollapse:"collapse",background:"#182030"}}>
               <thead><tr>{["Athlète","Date","2000m","Best 2k","W/kg","Watts","FC","RPE","Km",""].map(h=><th key={h} style={S.th}>{h}</th>)}</tr></thead>
@@ -1413,6 +1443,93 @@ function CoachSpace({ currentUser, onLogout }) {
             </div>
             <button style={{...S.btnP,width:"100%",marginTop:8}} onClick={saveEditPerf}>Enregistrer</button>
           </Modal>}
+          {/* ── Suivi morphologique ── */}
+          {tab==="athlete_detail"&&selAth&&(()=>{
+            const sorted=[...bodyMeasurements].sort((a,b)=>a.date.localeCompare(b.date));
+            const last=sorted[sorted.length-1]||null;
+            const chartData=sorted.map(m=>({date:m.date,Poids:m.poids,MG:m.masse_grasse,IMC:m.imc}));
+            return(
+              <div style={{...S.card,marginTop:20}}>
+                <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:16}}>
+                  <div style={S.st}>⚖️ Suivi morphologique</div>
+                  <button style={{...S.btnP,background:"#0ea5e9",color:"#0f1923",padding:"7px 16px",fontSize:13}} onClick={()=>setShowMorphoForm(v=>!v)}>{showMorphoForm?"Annuler":"+ Mesure"}</button>
+                </div>
+
+                {showMorphoForm&&(
+                  <div style={{background:"#111827",border:"1px solid #1e293b",borderRadius:12,padding:"16px",marginBottom:16}}>
+                    <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr 1fr",gap:12,marginBottom:12}}>
+                      <FF label="Date"><input style={S.inp} type="date" value={newMorpho.date} onChange={e=>setNewMorpho(p=>({...p,date:e.target.value}))}/></FF>
+                      <FF label="Poids (kg)"><input style={S.inp} type="number" step="0.1" placeholder="72.5" value={newMorpho.poids} onChange={e=>setNewMorpho(p=>({...p,poids:e.target.value}))}/></FF>
+                      <FF label="Taille (cm)"><input style={S.inp} type="number" step="0.5" placeholder="180" value={newMorpho.taille} onChange={e=>setNewMorpho(p=>({...p,taille:e.target.value}))}/></FF>
+                      <FF label="Masse grasse (%)"><input style={S.inp} type="number" step="0.1" placeholder="12.5" value={newMorpho.masse_grasse} onChange={e=>setNewMorpho(p=>({...p,masse_grasse:e.target.value}))}/></FF>
+                    </div>
+                    {newMorpho.poids&&newMorpho.taille&&(()=>{const imc=(parseFloat(newMorpho.poids)/((parseFloat(newMorpho.taille)/100)**2)).toFixed(1);return(
+                      <div style={{padding:"8px 14px",background:"#0ea5e910",border:"1px solid #0ea5e930",borderRadius:8,marginBottom:12,fontSize:13,color:"#0ea5e9",fontWeight:700}}>IMC auto : {imc}</div>
+                    );})()}
+                    <button style={{...S.btnP,background:"#0ea5e9",color:"#0f1923",width:"100%"}} onClick={addMorpho}>Enregistrer la mesure</button>
+                  </div>
+                )}
+
+                {/* Dernières valeurs */}
+                {last&&(
+                  <div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:12,marginBottom:16}}>
+                    {[
+                      {l:"Poids",v:last.poids?last.poids+"kg":"-",c:"#4ade80"},
+                      {l:"Taille",v:last.taille?last.taille+"cm":"-",c:"#0ea5e9"},
+                      {l:"Masse grasse",v:last.masse_grasse?last.masse_grasse+"%":"-",c:"#f59e0b"},
+                      {l:"IMC",v:last.imc??"-",c:"#a78bfa"},
+                    ].map((k,i)=>(
+                      <div key={i} style={{background:"#1e293b50",borderRadius:10,padding:"12px",textAlign:"center"}}>
+                        <div style={{color:"#5a7a9a",fontSize:10,textTransform:"uppercase",letterSpacing:1,marginBottom:4}}>{k.l}</div>
+                        <div style={{color:k.c,fontWeight:900,fontSize:20}}>{k.v}</div>
+                        <div style={{color:"#5a7a9a",fontSize:10,marginTop:2}}>{last.date}</div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+
+                {/* Graphique */}
+                {chartData.length>=2&&(()=>{
+                  return(
+                    <div style={{marginBottom:16}}>
+                      <ResponsiveContainer width="100%" height={180}>
+                        <LineChart data={chartData} margin={{top:4,right:16,left:0,bottom:0}}>
+                          <XAxis dataKey="date" tick={{fill:"#5a7a9a",fontSize:10}} tickLine={false}/>
+                          <YAxis tick={{fill:"#5a7a9a",fontSize:10}} tickLine={false} axisLine={false}/>
+                          <Tooltip contentStyle={{background:"#182030",border:"1px solid #334155",borderRadius:8,fontSize:12}}/>
+                          <Legend wrapperStyle={{fontSize:11,color:"#7a95b0"}}/>
+                          <Line type="monotone" dataKey="Poids" stroke="#4ade80" strokeWidth={2} dot={{r:3}} activeDot={{r:5}}/>
+                          <Line type="monotone" dataKey="MG" stroke="#f59e0b" strokeWidth={2} dot={{r:3}} activeDot={{r:5}}/>
+                          <Line type="monotone" dataKey="IMC" stroke="#a78bfa" strokeWidth={2} dot={{r:3}} activeDot={{r:5}}/>
+                        </LineChart>
+                      </ResponsiveContainer>
+                    </div>
+                  );
+                })()}
+
+                {/* Historique liste */}
+                {bodyMeasurements.length>0?(
+                  <div>
+                    <div style={{color:"#5a7a9a",fontSize:11,textTransform:"uppercase",letterSpacing:1,marginBottom:8}}>Historique ({bodyMeasurements.length} mesures)</div>
+                    <div style={{display:"flex",flexDirection:"column",gap:4}}>
+                      {bodyMeasurements.map(m=>(
+                        <div key={m.id} style={{display:"flex",alignItems:"center",gap:12,padding:"8px 12px",background:"#111827",borderRadius:8,fontSize:13}}>
+                          <span style={{color:"#7a95b0",minWidth:90}}>{m.date}</span>
+                          {m.poids&&<span style={{color:"#4ade80",fontWeight:700}}>{m.poids} kg</span>}
+                          {m.taille&&<span style={{color:"#0ea5e9"}}>{m.taille} cm</span>}
+                          {m.masse_grasse&&<span style={{color:"#f59e0b"}}>{m.masse_grasse}% MG</span>}
+                          {m.imc&&<span style={{color:"#a78bfa"}}>IMC {m.imc}</span>}
+                          <button style={{marginLeft:"auto",background:"none",border:"none",color:"#ef444460",cursor:"pointer",fontSize:14}} onClick={()=>deleteMorpho(m.id)}>🗑</button>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                ):(
+                  <div style={{color:"#5a7a9a",fontSize:13,textAlign:"center",padding:"20px 0"}}>Aucune mesure enregistrée</div>
+                )}
+              </div>
+            );
+          })()}
         </div>)}
 
         {tab==="compare"&&(<div style={S.page}>
@@ -1735,6 +1852,9 @@ function AthleteSpace({ currentUser, onLogout }) {
   const [editForm,setEditForm] = useState({});
   const [newPerf,setNP] = useState({date:"",time:"",watts:"",spm:"",hr:"",rpe:"",distance:""});
   const [toast,setToast] = useState(null);
+  const [myMorpho,setMyMorpho] = useState([]);
+  const [showMorphoFormAth,setShowMorphoFormAth] = useState(false);
+  const [newMorphoAth,setNewMorphoAth] = useState({date:new Date().toISOString().split("T")[0],poids:"",taille:"",masse_grasse:""});
 
   const load = useCallback(async()=>{
     setLoading(true);
@@ -1746,11 +1866,27 @@ function AthleteSpace({ currentUser, onLogout }) {
       setMyPerfs((perfs||[]).filter(p=>p.athlete_id===currentUser.athlete_id).sort((a,b)=>a.date.localeCompare(b.date)));
       setCrews(cr||[]); setCrewMembers(cm||[]); setSessions(sess||[]); setSessionCrews(sc||[]);
       setBoats(bt||[]); setBoatCrews(bc||[]); setBoatSettings(bs||[]);
-      if(me) setEditForm({weight:me.weight,boat:me.boat,age:me.age});
+      if(me) {
+        setEditForm({weight:me.weight,age:me.age});
+        api.getBodyMeasurements(me.id).then(d=>setMyMorpho(d||[])).catch(()=>{});
+      }
     } catch(e){ console.error("Load error:", e); }
     setLoading(false);
   },[currentUser.athlete_id]);
   useEffect(()=>{ load(); },[]);
+
+  async function addMorphoAth(athleteId) {
+    if(!newMorphoAth.poids && !newMorphoAth.taille) return;
+    const poids = newMorphoAth.poids ? parseFloat(newMorphoAth.poids) : null;
+    const taille = newMorphoAth.taille ? parseFloat(newMorphoAth.taille) : null;
+    const imc = (poids && taille) ? parseFloat((poids / ((taille/100)**2)).toFixed(1)) : null;
+    const masse_grasse = newMorphoAth.masse_grasse ? parseFloat(newMorphoAth.masse_grasse) : null;
+    await api.createBodyMeasurement({athlete_id:athleteId, date:newMorphoAth.date, poids, taille, masse_grasse, imc});
+    setToast({m:"Mesure enregistrée v",t:"success"});
+    setNewMorphoAth({date:new Date().toISOString().split("T")[0],poids:"",taille:"",masse_grasse:""});
+    setShowMorphoFormAth(false);
+    api.getBodyMeasurements(athleteId).then(d=>setMyMorpho(d||[]));
+  }
 
   const myCrew = athlete ? crews.find(c=>crewMembers.some(m=>m.crew_id===c.id&&m.athlete_id===athlete.id)) : null;
   const crewMates = myCrew ? allAthletes.filter(a=>crewMembers.some(m=>m.crew_id===myCrew.id&&m.athlete_id===a.id)&&a.id!==athlete?.id) : [];
@@ -1760,7 +1896,7 @@ function AthleteSpace({ currentUser, onLogout }) {
   const wpkg = lastWatts&&athlete?.weight ? (lastWatts/athlete.weight).toFixed(2) : null;
 
   async function saveEdit() {
-    await api.updateAthlete(athlete.id,{weight:+editForm.weight,boat:editForm.boat,age:+editForm.age});
+    await api.updateAthlete(athlete.id,{weight:+editForm.weight,age:+editForm.age});
     setToast({m:"Fiche mise à jour v",t:"success"}); load(); setEditing(false);
   }
   async function addPerf() {
@@ -1794,7 +1930,7 @@ function AthleteSpace({ currentUser, onLogout }) {
           <div style={{...S.card,marginBottom:24,borderColor:"#2d1b4e"}}>
             <div style={{display:"flex",alignItems:"center",gap:20}}>
               <div style={{...S.av,width:64,height:64,fontSize:22,background:"#a78bfa22",border:"2px solid #a78bfa44",color:"#a78bfa"}}>{athlete.avatar}</div>
-              <div style={{flex:1}}><div style={{fontSize:22,fontWeight:900,color:"#f1f5f9"}}>{athlete.name}</div><div style={{color:"#7a95b0",fontSize:14,marginTop:2}}>{athlete.category} - {athlete.boat} - {athlete.age}ans - {athlete.weight}kg</div></div>
+              <div style={{flex:1}}><div style={{fontSize:22,fontWeight:900,color:"#f1f5f9"}}>{athlete.name}</div><div style={{color:"#7a95b0",fontSize:14,marginTop:2}}>{athlete.category} - {athlete.age}ans - {athlete.weight}kg</div></div>
               <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12}}>
                 <div style={{background:"#4ade8015",border:"1px solid #4ade8030",borderRadius:10,padding:"12px 18px",textAlign:"center"}}><div style={{color:"#7a95b0",fontSize:10,textTransform:"uppercase",letterSpacing:1}}>Best 2000m</div><div style={{color:"#4ade80",fontWeight:900,fontSize:26}}>{best?.time??"--"}</div><div style={{color:"#5a7a9a",fontSize:11}}>{best?.date??""}</div></div>
                 <div style={{background:"#a78bfa15",border:"1px solid #a78bfa30",borderRadius:10,padding:"12px 18px",textAlign:"center"}}><div style={{color:"#7a95b0",fontSize:10,textTransform:"uppercase",letterSpacing:1}}>W/kg</div><div style={{color:"#a78bfa",fontWeight:900,fontSize:26}}>{wpkg??"--"}</div><div style={{color:"#5a7a9a",fontSize:11}}>{lastWatts}W - {athlete.weight}kg</div></div>
@@ -1810,12 +1946,86 @@ function AthleteSpace({ currentUser, onLogout }) {
             {!myPerfs.length&&<div style={{...S.card,textAlign:"center",color:"#5a7a9a",padding:"28px"}}>Aucune performance</div>}
           </div>
           <button style={{...S.btnP,background:"#a78bfa",color:"#0f1923"}} onClick={()=>setShowAddPerf(true)}>+ Ajouter une performance</button>
+          {/* ── Suivi morphologique athlète ── */}
+          {(()=>{
+            const sorted=[...myMorpho].sort((a,b)=>a.date.localeCompare(b.date));
+            const lastM=sorted[sorted.length-1]||null;
+            const chartData=sorted.map(m=>({date:m.date,Poids:m.poids,MG:m.masse_grasse,IMC:m.imc}));
+            return(
+              <div style={{...S.card,marginTop:24,borderColor:"#2d1b4e"}}>
+                <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:16}}>
+                  <div style={{...S.st}}>⚖️ Mon suivi morpho</div>
+                  <button style={{...S.btnP,background:"#a78bfa",color:"#0f1923",padding:"7px 16px",fontSize:13}} onClick={()=>setShowMorphoFormAth(v=>!v)}>{showMorphoFormAth?"Annuler":"+ Mesure"}</button>
+                </div>
+                {showMorphoFormAth&&(
+                  <div style={{background:"#111827",border:"1px solid #2d1b4e",borderRadius:12,padding:"16px",marginBottom:16}}>
+                    <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12,marginBottom:12}}>
+                      <FF label="Date"><input style={S.inp} type="date" value={newMorphoAth.date} onChange={e=>setNewMorphoAth(p=>({...p,date:e.target.value}))}/></FF>
+                      <FF label="Poids (kg)"><input style={S.inp} type="number" step="0.1" placeholder="72.5" value={newMorphoAth.poids} onChange={e=>setNewMorphoAth(p=>({...p,poids:e.target.value}))}/></FF>
+                      <FF label="Taille (cm)"><input style={S.inp} type="number" step="0.5" placeholder="180" value={newMorphoAth.taille} onChange={e=>setNewMorphoAth(p=>({...p,taille:e.target.value}))}/></FF>
+                      <FF label="Masse grasse (%)"><input style={S.inp} type="number" step="0.1" placeholder="12.5" value={newMorphoAth.masse_grasse} onChange={e=>setNewMorphoAth(p=>({...p,masse_grasse:e.target.value}))}/></FF>
+                    </div>
+                    {newMorphoAth.poids&&newMorphoAth.taille&&(()=>{const imc=(parseFloat(newMorphoAth.poids)/((parseFloat(newMorphoAth.taille)/100)**2)).toFixed(1);return(
+                      <div style={{padding:"8px 14px",background:"#a78bfa10",border:"1px solid #a78bfa30",borderRadius:8,marginBottom:12,fontSize:13,color:"#a78bfa",fontWeight:700}}>IMC auto : {imc}</div>
+                    );})()}
+                    <button style={{...S.btnP,background:"#a78bfa",color:"#0f1923",width:"100%"}} onClick={()=>addMorphoAth(athlete.id)}>Enregistrer</button>
+                  </div>
+                )}
+                {lastM&&(
+                  <div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:10,marginBottom:16}}>
+                    {[
+                      {l:"Poids",v:lastM.poids?lastM.poids+"kg":"-",c:"#4ade80"},
+                      {l:"Taille",v:lastM.taille?lastM.taille+"cm":"-",c:"#0ea5e9"},
+                      {l:"Masse grasse",v:lastM.masse_grasse?lastM.masse_grasse+"%":"-",c:"#f59e0b"},
+                      {l:"IMC",v:lastM.imc??"-",c:"#a78bfa"},
+                    ].map((k,i)=>(
+                      <div key={i} style={{background:"#1e293b50",borderRadius:10,padding:"10px",textAlign:"center"}}>
+                        <div style={{color:"#5a7a9a",fontSize:10,textTransform:"uppercase",letterSpacing:1,marginBottom:4}}>{k.l}</div>
+                        <div style={{color:k.c,fontWeight:900,fontSize:18}}>{k.v}</div>
+                        <div style={{color:"#5a7a9a",fontSize:10,marginTop:2}}>{lastM.date}</div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+                {chartData.length>=2&&(
+                  <div style={{marginBottom:14}}>
+                    <ResponsiveContainer width="100%" height={160}>
+                      <LineChart data={chartData} margin={{top:4,right:16,left:0,bottom:0}}>
+                        <XAxis dataKey="date" tick={{fill:"#5a7a9a",fontSize:10}} tickLine={false}/>
+                        <YAxis tick={{fill:"#5a7a9a",fontSize:10}} tickLine={false} axisLine={false}/>
+                        <Tooltip contentStyle={{background:"#182030",border:"1px solid #334155",borderRadius:8,fontSize:12}}/>
+                        <Legend wrapperStyle={{fontSize:11,color:"#7a95b0"}}/>
+                        <Line type="monotone" dataKey="Poids" stroke="#4ade80" strokeWidth={2} dot={{r:3}}/>
+                        <Line type="monotone" dataKey="MG" stroke="#f59e0b" strokeWidth={2} dot={{r:3}}/>
+                        <Line type="monotone" dataKey="IMC" stroke="#a78bfa" strokeWidth={2} dot={{r:3}}/>
+                      </LineChart>
+                    </ResponsiveContainer>
+                  </div>
+                )}
+                {myMorpho.length>0?(
+                  <div style={{display:"flex",flexDirection:"column",gap:4}}>
+                    {[...myMorpho].map(m=>(
+                      <div key={m.id} style={{display:"flex",alignItems:"center",gap:12,padding:"7px 12px",background:"#111827",borderRadius:8,fontSize:12}}>
+                        <span style={{color:"#7a95b0",minWidth:90}}>{m.date}</span>
+                        {m.poids&&<span style={{color:"#4ade80",fontWeight:700}}>{m.poids} kg</span>}
+                        {m.taille&&<span style={{color:"#0ea5e9"}}>{m.taille} cm</span>}
+                        {m.masse_grasse&&<span style={{color:"#f59e0b"}}>{m.masse_grasse}% MG</span>}
+                        {m.imc&&<span style={{color:"#a78bfa"}}>IMC {m.imc}</span>}
+                      </div>
+                    ))}
+                  </div>
+                ):(
+                  <div style={{color:"#5a7a9a",fontSize:13,textAlign:"center",padding:"16px 0"}}>Aucune mesure — commence ton suivi !</div>
+                )}
+              </div>
+            );
+          })()}
           {editing&&<Modal title="Éditer ma fiche" onClose={()=>setEditing(false)}>
             <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12}}>
               <FF label="Âge"><input style={S.inp} type="number" value={editForm.age} onChange={e=>setEditForm(p=>({...p,age:e.target.value}))}/></FF>
               <FF label="Poids (kg)"><input style={S.inp} type="number" value={editForm.weight} onChange={e=>setEditForm(p=>({...p,weight:e.target.value}))}/></FF>
             </div>
-            <FF label="Bateau"><select style={S.inp} value={editForm.boat} onChange={e=>setEditForm(p=>({...p,boat:e.target.value}))}>{["1x","2x","2-","4x","4-","4+","8+"].map(b=><option key={b}>{b}</option>)}</select></FF>
+            
             <button style={{...S.btnP,width:"100%",marginTop:8,background:"#a78bfa",color:"#0f1923"}} onClick={saveEdit}>Enregistrer</button>
           </Modal>}
           {showAddPerf&&<Modal title="Nouvelle performance" onClose={()=>setShowAddPerf(false)}>
