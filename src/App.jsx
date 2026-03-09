@@ -146,6 +146,9 @@ const api = {
   removeBoatCrew:  (boatId, crewId) => sb(`boat_crews?boat_id=eq.${boatId}&crew_id=eq.${crewId}`, { method:"DELETE", prefer:"" }),
   getBoatSettings: ()          => sb("boat_settings?select=*&order=date_reglage.desc"),
   getBodyMeasurements: (athleteId) => sb(`body_measurements?athlete_id=eq.${athleteId}&order=date.desc`),
+  getStrengthSessions: (athleteId) => sb(`strength_sessions?athlete_id=eq.${athleteId}&order=date.desc`),
+  createStrengthSession: (data)    => sb("strength_sessions", { method:"POST", body:JSON.stringify(data) }),
+  deleteStrengthSession: (id)      => sb(`strength_sessions?id=eq.${id}`, { method:"DELETE", prefer:"" }),
   createBodyMeasurement: (data) => sb("body_measurements", { method:"POST", body:JSON.stringify(data) }),
   deleteBodyMeasurement: (id)   => sb(`body_measurements?id=eq.${id}`, { method:"DELETE", prefer:"" }),
   createBoatSetting: (data)    => sb("boat_settings", { method:"POST", body:JSON.stringify(data) }),
@@ -838,8 +841,13 @@ function CoachSpace({ currentUser, onLogout }) {
   const [newAth,setNA]  = useState({name:"",date_naissance:"",genre:"H",weight:"",taille:"",envergure:"",longueur_bras:"",largeur_epaules:"",taille_assise:""});
   const [bodyMeasurements,setBodyMeasurements] = useState([]);
   const [showMorphoForm,setShowMorphoForm] = useState(false);
-  const [selBoatDetail,setSelBoatDetail] = useState(null);
   const [newMorpho,setNewMorpho] = useState({date:new Date().toISOString().split("T")[0],poids:"",taille:"",masse_grasse:""});
+  const [strengthSessions,setStrengthSessions] = useState([]);
+  const [showStrengthForm,setShowStrengthForm] = useState(false);
+  const [strengthTab,setStrengthTab] = useState("saisie");
+  const [selStrengthExo,setSelStrengthExo] = useState("Squat");
+  const [newStrength,setNewStrength] = useState({date:new Date().toISOString().split("T")[0],exercices:[{exercice:"Squat",series:"",reps:"",charge:""},{exercice:"Hip Thrust",series:"",reps:"",charge:""},{exercice:"RDL",series:"",reps:"",charge:""},{exercice:"Tirades rowing",series:"",reps:"",charge:""}]});
+  const [ficheTab,setFicheTab] = useState("general");
   // Boats states
   const [selBoat,setSelBoat]   = useState(null);
   const [showAddBoat,setShowAddBoat] = useState(false);
@@ -867,7 +875,10 @@ function CoachSpace({ currentUser, onLogout }) {
   useEffect(()=>{ load(); },[]);
 
   useEffect(()=>{
-    if(selAth) api.getBodyMeasurements(selAth).then(d=>setBodyMeasurements(d||[])).catch(()=>{});
+    if(selAth) {
+      api.getBodyMeasurements(selAth).then(d=>setBodyMeasurements(d||[])).catch(()=>{});
+      api.getStrengthSessions(selAth).then(d=>setStrengthSessions(d||[])).catch(()=>{});
+    }
   },[selAth]);
 
   async function addMorpho() {
@@ -881,6 +892,36 @@ function CoachSpace({ currentUser, onLogout }) {
     setNewMorpho({date:new Date().toISOString().split("T")[0],poids:"",taille:"",masse_grasse:""});
     setShowMorphoForm(false);
     api.getBodyMeasurements(selAth).then(d=>setBodyMeasurements(d||[]));
+  }
+
+  const EXERCICES_LIST = ["Squat","Hip Thrust","RDL","Soulevé de terre","Développé couché","Tirades rowing","Tractions lestées","Leg press","Fentes","Rowing barre","Autre..."];
+
+  function calcOneRM(charge, reps) {
+    if(!charge || !reps) return null;
+    return parseFloat((parseFloat(charge) * (1 + parseFloat(reps)/30)).toFixed(1));
+  }
+
+  async function addStrengthSession() {
+    const rows = newStrength.exercices.filter(e=>e.exercice&&e.charge&&e.reps&&e.series);
+    if(!rows.length) return;
+    for(const e of rows) {
+      const one_rm = calcOneRM(e.charge, e.reps);
+      const volume = parseFloat(e.series)*parseFloat(e.reps)*parseFloat(e.charge);
+      await api.createStrengthSession({
+        athlete_id:selAth, date:newStrength.date,
+        exercice:e.exercice, series:+e.series, reps:+e.reps,
+        charge:+e.charge, one_rm, volume
+      });
+    }
+    setToast({m:"Séance enregistrée ✓",t:"success"});
+    setShowStrengthForm(false);
+    setNewStrength({date:new Date().toISOString().split("T")[0],exercices:[{exercice:"Squat",series:"",reps:"",charge:""},{exercice:"",series:"",reps:"",charge:""}]});
+    api.getStrengthSessions(selAth).then(d=>setStrengthSessions(d||[]));
+  }
+
+  async function deleteStrengthSession(id) {
+    await api.deleteStrengthSession(id);
+    api.getStrengthSessions(selAth).then(d=>setStrengthSessions(d||[]));
   }
 
   async function deleteMorpho(id) {
@@ -1096,7 +1137,7 @@ function CoachSpace({ currentUser, onLogout }) {
                   const sub=rankMode==="wpkg"?a.watts+"W":rankMode==="time"?a.wpkg+" W/kg":rankMode==="km"?a.sessions+" sessions":a.km+"km";
                   const col=rankMode==="wpkg"?"#a78bfa":rankMode==="time"?"#4ade80":rankMode==="km"?"#f97316":"#0ea5e9";
                   const ageCat=a.date_naissance?getAgeCatFromBirthYear(new Date(a.date_naissance).getFullYear()):getAgeCategory(a.age);
-                  return(<div key={a.id} style={S.topCard} onClick={()=>{setSelAth(a.id);setSelBoatDetail(null);setTab("athlete_detail");}}>
+                  return(<div key={a.id} style={S.topCard} onClick={()=>{setSelAth(a.id);setTab("athlete_detail");}}>
                     <div style={{width:28,color:"#0ea5e9",fontWeight:900,fontSize:18}}>#{i+1}</div>
                     {a.photo_url?<img src={a.photo_url} style={{...S.av,objectFit:"cover"}} onError={e=>{e.target.style.display="none";}}/>:<div style={{...S.av,backgroundImage:a.photo_url?`url(${a.photo_url})`:"none",backgroundSize:"cover",backgroundPosition:"center"}}>{!a.photo_url&&a.avatar}</div>}
                     <div style={{flex:1}}><div style={{fontWeight:700,color:"#f1f5f9",display:"flex",alignItems:"center",gap:6}}>{a.name}<span style={{fontSize:10,padding:"2px 6px",borderRadius:8,background:(AGE_CAT_COLORS[ageCat] ? AGE_CAT_COLORS[ageCat] : "#374151")+"25",color:(AGE_CAT_COLORS[ageCat] ? AGE_CAT_COLORS[ageCat] : "#94a3b8")}}>{ageCat}</span></div><div style={{color:"#7a95b0",fontSize:12}}>{a.category}</div></div>
@@ -1129,20 +1170,20 @@ function CoachSpace({ currentUser, onLogout }) {
               return(<div key={a.id} style={{...S.card,cursor:"pointer"}}>
                 <div style={{display:"flex",alignItems:"center",gap:14,marginBottom:14}}>
                   {a.photo_url?<img src={a.photo_url} style={{...S.av,objectFit:"cover"}} onError={e=>{e.target.style.display="none";}}/>:<div style={{...S.av,backgroundImage:a.photo_url?`url(${a.photo_url})`:"none",backgroundSize:"cover",backgroundPosition:"center"}}>{!a.photo_url&&a.avatar}</div>}
-                  <div style={{flex:1}} onClick={()=>{setSelAth(a.id);setSelBoatDetail(null);setTab("athlete_detail");}}><div style={{fontWeight:800,color:"#f1f5f9",fontSize:15,display:"flex",alignItems:"center",gap:8}}>{a.name}<span style={{fontSize:10,padding:"2px 7px",borderRadius:10,background:(AGE_CAT_COLORS[a.date_naissance?getAgeCatFromBirthYear(new Date(a.date_naissance).getFullYear()):getAgeCategory(a.age)] || "#374151")+"25",color:(AGE_CAT_COLORS[a.date_naissance?getAgeCatFromBirthYear(new Date(a.date_naissance).getFullYear()):getAgeCategory(a.age)] || "#94a3b8"),fontWeight:700}}>{a.date_naissance?getAgeCatFromBirthYear(new Date(a.date_naissance).getFullYear()):getAgeCategory(a.age)}</span></div><div style={{color:"#7a95b0",fontSize:12}}>{a.category} — {a.date_naissance?calcRealAge(a.date_naissance):a.age} ans — {a.weight} kg{a.taille?" — "+a.taille+"cm":""}</div>{aCrew&&<div style={{color:"#0ea5e9",fontSize:11,marginTop:2}}>~ {aCrew.name}</div>}</div>
+                  <div style={{flex:1}} onClick={()=>{setSelAth(a.id);setTab("athlete_detail");}}><div style={{fontWeight:800,color:"#f1f5f9",fontSize:15,display:"flex",alignItems:"center",gap:8}}>{a.name}<span style={{fontSize:10,padding:"2px 7px",borderRadius:10,background:(AGE_CAT_COLORS[a.date_naissance?getAgeCatFromBirthYear(new Date(a.date_naissance).getFullYear()):getAgeCategory(a.age)] || "#374151")+"25",color:(AGE_CAT_COLORS[a.date_naissance?getAgeCatFromBirthYear(new Date(a.date_naissance).getFullYear()):getAgeCategory(a.age)] || "#94a3b8"),fontWeight:700}}>{a.date_naissance?getAgeCatFromBirthYear(new Date(a.date_naissance).getFullYear()):getAgeCategory(a.age)}</span></div><div style={{color:"#7a95b0",fontSize:12}}>{a.category} — {a.date_naissance?calcRealAge(a.date_naissance):a.age} ans — {a.weight} kg{a.taille?" — "+a.taille+"cm":""}</div>{aCrew&&<div style={{color:"#0ea5e9",fontSize:11,marginTop:2}}>~ {aCrew.name}</div>}</div>
                   <button style={{...S.actionBtn,color:"#0ea5e9",borderColor:"#22d3ee30",flexShrink:0}} onClick={e=>{e.stopPropagation();setEditAth({...a});}}>✏️ Edit</button>
                 </div>
                 {last?(<>
-                  <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8,marginBottom:10}} onClick={()=>{setSelAth(a.id);setSelBoatDetail(null);setTab("athlete_detail");}}>
+                  <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8,marginBottom:10}} onClick={()=>{setSelAth(a.id);setTab("athlete_detail");}}>
                     <div style={{background:"#4ade8015",border:"1px solid #4ade8030",borderRadius:8,padding:"7px 10px"}}><div style={{color:"#7a95b0",fontSize:10,textTransform:"uppercase",letterSpacing:1}}>Best 2k</div><div style={{color:"#4ade80",fontWeight:900,fontSize:20}}>{best?.time??"--"}</div></div>
                     <div style={{background:"#a78bfa15",border:"1px solid #a78bfa30",borderRadius:8,padding:"7px 10px"}}><div style={{color:"#7a95b0",fontSize:10,textTransform:"uppercase",letterSpacing:1}}>W/kg</div><div style={{color:"#a78bfa",fontWeight:900,fontSize:20}}>{wpkg??"--"}</div></div>
                   </div>
-                  <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginTop:8}} onClick={()=>{setSelAth(a.id);setSelBoatDetail(null);setTab("athlete_detail");}}>
+                  <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginTop:8}} onClick={()=>{setSelAth(a.id);setTab("athlete_detail");}}>
                     <span style={{color:"#7a95b0",fontSize:12}}>{perfs.length} sessions</span>
                     <span style={{color:wTrend>=0?"#4ade80":"#ef4444",fontSize:13,fontWeight:700}}>{wTrend>=0?"^":"v"} {Math.abs(wTrend)}W</span>
                     <Sparkline data={perfs.map(p=>p.watts)} color="#0ea5e9"/>
                   </div>
-                </>):<div style={{color:"#5a7a9a",fontSize:13,textAlign:"center",padding:"12px 0"}} onClick={()=>{setSelAth(a.id);setSelBoatDetail(null);setTab("athlete_detail");}}>Aucune performance</div>}
+                </>):<div style={{color:"#5a7a9a",fontSize:13,textAlign:"center",padding:"12px 0"}} onClick={()=>{setSelAth(a.id);setTab("athlete_detail");}}>Aucune performance</div>}
               </div>);
             })}
           </div>
@@ -1230,23 +1271,10 @@ function CoachSpace({ currentUser, onLogout }) {
           const wpkg=bestW&&a.weight?(bestW/a.weight).toFixed(2):null;
           const aCrew=getCrewForAthlete(a);
           const crewMemberList=aCrew?athletes.filter(x=>crewMembers.some(m=>m.crew_id===aCrew.id&&m.athlete_id===x.id)):[];
-          // Tous les bateaux de l'athlète (via tous ses équipages)
-          const allCrewsAth = crewMembers.filter(m=>m.athlete_id===a.id).map(m=>({
-            crew: crews.find(c=>c.id===m.crew_id),
-            poste: crewMembers.filter(x=>x.crew_id===m.crew_id).findIndex(x=>x.athlete_id===a.id)+1
-          })).filter(x=>x.crew);
-          const athBoats = allCrewsAth.reduce((acc,{crew,poste})=>{
-            const bc = boatCrews.find(x=>x.crew_id===crew.id);
-            if(!bc) return acc;
-            const boat = boats.find(b=>b.id===bc.boat_id);
-            if(!boat || acc.find(x=>x.boat.id===boat.id)) return acc;
-            return [...acc,{boat,poste,crew}];
-          },[]);
-          const activeBId = selBoatDetail && athBoats.find(x=>x.boat.id===selBoatDetail) ? selBoatDetail : (athBoats[0]?.boat.id||null);
-          const activeBEntry = athBoats.find(x=>x.boat.id===activeBId)||null;
-          const myBoat = activeBEntry?.boat||null;
-          const poste = activeBEntry?.poste||null;
-          const mySettings = myBoat?boatSettings.filter(s=>s.boat_id===myBoat.id&&s.poste===poste).sort((x,y)=>y.date_reglage.localeCompare(x.date_reglage)):[];
+          const myBoatCrew=aCrew?boatCrews.find(bc=>bc.crew_id===aCrew.id):null;
+          const myBoat=myBoatCrew?boats.find(b=>b.id===myBoatCrew.boat_id):null;
+          const poste=aCrew?crewMembers.filter(m=>m.crew_id===aCrew.id).findIndex(m=>m.athlete_id===a.id)+1:null;
+          const mySettings=myBoat?boatSettings.filter(s=>s.boat_id===myBoat.id&&s.poste===poste).sort((x,y)=>y.date_reglage.localeCompare(x.date_reglage)):[];
           const lastSetting=mySettings[0]||null;
           const ageDisplay=a.date_naissance?calcRealAge(a.date_naissance):a.age;
           const ageFederal=a.date_naissance?calcAgeFromDOB(a.date_naissance):a.age;
@@ -1259,8 +1287,14 @@ function CoachSpace({ currentUser, onLogout }) {
                 <div style={{flex:1}}><h1 style={{...S.ttl,margin:0}}>{a.name}</h1><p style={{...S.sub,margin:0}}>{a.category} — {ageCat}</p></div>
                 <button style={{...S.btnP,background:"#0ea5e9",color:"#0f1923"}} onClick={()=>setEditAth({...a})}>✏️ Modifier</button>
               </div>
+              {/* Onglets fiche */}
+              <div style={{display:"flex",gap:6,marginBottom:20,flexWrap:"wrap"}}>
+                {[["general","📋 Général"],["muscu","💪 Muscu"],["morpho","⚖️ Morpho"]].map(([k,l])=>(
+                  <button key={k} style={{...S.fb,...(ficheTab===k?S.fbon:{})}} onClick={()=>setFicheTab(k)}>{l}</button>
+                ))}
+              </div>
 
-              <div style={{display:"grid",gridTemplateColumns:"320px 1fr",gap:20,marginBottom:20}}>
+              {ficheTab==="general"&&<div style={{display:"grid",gridTemplateColumns:"320px 1fr",gap:20,marginBottom:20}}>
                 {/* Left: Identity card */}
                 <div style={{display:"flex",flexDirection:"column",gap:16}}>
                   <div style={{...S.card,borderTop:"3px solid #0ea5e9",textAlign:"center",padding:"24px 20px"}}>
@@ -1384,22 +1418,13 @@ function CoachSpace({ currentUser, onLogout }) {
                     </div>
                     <div style={S.card}>
                       <div style={{...S.st,marginBottom:12}}>🛶 Réglages bateau</div>
-                      {athBoats.length>1&&(
-                        <div style={{display:"flex",gap:6,marginBottom:12,flexWrap:"wrap"}}>
-                          {athBoats.map(({boat})=>(
-                            <button key={boat.id} style={{...S.fb,...(activeBId===boat.id?S.fbon:{})}} onClick={()=>setSelBoatDetail(boat.id)}>
-                              {boat.name}
-                            </button>
-                          ))}
-                        </div>
-                      )}
                       {lastSetting
                         ?<div style={{display:"flex",flexDirection:"column",gap:6}}>
                           {[
                             {l:"Bateau",v:myBoat?.name||"--"},
                             {l:"Poste",v:poste?"#"+poste:"--"},
                             {l:"Entraxe",v:lastSetting.entraxe?lastSetting.entraxe+" cm":"--"},
-                            {l:"Long. Pelles",v:lastSetting.longueur_pedale?lastSetting.longueur_pedale+" cm":"--"},
+                            {l:"Long. Pelle",v:lastSetting.longueur_pedale?lastSetting.longueur_pedale+" cm":"--"},
                             {l:"Levier int.",v:lastSetting.levier_interieur?lastSetting.levier_interieur+" cm":"--"},
                           ].map((k,i)=>(
                             <div key={i} style={{display:"flex",justifyContent:"space-between",padding:"4px 0",borderBottom:"1px solid #1e293b50"}}>
@@ -1408,27 +1433,134 @@ function CoachSpace({ currentUser, onLogout }) {
                             </div>
                           ))}
                           <div style={{color:"#7a95b0",fontSize:10,marginTop:4}}>Réglé le {lastSetting.date_reglage}</div>
-                          {mySettings.length>1&&(
-                            <div style={{marginTop:8,borderTop:"1px solid #1e293b",paddingTop:8}}>
-                              <div style={{color:"#5a7a9a",fontSize:10,textTransform:"uppercase",letterSpacing:1,marginBottom:6}}>Historique</div>
-                              {mySettings.slice(1,4).map((s,i)=>(
-                                <div key={i} style={{display:"flex",gap:8,fontSize:11,color:"#7a95b0",padding:"3px 0",borderBottom:"1px solid #1e293b30"}}>
-                                  <span style={{minWidth:80}}>{s.date_reglage}</span>
-                                  {s.entraxe&&<span>Entr. {s.entraxe}cm</span>}
-                                  {s.longueur_pedale&&<span>Pelles {s.longueur_pedale}cm</span>}
-                                  {s.regle_par&&<span style={{marginLeft:"auto",color:"#5a7a9a"}}>par {s.regle_par}</span>}
-                                </div>
-                              ))}
-                            </div>
-                          )}
                         </div>
-                        :<div style={{color:"#5a7a9a",fontSize:12,textAlign:"center",padding:"12px 0"}}>{athBoats.length===0?"Aucun bateau lié à cet athlète":"Aucun réglage pour ce bateau"}</div>
+                        :<div style={{color:"#5a7a9a",fontSize:12,textAlign:"center",padding:"12px 0"}}>Aucun réglage</div>
                       }
                     </div>
                   </div>
                 </div>
               </div>
             </div>
+            {ficheTab==="muscu"&&(()=>{
+              const EXOS=["Squat","Hip Thrust","RDL","Soulevé de terre","Développé couché","Tirades rowing","Tractions lestées","Leg press","Fentes","Rowing barre"];
+              const athStrength=strengthSessions;
+              // Best 1RM per exercise
+              const bests=EXOS.reduce((acc,ex)=>{
+                const rows=athStrength.filter(s=>s.exercice===ex).sort((a,b)=>b.one_rm-a.one_rm);
+                acc[ex]=rows[0]||null; return acc;
+              },{});
+              // Chart data for selected exercise
+              const exoSessions=athStrength.filter(s=>s.exercice===selStrengthExo).sort((a,b)=>a.date.localeCompare(b.date));
+              const chartData=exoSessions.map(s=>({date:s.date,'1RM':s.one_rm,Volume:Math.round(s.volume)}));
+              // Last 5 sessions grouped by date
+              const recentDates=[...new Set(athStrength.map(s=>s.date))].sort((a,b)=>b.localeCompare(a)).slice(0,5);
+              return(
+                <div style={{marginTop:8}}>
+                  {/* Header */}
+                  <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:16}}>
+                    <div style={S.st}>💪 Musculation</div>
+                    <button style={{...S.btnP,background:"#f97316",color:"#0f1923",padding:"7px 16px",fontSize:13}} onClick={()=>setShowStrengthForm(v=>!v)}>{showStrengthForm?"Annuler":"+ Séance"}</button>
+                  </div>
+                  {/* Form */}
+                  {showStrengthForm&&(
+                    <div style={{...S.card,marginBottom:16,border:"1px solid #f9731640"}}>
+                      <div style={{...S.st,marginBottom:12,color:"#f97316"}}>Nouvelle séance</div>
+                      <FF label="Date"><input style={S.inp} type="date" value={newStrength.date} onChange={e=>setNewStrength(v=>({...v,date:e.target.value}))}/></FF>
+                      <div style={{display:"grid",gridTemplateColumns:"2fr 1fr 1fr 1fr auto",gap:6,marginBottom:8,alignItems:"center"}}>
+                        <span style={{color:"#5a7a9a",fontSize:11,textTransform:"uppercase"}}>Exercice</span>
+                        <span style={{color:"#5a7a9a",fontSize:11,textTransform:"uppercase"}}>Séries</span>
+                        <span style={{color:"#5a7a9a",fontSize:11,textTransform:"uppercase"}}>Reps</span>
+                        <span style={{color:"#5a7a9a",fontSize:11,textTransform:"uppercase"}}>Charge kg</span>
+                        <span></span>
+                      </div>
+                      {newStrength.exercices.map((ex,i)=>{
+                        const rm=ex.charge&&ex.reps?parseFloat((parseFloat(ex.charge)*(1+parseFloat(ex.reps)/30)).toFixed(1)):null;
+                        return(
+                          <div key={i} style={{display:"grid",gridTemplateColumns:"2fr 1fr 1fr 1fr auto",gap:6,marginBottom:6,alignItems:"center"}}>
+                            <select style={{...S.inp,padding:"6px 8px"}} value={ex.exercice} onChange={e=>{const arr=[...newStrength.exercices];arr[i]={...arr[i],exercice:e.target.value};setNewStrength(v=>({...v,exercices:arr}));}}>
+                              {EXOS.map(o=><option key={o} value={o}>{o}</option>)}
+                              <option value="Autre...">Autre...</option>
+                            </select>
+                            {ex.exercice==="Autre..."&&<input style={{...S.inp,padding:"6px 8px",gridColumn:"span 1"}} placeholder="Exercice..." value={ex.customEx||""} onChange={e=>{const arr=[...newStrength.exercices];arr[i]={...arr[i],customEx:e.target.value};setNewStrength(v=>({...v,exercices:arr}));}}/>}
+                            <input style={{...S.inp,padding:"6px 8px"}} type="number" placeholder="3" value={ex.series} onChange={e=>{const arr=[...newStrength.exercices];arr[i]={...arr[i],series:e.target.value};setNewStrength(v=>({...v,exercices:arr}));}}/>
+                            <input style={{...S.inp,padding:"6px 8px"}} type="number" placeholder="6" value={ex.reps} onChange={e=>{const arr=[...newStrength.exercices];arr[i]={...arr[i],reps:e.target.value};setNewStrength(v=>({...v,exercices:arr}));}}/>
+                            <div style={{position:"relative"}}>
+                              <input style={{...S.inp,padding:"6px 8px"}} type="number" placeholder="80" value={ex.charge} onChange={e=>{const arr=[...newStrength.exercices];arr[i]={...arr[i],charge:e.target.value};setNewStrength(v=>({...v,exercices:arr}));}}/>
+                              {rm&&<div style={{position:"absolute",top:-18,right:0,fontSize:9,color:"#f97316",whiteSpace:"nowrap"}}>≈{rm}kg 1RM</div>}
+                            </div>
+                            <button style={{...S.actionBtn,color:"#ef4444",borderColor:"#ef444430",padding:"4px 8px"}} onClick={()=>{const arr=newStrength.exercices.filter((_,j)=>j!==i);setNewStrength(v=>({...v,exercices:arr}));}}>✕</button>
+                          </div>
+                        );
+                      })}
+                      <div style={{display:"flex",gap:8,marginTop:8}}>
+                        <button style={{...S.fb,flex:1}} onClick={()=>setNewStrength(v=>({...v,exercices:[...v.exercices,{exercice:"Squat",series:"",reps:"",charge:""}]}))}>+ Exercice</button>
+                        <button style={{...S.btnP,flex:2,background:"#f97316",color:"#0f1923"}} onClick={addStrengthSession}>💾 Enregistrer la séance</button>
+                      </div>
+                    </div>
+                  )}
+                  {/* Records dashboard */}
+                  {athStrength.length>0&&(
+                    <>
+                      <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(120px,1fr))",gap:8,marginBottom:16}}>
+                        {EXOS.filter(ex=>bests[ex]).map(ex=>{
+                          const b=bests[ex];
+                          return(
+                            <div key={ex} style={{...S.card,padding:"10px 12px",cursor:"pointer",border:selStrengthExo===ex?"1px solid #f97316":"1px solid #1e293b",background:selStrengthExo===ex?"#f9731610":"#182030"}} onClick={()=>setSelStrengthExo(ex)}>
+                              <div style={{color:"#5a7a9a",fontSize:10,textTransform:"uppercase",letterSpacing:1,marginBottom:4}}>{ex}</div>
+                              <div style={{color:"#f97316",fontWeight:900,fontSize:18}}>{b.one_rm}kg</div>
+                              <div style={{color:"#7a95b0",fontSize:10}}>1RM estimé</div>
+                              <div style={{color:"#5a7a9a",fontSize:10}}>{b.series}×{b.reps}×{b.charge}kg</div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                      {/* Progression chart */}
+                      {chartData.length>1&&(
+                        <div style={{...S.card,marginBottom:16}}>
+                          <div style={{color:"#f97316",fontWeight:700,marginBottom:12,fontSize:13}}>📈 Progression {selStrengthExo}</div>
+                          <ResponsiveContainer width="100%" height={180}>
+                            <LineChart data={chartData}>
+                              <XAxis dataKey="date" tick={{fill:"#5a7a9a",fontSize:10}} tickFormatter={d=>d.slice(5)}/>
+                              <YAxis tick={{fill:"#5a7a9a",fontSize:10}}/>
+                              <Tooltip contentStyle={{background:"#182030",border:"1px solid #1e293b",borderRadius:8}} labelStyle={{color:"#f97316"}} itemStyle={{color:"#f1f5f9"}}/>
+                              <Legend wrapperStyle={{fontSize:11}}/>
+                              <Line type="monotone" dataKey="1RM" stroke="#f97316" strokeWidth={2} dot={{fill:"#f97316",r:3}}/>
+                            </LineChart>
+                          </ResponsiveContainer>
+                        </div>
+                      )}
+                      {/* Recent sessions */}
+                      <div style={S.card}>
+                        <div style={{color:"#f97316",fontWeight:700,marginBottom:12,fontSize:13}}>📋 Dernières séances</div>
+                        {recentDates.map(date=>{
+                          const dayRows=athStrength.filter(s=>s.date===date);
+                          return(
+                            <div key={date} style={{marginBottom:12,paddingBottom:12,borderBottom:"1px solid #1e293b"}}>
+                              <div style={{color:"#7a95b0",fontSize:11,marginBottom:6,fontWeight:700}}>{date}</div>
+                              {dayRows.map(s=>(
+                                <div key={s.id} style={{display:"flex",alignItems:"center",gap:8,padding:"4px 0",fontSize:12}}>
+                                  <span style={{color:"#f1f5f9",fontWeight:700,minWidth:130}}>{s.exercice}</span>
+                                  <span style={{color:"#7a95b0"}}>{s.series}×{s.reps} @ {s.charge}kg</span>
+                                  <span style={{color:"#f97316",marginLeft:"auto",fontWeight:700}}>≈{s.one_rm}kg</span>
+                                  <button style={{...S.actionBtn,color:"#ef4444",borderColor:"#ef444430",padding:"2px 6px",fontSize:11}} onClick={()=>deleteStrengthSession(s.id)}>✕</button>
+                                </div>
+                              ))}
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </>
+                  )}
+                  {athStrength.length===0&&!showStrengthForm&&(
+                    <div style={{...S.card,textAlign:"center",padding:"32px 20px",color:"#5a7a9a"}}>
+                      <div style={{fontSize:32,marginBottom:8}}>💪</div>
+                      <div style={{fontSize:13}}>Aucune séance enregistrée</div>
+                      <div style={{fontSize:11,marginTop:4}}>Clique sur "+ Séance" pour commencer</div>
+                    </div>
+                  )}
+                </div>
+              );
+            })()}
           );
         })()}
         {tab==="performances"&&(<div style={S.page}>
@@ -1476,7 +1608,7 @@ function CoachSpace({ currentUser, onLogout }) {
           </Modal>}
         </div>)}
 
-        {tab==="athlete_detail"&&selAth&&(()=>{
+        {tab==="athlete_detail"&&selAth&&ficheTab==="morpho"&&(()=>{
           const sorted=[...bodyMeasurements].sort((a,b)=>a.date.localeCompare(b.date));
           const lastM=sorted[sorted.length-1]||null;
           const chartData=sorted.map(m=>({date:m.date,Poids:m.poids,MG:m.masse_grasse,IMC:m.imc}));
@@ -1556,12 +1688,54 @@ function CoachSpace({ currentUser, onLogout }) {
           <div style={S.ph}><div><h1 style={S.ttl}>Comparer</h1><p style={S.sub}>2 à 4 athlètes</p></div></div>
           <div style={{display:"flex",gap:8,marginBottom:24,flexWrap:"wrap"}}>{athletes.map(a=>{const on=compareIds.includes(a.id);return(<button key={a.id} style={{...S.fb,...(on?{background:"#22d3ee20",border:"1px solid #22d3ee60",color:"#0ea5e9"}:{})}} onClick={()=>setCompareIds(prev=>prev.includes(a.id)?(prev.length>2?prev.filter(x=>x!==a.id):prev):prev.length<4?[...prev,a.id]:prev)}>{on?"v ":""}{a.name}</button>);})}</div>
           {compareIds.length>=2&&(()=>{
-            const cmp=compareIds.map(id=>{const a=athletes.find(x=>x.id===id);const perfs=getPerfFor(id),last=getLastPerf(perfs),best=getBestTime(perfs);return{...a,last,best,wpkg:last&&a.weight?(last.watts/a.weight).toFixed(2):null,perfs};});
+            const cmp=compareIds.map(id=>{const a=athletes.find(x=>x.id===id);const perfs=getPerfFor(id),last=getLastPerf(perfs),best=getBestTime(perfs);return{...a,last,best,wpkg:best&&a.weight?(concept2WattsFast(best.time)/a.weight).toFixed(2):null,perfs};});
             const rows=[{label:"Meilleur 2k",fn:c=>c.best?.time??"--",bfn:c=>c.best?timeToSeconds(c.best.time):9999,lower:true,c:"#4ade80"},{label:"Puissance",fn:c=>c.best?`${concept2WattsFast(c.best.time)||0}W`:"--",bfn:c=>c.best?concept2WattsFast(c.best.time)||0:0,lower:false,c:"#0ea5e9"},{label:"W/kg",fn:c=>c.wpkg??"-",bfn:c=>parseFloat(c.wpkg)||0,lower:false,c:"#a78bfa"},{label:"Sessions",fn:c=>c.perfs.length,bfn:c=>c.perfs.length,lower:false,c:"#f97316"}];
             return(<>
               <div style={{display:"grid",gridTemplateColumns:`140px repeat(${cmp.length},1fr)`,gap:2,marginBottom:2}}><div/>{cmp.map((c,i)=><div key={c.id} style={{...S.card,textAlign:"center",borderTop:`3px solid ${CMP_COLORS[i]}`,padding:"12px 8px"}}><div style={{...S.av,margin:"0 auto 8px",border:`2px solid ${CMP_COLORS[i]}`}}>{c.avatar}</div><div style={{fontWeight:800,color:"#f1f5f9",fontSize:13}}>{c.name}</div><div style={{color:"#7a95b0",fontSize:11}}>{c.category}</div></div>)}</div>
               {rows.map(row=>{const bests=cmp.map(c=>row.bfn(c)),bestVal=row.lower?Math.min(...bests):Math.max(...bests),barMax=row.lower?Math.max(...bests):bestVal;return(<div key={row.label} style={{display:"grid",gridTemplateColumns:`140px repeat(${cmp.length},1fr)`,gap:2,marginBottom:2}}><div style={{display:"flex",alignItems:"center",color:"#7a95b0",fontSize:13,fontWeight:600,paddingLeft:8}}>{row.label}</div>{cmp.map((c,i)=>{const val=row.bfn(c),isBest=val===bestVal,barVal=row.lower?barMax-val+Math.min(...bests):val;return(<div key={c.id} style={{...S.card,padding:"10px 12px",background:isBest?"#22d3ee08":"#182030"}}><div style={{display:"flex",alignItems:"center",gap:8}}><div style={{color:isBest?row.c:"#a8bfd4",fontWeight:isBest?900:600,fontSize:15,minWidth:80}}>{row.fn(c)}{isBest?" *":""}</div><div style={{flex:1,height:5,background:"#263547",borderRadius:3,overflow:"hidden"}}><div style={{width:`${barMax?Math.min((barVal/barMax)*100,100):0}%`,height:"100%",background:CMP_COLORS[i],borderRadius:3}}/></div></div></div>);})}</div>);})}
             </>);
+          })()}
+          {/* Scatter plot Force vs Puissance */}
+          {(()=>{
+            const scatterAths=athletes.map(a=>{
+              const perfs=getPerfFor(a.id),best=getBestTime(perfs);
+              const wpkg=best&&a.weight?(concept2WattsFast(best.time)/a.weight):null;
+              const squat=strengthSessions.filter(s=>s.athlete_id===a.id&&s.exercice==="Squat").sort((x,y)=>y.one_rm-x.one_rm)[0];
+              const forceKg=squat&&a.weight?(squat.one_rm/a.weight):null;
+              return wpkg&&forceKg?{name:a.name,wpkg:parseFloat(wpkg.toFixed(2)),force:parseFloat(forceKg.toFixed(2)),avatar:a.avatar}:null;
+            }).filter(Boolean);
+            if(scatterAths.length<2) return null;
+            const avgWpkg=scatterAths.reduce((s,a)=>s+a.wpkg,0)/scatterAths.length;
+            const avgForce=scatterAths.reduce((s,a)=>s+a.force,0)/scatterAths.length;
+            const minW=Math.min(...scatterAths.map(a=>a.wpkg))-0.2;
+            const maxW=Math.max(...scatterAths.map(a=>a.wpkg))+0.2;
+            const minF=Math.min(...scatterAths.map(a=>a.force))-0.1;
+            const maxF=Math.max(...scatterAths.map(a=>a.force))+0.1;
+            const toX=(f)=>((f-minF)/(maxF-minF||1))*100;
+            const toY=(w)=>(1-(w-minW)/(maxW-minW||1))*100;
+            return(
+              <div style={{...S.card,marginTop:20}}>
+                <div style={{...S.st,marginBottom:4}}>⚡💪 Profil Force × Puissance</div>
+                <div style={{color:"#5a7a9a",fontSize:11,marginBottom:16}}>Axe X = Force relative squat (1RM/kg) — Axe Y = Puissance aérobie (W/kg ergo)</div>
+                <div style={{position:"relative",width:"100%",paddingBottom:"55%",background:"#0d1520",borderRadius:10,border:"1px solid #1e293b"}}>
+                  {/* Quadrant lines */}
+                  <div style={{position:"absolute",left:`${toX(avgForce)}%`,top:0,bottom:0,width:1,background:"#1e293b"}}/>
+                  <div style={{position:"absolute",top:`${toY(avgWpkg)}%`,left:0,right:0,height:1,background:"#1e293b"}}/>
+                  {/* Quadrant labels */}
+                  <div style={{position:"absolute",left:"4%",top:"4%",fontSize:9,color:"#ef444460"}}>Force ↓ / Ergo ↑</div>
+                  <div style={{position:"absolute",right:"4%",top:"4%",fontSize:9,color:"#4ade8060"}}>Force ↑ / Ergo ↑ ★</div>
+                  <div style={{position:"absolute",left:"4%",bottom:"4%",fontSize:9,color:"#5a7a9a"}}>Force ↓ / Ergo ↓</div>
+                  <div style={{position:"absolute",right:"4%",bottom:"4%",fontSize:9,color:"#f9731660"}}>Force ↑ / Ergo ↓</div>
+                  {/* Athlete dots */}
+                  {scatterAths.map((a,i)=>(
+                    <div key={i} style={{position:"absolute",left:`calc(${toX(a.force)}% - 16px)`,top:`calc(${toY(a.wpkg)}% - 16px)`,display:"flex",flexDirection:"column",alignItems:"center"}}>
+                      <div style={{width:32,height:32,borderRadius:"50%",background:CMP_COLORS[i%CMP_COLORS.length]+"33",border:`2px solid ${CMP_COLORS[i%CMP_COLORS.length]}`,display:"flex",alignItems:"center",justifyContent:"center",fontSize:14,cursor:"default"}} title={`${a.name} — ${a.wpkg}W/kg ergo, ${a.force}x1RM/kg squat`}>{a.avatar}</div>
+                      <div style={{fontSize:9,color:CMP_COLORS[i%CMP_COLORS.length],fontWeight:700,whiteSpace:"nowrap",marginTop:2}}>{a.name}</div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            );
           })()}
         </div>)}
 
