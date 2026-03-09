@@ -1049,7 +1049,7 @@ function CoachSpace({ currentUser, onLogout }) {
                   const sub=rankMode==="wpkg"?a.watts+"W":rankMode==="time"?a.wpkg+" W/kg":rankMode==="km"?a.sessions+" sessions":a.km+"km";
                   const col=rankMode==="wpkg"?"#a78bfa":rankMode==="time"?"#4ade80":rankMode==="km"?"#f97316":"#0ea5e9";
                   const ageCat=getAgeCategory(a.age);
-                  return(<div key={a.id} style={S.topCard} onClick={()=>{setSelAth(a.id);setTab("performances");}}>
+                  return(<div key={a.id} style={S.topCard} onClick={()=>{setSelAth(a.id);setTab("athlete_detail");}}>
                     <div style={{width:28,color:"#0ea5e9",fontWeight:900,fontSize:18}}>#{i+1}</div>
                     {a.photo_url?<img src={a.photo_url} style={{...S.av,objectFit:"cover"}} onError={e=>{e.target.style.display="none";}}/>:<div style={{...S.av,backgroundImage:a.photo_url?`url(${a.photo_url})`:"none",backgroundSize:"cover",backgroundPosition:"center"}}>{!a.photo_url&&a.avatar}</div>}
                     <div style={{flex:1}}><div style={{fontWeight:700,color:"#f1f5f9",display:"flex",alignItems:"center",gap:6}}>{a.name}<span style={{fontSize:10,padding:"2px 6px",borderRadius:8,background:(AGE_CAT_COLORS[ageCat] ? AGE_CAT_COLORS[ageCat] : "#374151")+"25",color:(AGE_CAT_COLORS[ageCat] ? AGE_CAT_COLORS[ageCat] : "#94a3b8")}}>{ageCat}</span></div><div style={{color:"#7a95b0",fontSize:12}}>{a.category} - {a.boat}</div></div>
@@ -1082,20 +1082,20 @@ function CoachSpace({ currentUser, onLogout }) {
               return(<div key={a.id} style={{...S.card,cursor:"pointer"}}>
                 <div style={{display:"flex",alignItems:"center",gap:14,marginBottom:14}}>
                   {a.photo_url?<img src={a.photo_url} style={{...S.av,objectFit:"cover"}} onError={e=>{e.target.style.display="none";}}/>:<div style={{...S.av,backgroundImage:a.photo_url?`url(${a.photo_url})`:"none",backgroundSize:"cover",backgroundPosition:"center"}}>{!a.photo_url&&a.avatar}</div>}
-                  <div style={{flex:1}} onClick={()=>{setSelAth(a.id);setTab("performances");}}><div style={{fontWeight:800,color:"#f1f5f9",fontSize:15,display:"flex",alignItems:"center",gap:8}}>{a.name}<span style={{fontSize:10,padding:"2px 7px",borderRadius:10,background:(AGE_CAT_COLORS[getAgeCategory(a.age)] ? AGE_CAT_COLORS[getAgeCategory(a.age)] : "#374151")+"25",color:(AGE_CAT_COLORS[getAgeCategory(a.age)] ? AGE_CAT_COLORS[getAgeCategory(a.age)] : "#94a3b8"),fontWeight:700}}>{getAgeCategory(a.age)}</span></div><div style={{color:"#7a95b0",fontSize:12}}>{a.category} — {a.age} ans — {a.weight} kg{a.taille?" — "+a.taille+"cm":""}</div>{aCrew&&<div style={{color:"#0ea5e9",fontSize:11,marginTop:2}}>~ {aCrew.name}</div>}</div>
+                  <div style={{flex:1}} onClick={()=>{setSelAth(a.id);setTab("athlete_detail");}}><div style={{fontWeight:800,color:"#f1f5f9",fontSize:15,display:"flex",alignItems:"center",gap:8}}>{a.name}<span style={{fontSize:10,padding:"2px 7px",borderRadius:10,background:(AGE_CAT_COLORS[getAgeCategory(a.age)] ? AGE_CAT_COLORS[getAgeCategory(a.age)] : "#374151")+"25",color:(AGE_CAT_COLORS[getAgeCategory(a.age)] ? AGE_CAT_COLORS[getAgeCategory(a.age)] : "#94a3b8"),fontWeight:700}}>{getAgeCategory(a.age)}</span></div><div style={{color:"#7a95b0",fontSize:12}}>{a.category} — {a.age} ans — {a.weight} kg{a.taille?" — "+a.taille+"cm":""}</div>{aCrew&&<div style={{color:"#0ea5e9",fontSize:11,marginTop:2}}>~ {aCrew.name}</div>}</div>
                   <button style={{...S.actionBtn,color:"#0ea5e9",borderColor:"#22d3ee30",flexShrink:0}} onClick={e=>{e.stopPropagation();setEditAth({...a});}}>✏️ Edit</button>
                 </div>
                 {last?(<>
-                  <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8,marginBottom:10}} onClick={()=>{setSelAth(a.id);setTab("performances");}}>
+                  <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8,marginBottom:10}} onClick={()=>{setSelAth(a.id);setTab("athlete_detail");}}>
                     <div style={{background:"#4ade8015",border:"1px solid #4ade8030",borderRadius:8,padding:"7px 10px"}}><div style={{color:"#7a95b0",fontSize:10,textTransform:"uppercase",letterSpacing:1}}>Best 2k</div><div style={{color:"#4ade80",fontWeight:900,fontSize:20}}>{best?.time??"--"}</div></div>
                     <div style={{background:"#a78bfa15",border:"1px solid #a78bfa30",borderRadius:8,padding:"7px 10px"}}><div style={{color:"#7a95b0",fontSize:10,textTransform:"uppercase",letterSpacing:1}}>W/kg</div><div style={{color:"#a78bfa",fontWeight:900,fontSize:20}}>{wpkg??"--"}</div></div>
                   </div>
-                  <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginTop:8}} onClick={()=>{setSelAth(a.id);setTab("performances");}}>
+                  <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginTop:8}} onClick={()=>{setSelAth(a.id);setTab("athlete_detail");}}>
                     <span style={{color:"#7a95b0",fontSize:12}}>{perfs.length} sessions</span>
                     <span style={{color:wTrend>=0?"#4ade80":"#ef4444",fontSize:13,fontWeight:700}}>{wTrend>=0?"^":"v"} {Math.abs(wTrend)}W</span>
                     <Sparkline data={perfs.map(p=>p.watts)} color="#0ea5e9"/>
                   </div>
-                </>):<div style={{color:"#5a7a9a",fontSize:13,textAlign:"center",padding:"12px 0"}} onClick={()=>{setSelAth(a.id);setTab("performances");}}>Aucune performance</div>}
+                </>):<div style={{color:"#5a7a9a",fontSize:13,textAlign:"center",padding:"12px 0"}} onClick={()=>{setSelAth(a.id);setTab("athlete_detail");}}>Aucune performance</div>}
               </div>);
             })}
           </div>
@@ -1173,6 +1173,181 @@ function CoachSpace({ currentUser, onLogout }) {
           </Modal>}
         </div>)}
 
+        {tab==="athlete_detail"&&selAth&&(()=>{
+          const a=athletes.find(x=>x.id===selAth);
+          if(!a) return null;
+          const perfs=getPerfFor(selAth);
+          const best=getBestTime(perfs), last=getLastPerf(perfs);
+          const bestW=best?concept2WattsFast(best.time):null;
+          const lastW=last?concept2WattsFast(last.time):null;
+          const wpkg=bestW&&a.weight?(bestW/a.weight).toFixed(2):null;
+          const aCrew=getCrewForAthlete(a);
+          const crewMemberList=aCrew?athletes.filter(x=>crewMembers.some(m=>m.crew_id===aCrew.id&&m.athlete_id===x.id)):[];
+          const myBoatCrew=aCrew?boatCrews.find(bc=>bc.crew_id===aCrew.id):null;
+          const myBoat=myBoatCrew?boats.find(b=>b.id===myBoatCrew.boat_id):null;
+          const poste=aCrew?crewMembers.filter(m=>m.crew_id===aCrew.id).findIndex(m=>m.athlete_id===a.id)+1:null;
+          const mySettings=myBoat?boatSettings.filter(s=>s.boat_id===myBoat.id&&s.poste===poste).sort((x,y)=>y.date_reglage.localeCompare(x.date_reglage)):[];
+          const lastSetting=mySettings[0]||null;
+          const ageDisplay=a.date_naissance?calcAgeFromDOB(a.date_naissance):a.age;
+          const ageCat=getAgeCategory(ageDisplay);
+          return(
+            <div style={S.page}>
+              {/* Header */}
+              <div style={{display:"flex",alignItems:"center",gap:12,marginBottom:24}}>
+                <button style={{...S.actionBtn,color:"#0ea5e9",borderColor:"#0ea5e930",padding:"6px 14px",fontSize:13}} onClick={()=>setTab("athletes")}>← Retour</button>
+                <div style={{flex:1}}><h1 style={{...S.ttl,margin:0}}>{a.name}</h1><p style={{...S.sub,margin:0}}>{a.category} — {ageCat}</p></div>
+                <button style={{...S.btnP,background:"#0ea5e9",color:"#0f1923"}} onClick={()=>setEditAth({...a})}>✏️ Modifier</button>
+              </div>
+
+              <div style={{display:"grid",gridTemplateColumns:"320px 1fr",gap:20,marginBottom:20}}>
+                {/* Left: Identity card */}
+                <div style={{display:"flex",flexDirection:"column",gap:16}}>
+                  <div style={{...S.card,borderTop:"3px solid #0ea5e9",textAlign:"center",padding:"24px 20px"}}>
+                    <div style={{position:"relative",display:"inline-block",marginBottom:16}}>
+                      {a.photo_url
+                        ?<img src={a.photo_url} style={{width:90,height:90,borderRadius:"50%",objectFit:"cover",border:"3px solid #0ea5e940"}} onError={e=>{e.target.style.display="none";}}/>
+                        :<div style={{...S.av,width:90,height:90,fontSize:32,background:"#0ea5e920",border:"2px solid #0ea5e940",color:"#0ea5e9",margin:"0 auto"}}>{a.avatar}</div>
+                      }
+                    </div>
+                    <div style={{fontSize:20,fontWeight:900,color:"#f1f5f9",marginBottom:4}}>{a.name}</div>
+                    <div style={{display:"flex",gap:6,justifyContent:"center",flexWrap:"wrap",marginBottom:12}}>
+                      <span style={{...S.badge,background:"#0ea5e920",color:"#0ea5e9",border:"1px solid #0ea5e940"}}>{a.category}</span>
+                      <span style={{...S.badge,background:(AGE_CAT_COLORS[ageCat]||"#374151")+"25",color:AGE_CAT_COLORS[ageCat]||"#94a3b8",border:"1px solid "+(AGE_CAT_COLORS[ageCat]||"#374151")+"40"}}>{ageCat}</span>
+                      <span style={{...S.badge,background:"#a78bfa20",color:"#a78bfa",border:"1px solid #a78bfa40"}}>{a.boat}</span>
+                    </div>
+                    <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8,textAlign:"left"}}>
+                      {[
+                        {l:"Âge",v:ageDisplay?""+ageDisplay+" ans":"--"},
+                        {l:"Poids",v:a.weight?a.weight+" kg":"--"},
+                        {l:"Taille",v:a.taille?a.taille+" cm":"--"},
+                        {l:"Date naiss.",v:a.date_naissance||"--"},
+                        {l:"Genre",v:a.genre||"--"},
+                        {l:"Bateau",v:a.boat||"--"},
+                      ].map((k,i)=>(
+                        <div key={i} style={{background:"#1e293b50",borderRadius:8,padding:"8px 10px"}}>
+                          <div style={{color:"#5a7a9a",fontSize:10,textTransform:"uppercase",letterSpacing:1}}>{k.l}</div>
+                          <div style={{color:"#f1f5f9",fontWeight:700,fontSize:14,marginTop:2}}>{k.v}</div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Mensurations */}
+                  <div style={S.card}>
+                    <div style={{...S.st,marginBottom:14}}>📐 Mensurations</div>
+                    <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8}}>
+                      {[
+                        {l:"Envergure",v:a.envergure?a.envergure+" cm":"--"},
+                        {l:"Long. bras",v:a.longueur_bras?a.longueur_bras+" cm":"--"},
+                        {l:"Larg. épaules",v:a.largeur_epaules?a.largeur_epaules+" cm":"--"},
+                        {l:"Taille assise",v:a.taille_assise?a.taille_assise+" cm":"--"},
+                      ].map((k,i)=>(
+                        <div key={i} style={{background:"#1e293b50",borderRadius:8,padding:"8px 10px"}}>
+                          <div style={{color:"#5a7a9a",fontSize:10,textTransform:"uppercase",letterSpacing:1}}>{k.l}</div>
+                          <div style={{color:"#f1f5f9",fontWeight:700,fontSize:14,marginTop:2}}>{k.v}</div>
+                        </div>
+                      ))}
+                    </div>
+                    {(!a.envergure&&!a.longueur_bras&&!a.largeur_epaules&&!a.taille_assise)&&
+                      <div style={{color:"#5a7a9a",fontSize:12,textAlign:"center",padding:"8px 0",marginTop:4}}>Aucune mensuration renseignée</div>
+                    }
+                  </div>
+                </div>
+
+                {/* Right: Stats + perfs */}
+                <div style={{display:"flex",flexDirection:"column",gap:16}}>
+                  {/* KPIs */}
+                  <div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:12}}>
+                    {[
+                      {l:"Best 2000m",v:best?.time??"--",c:"#4ade80"},
+                      {l:"Watts (best)",v:bestW?bestW+"W":"--",c:"#0ea5e9"},
+                      {l:"W/kg",v:wpkg??"--",c:"#a78bfa"},
+                      {l:"Sessions",v:perfs.length,c:"#f59e0b"},
+                    ].map((k,i)=>(
+                      <div key={i} style={{...S.kpi,padding:"16px"}}>
+                        <div style={{color:k.c,fontSize:22,fontWeight:900}}>{k.v}</div>
+                        <div style={{color:"#7a95b0",fontSize:11,textTransform:"uppercase",letterSpacing:1,marginTop:4}}>{k.l}</div>
+                      </div>
+                    ))}
+                  </div>
+
+                  {/* Dernières perfs */}
+                  <div style={S.card}>
+                    <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:14}}>
+                      <div style={S.st}>⚡ Dernières performances</div>
+                      <button style={{...S.actionBtn,color:"#0ea5e9",borderColor:"#0ea5e930",fontSize:12}} onClick={()=>setTab("performances")}>Voir tout →</button>
+                    </div>
+                    {perfs.length===0
+                      ?<div style={{color:"#5a7a9a",fontSize:13,textAlign:"center",padding:"20px 0"}}>Aucune performance enregistrée</div>
+                      :<div style={{display:"flex",flexDirection:"column",gap:6}}>
+                        {[...perfs].reverse().slice(0,5).map(p=>{
+                          const pw=concept2WattsFast(p.time)||p.watts||0;
+                          const pwkg=pw&&a.weight?(pw/a.weight).toFixed(2):null;
+                          const isBest=p.id===best?.id;
+                          return(
+                            <div key={p.id} style={{display:"flex",alignItems:"center",gap:12,padding:"8px 12px",background:"#1e293b50",borderRadius:8,border:isBest?"1px solid #4ade8040":"1px solid transparent"}}>
+                              {isBest&&<span style={{color:"#4ade80",fontSize:10,fontWeight:700,minWidth:28}}>BEST</span>}
+                              {!isBest&&<span style={{minWidth:28}}/>}
+                              <span style={{color:"#7a95b0",fontSize:12,minWidth:85}}>{p.date}</span>
+                              <span style={{color:"#4ade80",fontWeight:800,fontSize:15,minWidth:55}}>{p.time}</span>
+                              <span style={{color:"#0ea5e9",fontWeight:700}}>⚡{pw}W</span>
+                              {pwkg&&<span style={{color:"#a78bfa",fontSize:12}}>{pwkg} W/kg</span>}
+                              <span style={{marginLeft:"auto",color:"#ef4444",fontSize:12}}>{p.hr?p.hr+" bpm":""}</span>
+                              <span style={{...S.badge,background:`hsl(${(10-p.rpe)*12},80%,40%)`,color:"#fff",fontSize:10}}>{p.rpe}/10</span>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    }
+                  </div>
+
+                  {/* Équipage + Réglages */}
+                  <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:16}}>
+                    <div style={S.card}>
+                      <div style={{...S.st,marginBottom:12}}>🚣 Équipage</div>
+                      {aCrew
+                        ?<>
+                          <div style={{fontWeight:800,color:"#f1f5f9",marginBottom:4}}>{aCrew.name}</div>
+                          <div style={{color:"#7a95b0",fontSize:12,marginBottom:10}}>{aCrew.boat}</div>
+                          <div style={{display:"flex",flexDirection:"column",gap:4}}>
+                            {crewMemberList.map(m=>(
+                              <div key={m.id} style={{display:"flex",alignItems:"center",gap:8,padding:"4px 0"}}>
+                                <div style={{...S.av,width:24,height:24,fontSize:11,flexShrink:0}}>{m.avatar}</div>
+                                <span style={{color:m.id===a.id?"#0ea5e9":"#a8bfd4",fontSize:12,fontWeight:m.id===a.id?700:400}}>{m.name}{m.id===a.id?" ★":""}</span>
+                              </div>
+                            ))}
+                          </div>
+                        </>
+                        :<div style={{color:"#5a7a9a",fontSize:12,textAlign:"center",padding:"12px 0"}}>Aucun équipage</div>
+                      }
+                    </div>
+                    <div style={S.card}>
+                      <div style={{...S.st,marginBottom:12}}>🛶 Réglages bateau</div>
+                      {lastSetting
+                        ?<div style={{display:"flex",flexDirection:"column",gap:6}}>
+                          {[
+                            {l:"Bateau",v:myBoat?.name||"--"},
+                            {l:"Poste",v:poste?"#"+poste:"--"},
+                            {l:"Entraxe",v:lastSetting.entraxe?lastSetting.entraxe+" cm":"--"},
+                            {l:"Long. Pelle",v:lastSetting.longueur_pedale?lastSetting.longueur_pedale+" cm":"--"},
+                            {l:"Levier int.",v:lastSetting.levier_interieur?lastSetting.levier_interieur+" cm":"--"},
+                          ].map((k,i)=>(
+                            <div key={i} style={{display:"flex",justifyContent:"space-between",padding:"4px 0",borderBottom:"1px solid #1e293b50"}}>
+                              <span style={{color:"#5a7a9a",fontSize:12}}>{k.l}</span>
+                              <span style={{color:"#f1f5f9",fontWeight:700,fontSize:12}}>{k.v}</span>
+                            </div>
+                          ))}
+                          <div style={{color:"#7a95b0",fontSize:10,marginTop:4}}>Réglé le {lastSetting.date_reglage}</div>
+                        </div>
+                        :<div style={{color:"#5a7a9a",fontSize:12,textAlign:"center",padding:"12px 0"}}>Aucun réglage</div>
+                      }
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          );
+        })()}
         {tab==="performances"&&(<div style={S.page}>
           <div style={S.ph}><div><h1 style={S.ttl}>Performances</h1><p style={S.sub}>Vue globale</p></div><button style={S.btnP} onClick={()=>{setNP(p=>({...p,athleteId:selAth||""}));setShowAddPerf(true);}}>+ Ajouter</button></div>          <div style={{display:"flex",gap:8,marginBottom:20,flexWrap:"wrap"}}>
             <button style={{...S.fb,...(selAth===null?S.fbon:{})}} onClick={()=>setSelAth(null)}>Tous</button>
