@@ -192,29 +192,25 @@ function getAgeCatFromBirthYear(birthYear) {
   if(!birthYear) return "N/A";
   const y = parseInt(birthYear);
   const currentYear = new Date().getFullYear();
-  if(y >= currentYear - 9)  return "U12";  // jusqu'à 9 ans → U12
-  if(y >= currentYear - 11) return "U12";  // 10-11 ans → U12
-  if(y >= currentYear - 14) return "U15";  // 12-14 ans (2014-2012) → U15
-  if(y >= currentYear - 16) return "U17";  // 15-16 ans (2011-2010) → U17
-  if(y >= currentYear - 18) return "U19";  // 17-18 ans (2009-2008) → U19
-  if(y >= currentYear - 22) return "U23";   // 19-22 ans (2007-2004)
-  if(y >= currentYear - 26) return "Senior"; // 23-26 ans
-  if(y >= currentYear - 35) return "Master A"; // 27-35 ans
-  if(y >= currentYear - 42) return "Master B"; // 36-42 ans
-  if(y >= currentYear - 49) return "Master C"; // 43-49 ans
-  if(y >= currentYear - 54) return "Master D"; // 50-54 ans
-  if(y >= currentYear - 59) return "Master E"; // 55-59 ans
-  return "Master F";                           // 60 ans et plus
+  if(y >= currentYear - 9)  return "U12";
+  if(y >= currentYear - 11) return "U12";
+  if(y >= currentYear - 14) return "U15";
+  if(y >= currentYear - 16) return "U17";
+  if(y >= currentYear - 18) return "U19";
+  if(y >= currentYear - 22) return "U23";
+  if(y >= currentYear - 26) return "Senior";
+  if(y >= currentYear - 35) return "Master A";
+  if(y >= currentYear - 42) return "Master B";
+  if(y >= currentYear - 49) return "Master C";
+  if(y >= currentYear - 54) return "Master D";
+  if(y >= currentYear - 59) return "Master E";
+  return "Master F";
 }
-// Compatibilité : accepte une année de naissance ou un âge (legacy)
 function getAgeCategory(ageOrYear) {
   if(!ageOrYear) return "N/A";
   const v = parseInt(ageOrYear);
-  // Si c'est une année de naissance (> 1900), on utilise la fonction U-cat
   if(v > 1900) return getAgeCatFromBirthYear(v);
-  // Sinon c'est un âge (legacy), on recalcule l'année approximative
-  const approxYear = new Date().getFullYear() - v;
-  return getAgeCatFromBirthYear(approxYear);
+  return getAgeCatFromBirthYear(new Date().getFullYear() - v);
 }
 const AGE_CAT_COLORS = {
   "U12":"#0ea5e9","U15":"#06b6d4","U17":"#3b82f6",
@@ -840,7 +836,6 @@ function CoachSpace({ currentUser, onLogout }) {
   const [editAth,setEditAth] = useState(null);
   const [newPerf,setNP] = useState({athleteId:"",date:"",time:"",hr:"",rpe:"",distance:""});
   const [newAth,setNA]  = useState({name:"",date_naissance:"",genre:"H",weight:"",taille:"",envergure:"",longueur_bras:"",largeur_epaules:"",taille_assise:""});
-  // Body measurements
   const [bodyMeasurements,setBodyMeasurements] = useState([]);
   const [showMorphoForm,setShowMorphoForm] = useState(false);
   const [newMorpho,setNewMorpho] = useState({date:new Date().toISOString().split("T")[0],poids:"",taille:"",masse_grasse:""});
@@ -1397,63 +1392,6 @@ function CoachSpace({ currentUser, onLogout }) {
                   </div>
                 </div>
               </div>
-          {/* Suivi morphologique */}
-              <div style={{...S.card,marginTop:20}}>
-                <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:16}}>
-                  <div style={S.st}>⚖️ Suivi morphologique</div>
-                  <button style={{...S.btnP,background:"#0ea5e9",color:"#0f1923",padding:"7px 16px",fontSize:13}} onClick={()=>setShowMorphoForm(v=>!v)}>{showMorphoForm?"Annuler":"+ Mesure"}</button>
-                </div>
-
-                {showMorphoForm&&(
-                  <div style={{background:"#111827",border:"1px solid #1e293b",borderRadius:12,padding:"16px",marginBottom:16}}>
-                    <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr 1fr",gap:12,marginBottom:12}}>
-                      <FF label="Date"><input style={S.inp} type="date" value={newMorpho.date} onChange={e=>setNewMorpho(p=>({...p,date:e.target.value}))}/></FF>
-                      <FF label="Poids (kg)"><input style={S.inp} type="number" step="0.1" placeholder="72.5" value={newMorpho.poids} onChange={e=>setNewMorpho(p=>({...p,poids:e.target.value}))}/></FF>
-                      <FF label="Taille (cm)"><input style={S.inp} type="number" step="0.5" placeholder="180" value={newMorpho.taille} onChange={e=>setNewMorpho(p=>({...p,taille:e.target.value}))}/></FF>
-                      <FF label="Masse grasse (%)"><input style={S.inp} type="number" step="0.1" placeholder="12.5" value={newMorpho.masse_grasse} onChange={e=>setNewMorpho(p=>({...p,masse_grasse:e.target.value}))}/></FF>
-                    </div>
-                    {newMorpho.poids&&newMorpho.taille&&(()=>{const imc=(parseFloat(newMorpho.poids)/((parseFloat(newMorpho.taille)/100)**2)).toFixed(1);return(
-                      <div style={{padding:"8px 14px",background:"#0ea5e910",border:"1px solid #0ea5e930",borderRadius:8,marginBottom:12,fontSize:13,color:"#0ea5e9",fontWeight:700}}>IMC auto : {imc}</div>
-                    );})()}
-                    <button style={{...S.btnP,background:"#0ea5e9",color:"#0f1923",width:"100%"}} onClick={addMorpho}>Enregistrer la mesure</button>
-                  </div>
-                )}
-
-                {/* Dernières valeurs */}
-                {last&&(
-                  <div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:12,marginBottom:16}}>
-                    {[
-                      {l:"Poids",v:last.poids?last.poids+"kg":"-",c:"#4ade80"},
-                      {l:"Taille",v:last.taille?last.taille+"cm":"-",c:"#0ea5e9"},
-                      {l:"Masse grasse",v:last.masse_grasse?last.masse_grasse+"%":"-",c:"#f59e0b"},
-                      {l:"IMC",v:last.imc??"-",c:"#a78bfa"},
-                    ].map((k,i)=>(
-                      <div key={i} style={{background:"#1e293b50",borderRadius:10,padding:"12px",textAlign:"center"}}>
-                        <div style={{color:"#5a7a9a",fontSize:10,textTransform:"uppercase",letterSpacing:1,marginBottom:4}}>{k.l}</div>
-                        <div style={{color:k.c,fontWeight:900,fontSize:20}}>{k.v}</div>
-                        <div style={{color:"#5a7a9a",fontSize:10,marginTop:2}}>{last.date}</div>
-                      </div>
-                    ))}
-                  </div>
-                )}
-
-                {/* Graphique */}
-                {chartData.length>=2&&(()=>{
-                  return(
-                    <div style={{marginBottom:16}}>
-                      <ResponsiveContainer width="100%" height={180}>
-                        <LineChart data={chartData} margin={{top:4,right:16,left:0,bottom:0}}>
-                          <XAxis dataKey="date" tick={{fill:"#5a7a9a",fontSize:10}} tickLine={false}/>
-                          <YAxis tick={{fill:"#5a7a9a",fontSize:10}} tickLine={false} axisLine={false}/>
-                          <Tooltip contentStyle={{background:"#182030",border:"1px solid #334155",borderRadius:8,fontSize:12}}/>
-                          <Legend wrapperStyle={{fontSize:11,color:"#7a95b0"}}/>
-                          <Line type="monotone" dataKey="Poids" stroke="#4ade80" strokeWidth={2} dot={{r:3}} activeDot={{r:5}}/>
-                          <Line type="monotone" dataKey="MG" stroke="#f59e0b" strokeWidth={2} dot={{r:3}} activeDot={{r:5}}/>
-                          <Line type="monotone" dataKey="IMC" stroke="#a78bfa" strokeWidth={2} dot={{r:3}} activeDot={{r:5}}/>
-                        </LineChart>
-                      </ResponsiveContainer>
-                    </div>
-            </div>
             </div>
           );
         })()}
@@ -1500,32 +1438,83 @@ function CoachSpace({ currentUser, onLogout }) {
             </div>
             <button style={{...S.btnP,width:"100%",marginTop:8}} onClick={saveEditPerf}>Enregistrer</button>
           </Modal>}
-
-
-                {/* Historique liste */}
-                {bodyMeasurements.length>0?(
-                  <div>
-                    <div style={{color:"#5a7a9a",fontSize:11,textTransform:"uppercase",letterSpacing:1,marginBottom:8}}>Historique ({bodyMeasurements.length} mesures)</div>
-                    <div style={{display:"flex",flexDirection:"column",gap:4}}>
-                      {bodyMeasurements.map(m=>(
-                        <div key={m.id} style={{display:"flex",alignItems:"center",gap:12,padding:"8px 12px",background:"#111827",borderRadius:8,fontSize:13}}>
-                          <span style={{color:"#7a95b0",minWidth:90}}>{m.date}</span>
-                          {m.poids&&<span style={{color:"#4ade80",fontWeight:700}}>{m.poids} kg</span>}
-                          {m.taille&&<span style={{color:"#0ea5e9"}}>{m.taille} cm</span>}
-                          {m.masse_grasse&&<span style={{color:"#f59e0b"}}>{m.masse_grasse}% MG</span>}
-                          {m.imc&&<span style={{color:"#a78bfa"}}>IMC {m.imc}</span>}
-                          <button style={{marginLeft:"auto",background:"none",border:"none",color:"#ef444460",cursor:"pointer",fontSize:14}} onClick={()=>deleteMorpho(m.id)}>🗑</button>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                ):(
-                  <div style={{color:"#5a7a9a",fontSize:13,textAlign:"center",padding:"20px 0"}}>Aucune mesure enregistrée</div>
-                )}
-              </div>
-            );
-          })()}
         </div>)}
+
+        {tab==="athlete_detail"&&selAth&&(()=>{
+          const sorted=[...bodyMeasurements].sort((a,b)=>a.date.localeCompare(b.date));
+          const lastM=sorted[sorted.length-1]||null;
+          const chartData=sorted.map(m=>({date:m.date,Poids:m.poids,MG:m.masse_grasse,IMC:m.imc}));
+          return(
+            <div style={{...S.card,marginTop:20}}>
+              <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:16}}>
+                <div style={S.st}>⚖️ Suivi morphologique</div>
+                <button style={{...S.btnP,background:"#0ea5e9",color:"#0f1923",padding:"7px 16px",fontSize:13}} onClick={()=>setShowMorphoForm(v=>!v)}>{showMorphoForm?"Annuler":"+ Mesure"}</button>
+              </div>
+              {showMorphoForm&&(
+                <div style={{background:"#111827",border:"1px solid #1e293b",borderRadius:12,padding:"16px",marginBottom:16}}>
+                  <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr 1fr",gap:12,marginBottom:12}}>
+                    <FF label="Date"><input style={S.inp} type="date" value={newMorpho.date} onChange={e=>setNewMorpho(p=>({...p,date:e.target.value}))}/></FF>
+                    <FF label="Poids (kg)"><input style={S.inp} type="number" step="0.1" placeholder="72.5" value={newMorpho.poids} onChange={e=>setNewMorpho(p=>({...p,poids:e.target.value}))}/></FF>
+                    <FF label="Taille (cm)"><input style={S.inp} type="number" step="0.5" placeholder="180" value={newMorpho.taille} onChange={e=>setNewMorpho(p=>({...p,taille:e.target.value}))}/></FF>
+                    <FF label="Masse grasse (%)"><input style={S.inp} type="number" step="0.1" placeholder="12.5" value={newMorpho.masse_grasse} onChange={e=>setNewMorpho(p=>({...p,masse_grasse:e.target.value}))}/></FF>
+                  </div>
+                  {newMorpho.poids&&newMorpho.taille&&(()=>{const imc=(parseFloat(newMorpho.poids)/((parseFloat(newMorpho.taille)/100)**2)).toFixed(1);return(<div style={{padding:"8px 14px",background:"#0ea5e910",border:"1px solid #0ea5e930",borderRadius:8,marginBottom:12,fontSize:13,color:"#0ea5e9",fontWeight:700}}>IMC auto : {imc}</div>);})()}
+                  <button style={{...S.btnP,background:"#0ea5e9",color:"#0f1923",width:"100%"}} onClick={addMorpho}>Enregistrer la mesure</button>
+                </div>
+              )}
+              {lastM&&(
+                <div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:12,marginBottom:16}}>
+                  {[
+                    {l:"Poids",v:lastM.poids?lastM.poids+"kg":"-",c:"#4ade80"},
+                    {l:"Taille",v:lastM.taille?lastM.taille+"cm":"-",c:"#0ea5e9"},
+                    {l:"Masse grasse",v:lastM.masse_grasse?lastM.masse_grasse+"%":"-",c:"#f59e0b"},
+                    {l:"IMC",v:lastM.imc??"-",c:"#a78bfa"},
+                  ].map((k,i)=>(
+                    <div key={i} style={{background:"#1e293b50",borderRadius:10,padding:"12px",textAlign:"center"}}>
+                      <div style={{color:"#5a7a9a",fontSize:10,textTransform:"uppercase",letterSpacing:1,marginBottom:4}}>{k.l}</div>
+                      <div style={{color:k.c,fontWeight:900,fontSize:20}}>{k.v}</div>
+                      <div style={{color:"#5a7a9a",fontSize:10,marginTop:2}}>{lastM.date}</div>
+                    </div>
+                  ))}
+                </div>
+              )}
+              {chartData.length>=2&&(
+                <div style={{marginBottom:16}}>
+                  <ResponsiveContainer width="100%" height={180}>
+                    <LineChart data={chartData} margin={{top:4,right:16,left:0,bottom:0}}>
+                      <XAxis dataKey="date" tick={{fill:"#5a7a9a",fontSize:10}} tickLine={false}/>
+                      <YAxis tick={{fill:"#5a7a9a",fontSize:10}} tickLine={false} axisLine={false}/>
+                      <Tooltip contentStyle={{background:"#182030",border:"1px solid #334155",borderRadius:8,fontSize:12}}/>
+                      <Legend wrapperStyle={{fontSize:11,color:"#7a95b0"}}/>
+                      <Line type="monotone" dataKey="Poids" stroke="#4ade80" strokeWidth={2} dot={{r:3}} activeDot={{r:5}}/>
+                      <Line type="monotone" dataKey="MG" stroke="#f59e0b" strokeWidth={2} dot={{r:3}} activeDot={{r:5}}/>
+                      <Line type="monotone" dataKey="IMC" stroke="#a78bfa" strokeWidth={2} dot={{r:3}} activeDot={{r:5}}/>
+                    </LineChart>
+                  </ResponsiveContainer>
+                </div>
+              )}
+              {bodyMeasurements.length>0?(
+                <div>
+                  <div style={{color:"#5a7a9a",fontSize:11,textTransform:"uppercase",letterSpacing:1,marginBottom:8}}>Historique ({bodyMeasurements.length} mesures)</div>
+                  <div style={{display:"flex",flexDirection:"column",gap:4}}>
+                    {bodyMeasurements.map(m=>(
+                      <div key={m.id} style={{display:"flex",alignItems:"center",gap:12,padding:"8px 12px",background:"#111827",borderRadius:8,fontSize:13}}>
+                        <span style={{color:"#7a95b0",minWidth:90}}>{m.date}</span>
+                        {m.poids&&<span style={{color:"#4ade80",fontWeight:700}}>{m.poids} kg</span>}
+                        {m.taille&&<span style={{color:"#0ea5e9"}}>{m.taille} cm</span>}
+                        {m.masse_grasse&&<span style={{color:"#f59e0b"}}>{m.masse_grasse}% MG</span>}
+                        {m.imc&&<span style={{color:"#a78bfa"}}>IMC {m.imc}</span>}
+                        <button style={{marginLeft:"auto",background:"none",border:"none",color:"#ef444460",cursor:"pointer",fontSize:14}} onClick={()=>deleteMorpho(m.id)}>🗑</button>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              ):(
+                <div style={{color:"#5a7a9a",fontSize:13,textAlign:"center",padding:"20px 0"}}>Aucune mesure enregistrée</div>
+              )}
+            </div>
+          );
+        })()}
 
         {tab==="compare"&&(<div style={S.page}>
           <div style={S.ph}><div><h1 style={S.ttl}>Comparer</h1><p style={S.sub}>2 à 4 athlètes</p></div></div>
@@ -1566,12 +1555,12 @@ function CoachSpace({ currentUser, onLogout }) {
                   const members = getCrewMembersFor(cr.id);
                   const ages = members.map(a=>a.date_naissance?calcRealAge(a.date_naissance):a.age).filter(Boolean);
                   const avgAge = ages.length ? Math.round(ages.reduce((s,a)=>s+a,0)/ages.length) : null;
-                  const avgW = members.map(a=>{const{best}=aStats(a);return best?concept2WattsFast(best.time):null;}).filter(Boolean);
-                  const avgWatts = avgW.length ? Math.round(avgW.reduce((s,w)=>s+w,0)/avgW.length) : null;
                   const crewCat = avgAge ? getAgeCatFromBirthYear(new Date().getFullYear() - avgAge) : null;
                   const crewCatColor = crewCat ? (AGE_CAT_COLORS[crewCat] || "#94a3b8") : null;
+                  const avgW = members.map(a=>{const{best}=aStats(a);return best?concept2WattsFast(best.time):null;}).filter(Boolean);
+                  const avgWatts = avgW.length ? Math.round(avgW.reduce((s,w)=>s+w,0)/avgW.length) : null;
                   return (<>
-                    <div style={{color:"#7a95b0",fontSize:12,marginBottom:8,display:"flex",gap:12,flexWrap:"wrap",alignItems:"center"}}>
+                    <div style={{color:"#7a95b0",fontSize:12,marginBottom:8,display:"flex",gap:12,flexWrap:"wrap"}}>
                       <span>{cr.boat} · {members.length} rameur{members.length>1?"s":""}</span>
                       {avgAge&&<span style={{color:"#f59e0b"}}>⌀ {avgAge} ans</span>}
                       {crewCat&&<span style={{fontSize:10,padding:"2px 8px",borderRadius:10,background:crewCatColor+"25",color:crewCatColor,fontWeight:700,border:"1px solid "+crewCatColor+"40"}}>{crewCat}</span>}
@@ -1847,9 +1836,6 @@ function AthleteSpace({ currentUser, onLogout }) {
   const [editForm,setEditForm] = useState({});
   const [newPerf,setNP] = useState({date:"",time:"",watts:"",spm:"",hr:"",rpe:"",distance:""});
   const [toast,setToast] = useState(null);
-  const [myMorpho,setMyMorpho] = useState([]);
-  const [showMorphoFormAth,setShowMorphoFormAth] = useState(false);
-  const [newMorphoAth,setNewMorphoAth] = useState({date:new Date().toISOString().split("T")[0],poids:"",taille:"",masse_grasse:""});
 
   const load = useCallback(async()=>{
     setLoading(true);
@@ -1861,27 +1847,11 @@ function AthleteSpace({ currentUser, onLogout }) {
       setMyPerfs((perfs||[]).filter(p=>p.athlete_id===currentUser.athlete_id).sort((a,b)=>a.date.localeCompare(b.date)));
       setCrews(cr||[]); setCrewMembers(cm||[]); setSessions(sess||[]); setSessionCrews(sc||[]);
       setBoats(bt||[]); setBoatCrews(bc||[]); setBoatSettings(bs||[]);
-      if(me) {
-        setEditForm({weight:me.weight,age:me.age});
-        api.getBodyMeasurements(me.id).then(d=>setMyMorpho(d||[])).catch(()=>{});
-      }
+      if(me) setEditForm({weight:me.weight,age:me.age});
     } catch(e){ console.error("Load error:", e); }
     setLoading(false);
   },[currentUser.athlete_id]);
   useEffect(()=>{ load(); },[]);
-
-  async function addMorphoAth(athleteId) {
-    if(!newMorphoAth.poids && !newMorphoAth.taille) return;
-    const poids = newMorphoAth.poids ? parseFloat(newMorphoAth.poids) : null;
-    const taille = newMorphoAth.taille ? parseFloat(newMorphoAth.taille) : null;
-    const imc = (poids && taille) ? parseFloat((poids / ((taille/100)**2)).toFixed(1)) : null;
-    const masse_grasse = newMorphoAth.masse_grasse ? parseFloat(newMorphoAth.masse_grasse) : null;
-    await api.createBodyMeasurement({athlete_id:athleteId, date:newMorphoAth.date, poids, taille, masse_grasse, imc});
-    setToast({m:"Mesure enregistrée v",t:"success"});
-    setNewMorphoAth({date:new Date().toISOString().split("T")[0],poids:"",taille:"",masse_grasse:""});
-    setShowMorphoFormAth(false);
-    api.getBodyMeasurements(athleteId).then(d=>setMyMorpho(d||[]));
-  }
 
   const myCrew = athlete ? crews.find(c=>crewMembers.some(m=>m.crew_id===c.id&&m.athlete_id===athlete.id)) : null;
   const crewMates = myCrew ? allAthletes.filter(a=>crewMembers.some(m=>m.crew_id===myCrew.id&&m.athlete_id===a.id)&&a.id!==athlete?.id) : [];
@@ -1941,80 +1911,6 @@ function AthleteSpace({ currentUser, onLogout }) {
             {!myPerfs.length&&<div style={{...S.card,textAlign:"center",color:"#5a7a9a",padding:"28px"}}>Aucune performance</div>}
           </div>
           <button style={{...S.btnP,background:"#a78bfa",color:"#0f1923"}} onClick={()=>setShowAddPerf(true)}>+ Ajouter une performance</button>
-          {/* ── Suivi morphologique athlète ── */}
-          {(()=>{
-            const sorted=[...myMorpho].sort((a,b)=>a.date.localeCompare(b.date));
-            const lastM=sorted[sorted.length-1]||null;
-            const chartData=sorted.map(m=>({date:m.date,Poids:m.poids,MG:m.masse_grasse,IMC:m.imc}));
-            return(
-              <div style={{...S.card,marginTop:24,borderColor:"#2d1b4e"}}>
-                <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:16}}>
-                  <div style={{...S.st}}>⚖️ Mon suivi morpho</div>
-                  <button style={{...S.btnP,background:"#a78bfa",color:"#0f1923",padding:"7px 16px",fontSize:13}} onClick={()=>setShowMorphoFormAth(v=>!v)}>{showMorphoFormAth?"Annuler":"+ Mesure"}</button>
-                </div>
-                {showMorphoFormAth&&(
-                  <div style={{background:"#111827",border:"1px solid #2d1b4e",borderRadius:12,padding:"16px",marginBottom:16}}>
-                    <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12,marginBottom:12}}>
-                      <FF label="Date"><input style={S.inp} type="date" value={newMorphoAth.date} onChange={e=>setNewMorphoAth(p=>({...p,date:e.target.value}))}/></FF>
-                      <FF label="Poids (kg)"><input style={S.inp} type="number" step="0.1" placeholder="72.5" value={newMorphoAth.poids} onChange={e=>setNewMorphoAth(p=>({...p,poids:e.target.value}))}/></FF>
-                      <FF label="Taille (cm)"><input style={S.inp} type="number" step="0.5" placeholder="180" value={newMorphoAth.taille} onChange={e=>setNewMorphoAth(p=>({...p,taille:e.target.value}))}/></FF>
-                      <FF label="Masse grasse (%)"><input style={S.inp} type="number" step="0.1" placeholder="12.5" value={newMorphoAth.masse_grasse} onChange={e=>setNewMorphoAth(p=>({...p,masse_grasse:e.target.value}))}/></FF>
-                    </div>
-                    {newMorphoAth.poids&&newMorphoAth.taille&&(()=>{const imc=(parseFloat(newMorphoAth.poids)/((parseFloat(newMorphoAth.taille)/100)**2)).toFixed(1);return(
-                      <div style={{padding:"8px 14px",background:"#a78bfa10",border:"1px solid #a78bfa30",borderRadius:8,marginBottom:12,fontSize:13,color:"#a78bfa",fontWeight:700}}>IMC auto : {imc}</div>
-                    );})()}
-                    <button style={{...S.btnP,background:"#a78bfa",color:"#0f1923",width:"100%"}} onClick={()=>addMorphoAth(athlete.id)}>Enregistrer</button>
-                  </div>
-                )}
-                {lastM&&(
-                  <div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:10,marginBottom:16}}>
-                    {[
-                      {l:"Poids",v:lastM.poids?lastM.poids+"kg":"-",c:"#4ade80"},
-                      {l:"Taille",v:lastM.taille?lastM.taille+"cm":"-",c:"#0ea5e9"},
-                      {l:"Masse grasse",v:lastM.masse_grasse?lastM.masse_grasse+"%":"-",c:"#f59e0b"},
-                      {l:"IMC",v:lastM.imc??"-",c:"#a78bfa"},
-                    ].map((k,i)=>(
-                      <div key={i} style={{background:"#1e293b50",borderRadius:10,padding:"10px",textAlign:"center"}}>
-                        <div style={{color:"#5a7a9a",fontSize:10,textTransform:"uppercase",letterSpacing:1,marginBottom:4}}>{k.l}</div>
-                        <div style={{color:k.c,fontWeight:900,fontSize:18}}>{k.v}</div>
-                        <div style={{color:"#5a7a9a",fontSize:10,marginTop:2}}>{lastM.date}</div>
-                      </div>
-                    ))}
-                  </div>
-                )}
-                {chartData.length>=2&&(
-                  <div style={{marginBottom:14}}>
-                    <ResponsiveContainer width="100%" height={160}>
-                      <LineChart data={chartData} margin={{top:4,right:16,left:0,bottom:0}}>
-                        <XAxis dataKey="date" tick={{fill:"#5a7a9a",fontSize:10}} tickLine={false}/>
-                        <YAxis tick={{fill:"#5a7a9a",fontSize:10}} tickLine={false} axisLine={false}/>
-                        <Tooltip contentStyle={{background:"#182030",border:"1px solid #334155",borderRadius:8,fontSize:12}}/>
-                        <Legend wrapperStyle={{fontSize:11,color:"#7a95b0"}}/>
-                        <Line type="monotone" dataKey="Poids" stroke="#4ade80" strokeWidth={2} dot={{r:3}}/>
-                        <Line type="monotone" dataKey="MG" stroke="#f59e0b" strokeWidth={2} dot={{r:3}}/>
-                        <Line type="monotone" dataKey="IMC" stroke="#a78bfa" strokeWidth={2} dot={{r:3}}/>
-                      </LineChart>
-                    </ResponsiveContainer>
-                  </div>
-                )}
-                {myMorpho.length>0?(
-                  <div style={{display:"flex",flexDirection:"column",gap:4}}>
-                    {[...myMorpho].map(m=>(
-                      <div key={m.id} style={{display:"flex",alignItems:"center",gap:12,padding:"7px 12px",background:"#111827",borderRadius:8,fontSize:12}}>
-                        <span style={{color:"#7a95b0",minWidth:90}}>{m.date}</span>
-                        {m.poids&&<span style={{color:"#4ade80",fontWeight:700}}>{m.poids} kg</span>}
-                        {m.taille&&<span style={{color:"#0ea5e9"}}>{m.taille} cm</span>}
-                        {m.masse_grasse&&<span style={{color:"#f59e0b"}}>{m.masse_grasse}% MG</span>}
-                        {m.imc&&<span style={{color:"#a78bfa"}}>IMC {m.imc}</span>}
-                      </div>
-                    ))}
-                  </div>
-                ):(
-                  <div style={{color:"#5a7a9a",fontSize:13,textAlign:"center",padding:"16px 0"}}>Aucune mesure — commence ton suivi !</div>
-                )}
-              </div>
-            );
-          })()}
           {editing&&<Modal title="Éditer ma fiche" onClose={()=>setEditing(false)}>
             <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12}}>
               <FF label="Âge"><input style={S.inp} type="number" value={editForm.age} onChange={e=>setEditForm(p=>({...p,age:e.target.value}))}/></FF>
