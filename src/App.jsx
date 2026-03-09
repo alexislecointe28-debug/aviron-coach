@@ -162,13 +162,14 @@ function concept2Watts(timeStr) {
   return Math.round(2.80 / Math.pow(pace/500, 3)); // returns watts
 }
 function concept2WattsFast(timeStr) {
-  // More accurate: P = 270.74 / (t/4/500)^3  where t = 2k time in seconds
+  // Formule Concept2 officielle: P = 2.80 / (pace_500m / 500)^3
+  // pace_500m = temps total 2000m / 4 (secondes par 500m)
   if(!timeStr || !timeStr.includes(":")) return null;
   const [m,s] = timeStr.split(":").map(Number);
   const t2k = m*60 + s;
-  const pace = t2k / 4; // seconds per 500m
-  if(!pace) return null;
-  return Math.round(270.74 / Math.pow(pace, 3));
+  const pace = t2k / 4; // secondes par 500m
+  if(!pace || pace <= 0) return null;
+  return Math.round(2.80 / Math.pow(pace / 500, 3));
 }
 function getBestTime(perfs) { if(!perfs.length)return null; return perfs.reduce((b,p)=>timeToSeconds(p.time)<timeToSeconds(b.time)?p:b); }
 function getLastPerf(perfs) { if(!perfs.length)return null; return [...perfs].sort((a,b)=>b.date.localeCompare(a.date))[0]; }
@@ -370,7 +371,11 @@ function Toast({ message, type="success", onDone }) {
 // LOGIN
 // ==========================================================================================================================================================
 function Login({ onLogin }) {
+  const [mode,setMode]=useState("login"); // "login" | "register"
   const [email,setEmail]=useState(""); const [pwd,setPwd]=useState(""); const [err,setErr]=useState(""); const [loading,setLoading]=useState(false);
+  const [reg,setReg]=useState({name:"",email:"",password:"",password2:"",code:""});
+  const [regOk,setRegOk]=useState(false);
+
   async function login() {
     setErr(""); setLoading(true);
     try {
@@ -380,22 +385,111 @@ function Login({ onLogin }) {
     } catch(e) { setErr("Erreur de connexion. Vérifie ta configuration Supabase."); }
     setLoading(false);
   }
+
+  async function register() {
+    setErr("");
+    if(!reg.name||!reg.email||!reg.password||!reg.code) { setErr("Tous les champs sont requis."); return; }
+    if(reg.password!==reg.password2) { setErr("Les mots de passe ne correspondent pas."); return; }
+    if(reg.password.length<6) { setErr("Mot de passe trop court (6 caractères minimum)."); return; }
+    setLoading(true);
+    try {
+      // Vérifier le code d'invitation
+      const codes = await api.checkInviteCode(reg.code.trim().toUpperCase());
+      if(!codes||codes.length===0) { setErr("Code d'invitation invalide ou expiré."); setLoading(false); return; }
+      const inviteCode = codes[0];
+      if(inviteCode.max_uses && inviteCode.uses_count >= inviteCode.max_uses) { setErr("Ce code d'invitation a atteint sa limite d'utilisation."); setLoading(false); return; }
+      // Créer le compte dans la table users (ancien système compatible)
+      const role = inviteCode.role || "athlete";
+      const existing = await api.sb_raw(`users?email=eq.${encodeURIComponent(reg.email)}&select=id`);
+      const existList = await existing.json();
+      if(existList.length>0) { setErr("Un compte avec cet email existe déjà."); setLoading(false); return; }
+      const res = await fetch(`${SUPABASE_URL}/rest/v1/users`, {
+        method:"POST",
+        headers:{"Content-Type":"application/json","apikey":SUPABASE_KEY,"Authorization":`Bearer ${SUPABASE_KEY}`,"Prefer":"return=representation"},
+        body:JSON.stringify({name:reg.name,email:reg.email,password:reg.password,role,active:true,athlete_id:null})
+      });
+      if(!res.ok) throw new Error("Erreur création compte");
+      const newUser = await res.json();
+      // Si athlète → créer automatiquement la fiche athlète et lier
+      if(role==="athlete" && newUser && newUser[0]) {
+        try {
+          const AVATARS=["🚣","🏅","💪","⚡","🌊","🎯"];
+          const ath = await api.createAthlete({
+            name: reg.name,
+            category: "Senior",
+            weight: 0,
+            age: 0,
+            boat: "1x",
+            avatar: AVATARS[Math.floor(Math.random()*AVATARS.length)],
+            active: true
+          });
+          if(ath && ath[0]) {
+            await api.updateUser(newUser[0].id, {athlete_id: ath[0].id});
+          }
+        } catch(e) { console.warn("Athlete auto-create:", e); }
+      }
+      // Incrémenter uses_count
+      await api.updateInviteCode(inviteCode.id,{uses_count:(inviteCode.uses_count||0)+1});
+      setRegOk(true);
+    } catch(e) { setErr("Erreur : "+e.message); }
+    setLoading(false);
+  }
+
+  const logoBlock = (
+    <div style={{textAlign:"center",marginBottom:48}}>
+      <div style={{fontSize:52,marginBottom:12}}>~</div>
+      <div style={{fontSize:22,fontWeight:900,color:"#0ea5e9",letterSpacing:1}}>AvironCoach</div>
+      <div style={{fontSize:11,color:"#5a7a9a",letterSpacing:3,textTransform:"uppercase",marginTop:4}}>Performance Track</div>
+    </div>
+  );
+
+  if(regOk) return (
+    <div style={{minHeight:"100vh",width:"100%",background:"#0f1923",display:"flex",alignItems:"center",justifyContent:"center",fontFamily:"-apple-system,BlinkMacSystemFont,'Segoe UI','Inter',sans-serif"}}>
+      <div style={{width:420}}>{logoBlock}
+        <div style={{background:"#182030",border:"1px solid #1e293b",borderRadius:16,padding:"36px 32px",textAlign:"center"}}>
+          <div style={{fontSize:40,marginBottom:16}}>✓</div>
+          <div style={{fontSize:18,fontWeight:800,color:"#4ade80",marginBottom:8}}>Compte créé !</div>
+          <div style={{color:"#7a95b0",fontSize:14,marginBottom:24}}>Tu peux maintenant te connecter avec ton email et ton mot de passe.</div>
+          <button style={{...S.btnP,width:"100%",padding:"12px"}} onClick={()=>{setMode("login");setRegOk(false);setEmail(reg.email);}}>Se connecter →</button>
+        </div>
+      </div>
+    </div>
+  );
+
   return (
     <div style={{minHeight:"100vh",width:"100%",background:"#0f1923",display:"flex",alignItems:"center",justifyContent:"center",fontFamily:"-apple-system,BlinkMacSystemFont,'Segoe UI','Inter',sans-serif"}}>
-      <div style={{width:420}}>
-        <div style={{textAlign:"center",marginBottom:48}}>
-          <div style={{fontSize:52,marginBottom:12}}>~</div>
-          <div style={{fontSize:22,fontWeight:900,color:"#0ea5e9",letterSpacing:1}}>AvironCoach</div>
-          <div style={{fontSize:11,color:"#5a7a9a",letterSpacing:3,textTransform:"uppercase",marginTop:4}}>Performance Track</div>
-        </div>
+      <div style={{width:420}}>{logoBlock}
         <div style={{background:"#182030",border:"1px solid #1e293b",borderRadius:16,padding:"36px 32px"}}>
-          <div style={{fontSize:18,fontWeight:800,color:"#f1f5f9",marginBottom:4}}>Connexion</div>
-          <div style={{fontSize:13,color:"#5a7a9a",marginBottom:28}}>Admin - Coach - Athlète</div>
-          <FF label="Email"><input style={{...S.inp,width:"100%"}} type="email" placeholder="email@club.fr" value={email} onChange={e=>setEmail(e.target.value)} onKeyDown={e=>e.key==="Enter"&&login()}/></FF>
-          <FF label="Mot de passe / PIN"><input style={{...S.inp,width:"100%"}} type="password" placeholder="****" value={pwd} onChange={e=>setPwd(e.target.value)} onKeyDown={e=>e.key==="Enter"&&login()}/></FF>
-          {err&&<div style={{color:"#ef4444",fontSize:13,marginBottom:14,padding:"8px 12px",background:"#ef444415",borderRadius:8,border:"1px solid #ef444430"}}>{err}</div>}
-          <button style={{...S.btnP,width:"100%",marginTop:4,padding:"12px",fontSize:14,opacity:loading?0.7:1}} onClick={login} disabled={loading}>{loading?"Connexion...":"Se connecter ->"}</button>
+          {/* Toggle login/register */}
+          <div style={{display:"flex",gap:0,marginBottom:28,background:"#111827",borderRadius:10,padding:3}}>
+            {[["login","Connexion"],["register","Créer un compte"]].map(([m,l])=>(
+              <button key={m} style={{flex:1,padding:"8px",borderRadius:8,border:"none",cursor:"pointer",fontSize:13,fontWeight:700,transition:"all 0.15s",
+                background:mode===m?"#0ea5e9":"transparent",color:mode===m?"#fff":"#5a7a9a",fontFamily:"inherit"}}
+                onClick={()=>{setMode(m);setErr("");}}>
+                {l}
+              </button>
+            ))}
+          </div>
 
+          {mode==="login"&&(<>
+            <FF label="Email"><input style={{...S.inp,width:"100%"}} type="email" placeholder="email@club.fr" value={email} onChange={e=>setEmail(e.target.value)} onKeyDown={e=>e.key==="Enter"&&login()}/></FF>
+            <FF label="Mot de passe"><input style={{...S.inp,width:"100%"}} type="password" placeholder="••••••" value={pwd} onChange={e=>setPwd(e.target.value)} onKeyDown={e=>e.key==="Enter"&&login()}/></FF>
+            {err&&<div style={{color:"#ef4444",fontSize:13,marginBottom:14,padding:"8px 12px",background:"#ef444415",borderRadius:8,border:"1px solid #ef444430"}}>{err}</div>}
+            <button style={{...S.btnP,width:"100%",marginTop:4,padding:"12px",fontSize:14,opacity:loading?0.7:1}} onClick={login} disabled={loading}>{loading?"Connexion...":"Se connecter →"}</button>
+          </>)}
+
+          {mode==="register"&&(<>
+            <FF label="Nom complet"><input style={{...S.inp,width:"100%"}} placeholder="Prénom Nom" value={reg.name} onChange={e=>setReg(r=>({...r,name:e.target.value}))}/></FF>
+            <FF label="Email"><input style={{...S.inp,width:"100%"}} type="email" placeholder="email@club.fr" value={reg.email} onChange={e=>setReg(r=>({...r,email:e.target.value}))}/></FF>
+            <FF label="Mot de passe"><input style={{...S.inp,width:"100%"}} type="password" placeholder="6 caractères minimum" value={reg.password} onChange={e=>setReg(r=>({...r,password:e.target.value}))}/></FF>
+            <FF label="Confirmer le mot de passe"><input style={{...S.inp,width:"100%"}} type="password" placeholder="••••••" value={reg.password2} onChange={e=>setReg(r=>({...r,password2:e.target.value}))}/></FF>
+            <FF label="Code d'invitation">
+              <input style={{...S.inp,width:"100%",textTransform:"uppercase",letterSpacing:2}} placeholder="ex: CLUB2026" value={reg.code} onChange={e=>setReg(r=>({...r,code:e.target.value}))} onKeyDown={e=>e.key==="Enter"&&register()}/>
+            </FF>
+            <div style={{fontSize:11,color:"#5a7a9a",marginBottom:16,marginTop:-6}}>Code fourni par ton entraîneur</div>
+            {err&&<div style={{color:"#ef4444",fontSize:13,marginBottom:14,padding:"8px 12px",background:"#ef444415",borderRadius:8,border:"1px solid #ef444430"}}>{err}</div>}
+            <button style={{...S.btnP,width:"100%",padding:"12px",fontSize:14,opacity:loading?0.7:1}} onClick={register} disabled={loading}>{loading?"Création...":"Créer mon compte →"}</button>
+          </>)}
         </div>
       </div>
     </div>
@@ -992,16 +1086,22 @@ function CoachSpace({ currentUser, onLogout }) {
           <div style={{overflowX:"auto",borderRadius:12,border:"1px solid #1e293b"}}>
             <table style={{width:"100%",borderCollapse:"collapse",background:"#182030"}}>
               <thead><tr>{["Athlète","Date","2000m","Best 2k","W/kg","Watts","FC","RPE","Km",""].map(h=><th key={h} style={S.th}>{h}</th>)}</tr></thead>
-              <tbody>{performances.filter(p=>selAth===null||p.athlete_id===selAth).sort((a,b)=>b.date.localeCompare(a.date)).map(p=>{const a=athletes.find(x=>x.id===p.athlete_id);const best=getBestTime(getPerfFor(p.athlete_id));return(<tr key={p.id} style={{borderBottom:"1px solid #1e293b"}}><td style={S.td}><div style={{display:"flex",alignItems:"center",gap:8}}><div style={{...S.av,width:28,height:28,fontSize:11}}>{a?.avatar}</div>{a?.name}</div></td><td style={{...S.td,color:"#7a95b0"}}>{p.date}</td><td style={{...S.td,color:"#0ea5e9",fontWeight:700}}>{p.time}</td><td style={{...S.td,color:"#4ade80",fontWeight:700}}>{best?.time??"-"}</td><td style={{...S.td,color:"#a78bfa",fontWeight:700}}>{a&&a.weight?(p.watts/a.weight).toFixed(2):"--"}</td><td style={{...S.td,color:"#0ea5e9"}}>{concept2WattsFast(p.time)||p.watts}W</td><td style={{...S.td,color:"#ef4444"}}>{p.hr}</td><td style={S.td}><div style={{...S.badge,background:`hsl(${(10-p.rpe)*12},80%,40%)`,color:"#fff"}}>{p.rpe}/10</div></td><td style={{...S.td,color:"#f97316"}}>{p.distance}km</td><td style={S.td}><div style={{display:"flex",gap:4}}><button style={{...S.actionBtn,color:"#0ea5e9",borderColor:"#22d3ee30"}} onClick={()=>setEditPerf({...p})}>✏️</button><button style={{...S.actionBtn,color:"#ef4444",borderColor:"#ef444430"}} onClick={async()=>{await api.deletePerf(p.id);load();setToast({m:"Performance supprimée",t:"success"});}}>✕</button></div></td></tr>);})}
+              <tbody>{performances.filter(p=>selAth===null||p.athlete_id===selAth).sort((a,b)=>b.date.localeCompare(a.date)).map(p=>{const a=athletes.find(x=>x.id===p.athlete_id);const best=getBestTime(getPerfFor(p.athlete_id));return(<tr key={p.id} style={{borderBottom:"1px solid #1e293b"}}><td style={S.td}><div style={{display:"flex",alignItems:"center",gap:8}}><div style={{...S.av,width:28,height:28,fontSize:11}}>{a?.avatar}</div>{a?.name}</div></td><td style={{...S.td,color:"#7a95b0"}}>{p.date}</td><td style={{...S.td,color:"#0ea5e9",fontWeight:700}}>{p.time}</td><td style={{...S.td,color:"#4ade80",fontWeight:700}}>{best?.time??"-"}</td><td style={{...S.td,color:"#a78bfa",fontWeight:700}}>{a&&a.weight?((concept2WattsFast(p.time)||p.watts)/a.weight).toFixed(2):"--"}</td><td style={{...S.td,color:"#0ea5e9"}}>{concept2WattsFast(p.time)||p.watts}W</td><td style={{...S.td,color:"#ef4444"}}>{p.hr}</td><td style={S.td}><div style={{...S.badge,background:`hsl(${(10-p.rpe)*12},80%,40%)`,color:"#fff"}}>{p.rpe}/10</div></td><td style={{...S.td,color:"#f97316"}}>{p.distance}km</td><td style={S.td}><div style={{display:"flex",gap:4}}><button style={{...S.actionBtn,color:"#0ea5e9",borderColor:"#22d3ee30"}} onClick={()=>setEditPerf({...p})}>✏️</button><button style={{...S.actionBtn,color:"#ef4444",borderColor:"#ef444430"}} onClick={async()=>{await api.deletePerf(p.id);load();setToast({m:"Performance supprimée",t:"success"});}}>✕</button></div></td></tr>);})}
               </tbody>
             </table>
           </div>
           {showAddPerf&&<Modal title="Nouvelle performance" onClose={()=>setShowAddPerf(false)}>
             <FF label="Athlète"><select style={S.inp} value={newPerf.athleteId} onChange={e=>setNP(p=>({...p,athleteId:e.target.value}))}><option value="">Sélectionner...</option>{athletes.map(a=><option key={a.id} value={a.id}>{a.name}</option>)}</select></FF>
             <FF label="Date"><input style={S.inp} type="date" value={newPerf.date} onChange={e=>setNP(p=>({...p,date:e.target.value}))}/></FF>
+            <FF label="Temps 2000m"><input style={S.inp} placeholder="6:45.0" value={newPerf.time} onChange={e=>setNP(p=>({...p,time:e.target.value}))}/></FF>
+            {newPerf.time&&concept2WattsFast(newPerf.time)&&(()=>{const w=concept2WattsFast(newPerf.time);const ath=athletes.find(a=>a.id==newPerf.athleteId);const wpkgVal=ath?.weight?(w/ath.weight).toFixed(2):null;return(
+              <div style={{padding:"10px 14px",background:"#0ea5e910",border:"1px solid #0ea5e930",borderRadius:8,marginBottom:12,display:"flex",gap:16,alignItems:"center"}}>
+                <span style={{color:"#0ea5e9",fontWeight:700,fontSize:15}}>⚡ {w} W</span>
+                {wpkgVal&&<span style={{color:"#a78bfa",fontWeight:700,fontSize:15}}>= {wpkgVal} W/kg</span>}
+                <span style={{color:"#5a7a9a",fontSize:11,marginLeft:"auto"}}>Concept2 auto</span>
+              </div>
+            );})()}
             <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12}}>
-              <FF label="Temps 2000m"><input style={S.inp} placeholder="6:45" value={newPerf.time} onChange={e=>setNP(p=>({...p,time:e.target.value}))}/></FF>
-              <FF label="Watts"><input style={S.inp} type="number" value={newPerf.watts} onChange={e=>setNP(p=>({...p,watts:e.target.value}))}/></FF>
               <FF label="SPM"><input style={S.inp} type="number" value={newPerf.spm} onChange={e=>setNP(p=>({...p,spm:e.target.value}))}/></FF>
               <FF label="FC"><input style={S.inp} type="number" value={newPerf.hr} onChange={e=>setNP(p=>({...p,hr:e.target.value}))}/></FF>
               <FF label="RPE"><input style={S.inp} type="number" min="1" max="10" value={newPerf.rpe} onChange={e=>setNP(p=>({...p,rpe:e.target.value}))}/></FF>
@@ -1012,7 +1112,7 @@ function CoachSpace({ currentUser, onLogout }) {
           {editPerf&&<Modal title="Éditer la performance" onClose={()=>setEditPerf(null)}>
             <FF label="Date"><input style={S.inp} type="date" value={editPerf.date} onChange={e=>setEditPerf(p=>({...p,date:e.target.value}))}/></FF>
             <FF label="Temps 2000m"><input style={S.inp} placeholder="6:45" value={editPerf.time} onChange={e=>setEditPerf(p=>({...p,time:e.target.value}))}/></FF>
-            {editPerf.time&&concept2WattsFast(editPerf.time)&&<div style={{padding:"8px 12px",background:"#0ea5e910",border:"1px solid #0ea5e930",borderRadius:8,marginBottom:12,fontSize:13,color:"#0ea5e9",fontWeight:700}}>⚡ {concept2WattsFast(editPerf.time)} W (Concept2)</div>}
+            {editPerf.time&&concept2WattsFast(editPerf.time)&&(()=>{const w=concept2WattsFast(editPerf.time);const ath=athletes.find(a=>a.id===editPerf.athlete_id);const wpkgVal=ath?.weight?(w/ath.weight).toFixed(2):null;return(<div style={{padding:"10px 14px",background:"#0ea5e910",border:"1px solid #0ea5e930",borderRadius:8,marginBottom:12,display:"flex",gap:16,alignItems:"center"}}><span style={{color:"#0ea5e9",fontWeight:700,fontSize:15}}>⚡ {w} W</span>{wpkgVal&&<span style={{color:"#a78bfa",fontWeight:700,fontSize:15}}>= {wpkgVal} W/kg</span>}<span style={{color:"#5a7a9a",fontSize:11,marginLeft:"auto"}}>Concept2 auto</span></div>);})()}
             <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12}}>
               <FF label="FC (bpm)"><input style={S.inp} type="number" value={editPerf.hr} onChange={e=>setEditPerf(p=>({...p,hr:e.target.value}))}/></FF>
               <FF label="RPE (1-10)"><input style={S.inp} type="number" min="1" max="10" value={editPerf.rpe} onChange={e=>setEditPerf(p=>({...p,rpe:e.target.value}))}/></FF>
@@ -1360,14 +1460,16 @@ function AthleteSpace({ currentUser, onLogout }) {
   const crewMates = myCrew ? allAthletes.filter(a=>crewMembers.some(m=>m.crew_id===myCrew.id&&m.athlete_id===a.id)&&a.id!==athlete?.id) : [];
   const mySessions = sessions.filter(s=>myCrew&&sessionCrews.some(sc=>sc.session_id===s.id&&sc.crew_id===myCrew.id));
   const best=getBestTime(myPerfs), last=getLastPerf(myPerfs);
-  const wpkg=last&&athlete?.weight?(last.watts/athlete.weight).toFixed(2):null;
+  const lastWatts = last ? (concept2WattsFast(last.time)||last.watts||0) : null;
+  const wpkg = lastWatts&&athlete?.weight ? (lastWatts/athlete.weight).toFixed(2) : null;
 
   async function saveEdit() {
     await api.updateAthlete(athlete.id,{weight:+editForm.weight,boat:editForm.boat,age:+editForm.age});
     setToast({m:"Fiche mise à jour v",t:"success"}); load(); setEditing(false);
   }
   async function addPerf() {
-    await api.createPerf({athlete_id:currentUser.athlete_id,date:newPerf.date,time:newPerf.time,watts:+newPerf.watts,spm:+newPerf.spm,hr:+newPerf.hr,rpe:+newPerf.rpe,distance:+newPerf.distance});
+    const watts = concept2WattsFast(newPerf.time) || 0;
+    await api.createPerf({athlete_id:currentUser.athlete_id,date:newPerf.date,time:newPerf.time,watts,spm:+newPerf.spm,hr:+newPerf.hr,rpe:+newPerf.rpe,distance:+newPerf.distance});
     setToast({m:"Performance enregistrée v",t:"success"}); load();
     setNP({date:"",time:"",watts:"",spm:"",hr:"",rpe:"",distance:""}); setShowAddPerf(false);
   }
@@ -1399,7 +1501,7 @@ function AthleteSpace({ currentUser, onLogout }) {
               <div style={{flex:1}}><div style={{fontSize:22,fontWeight:900,color:"#f1f5f9"}}>{athlete.name}</div><div style={{color:"#7a95b0",fontSize:14,marginTop:2}}>{athlete.category} - {athlete.boat} - {athlete.age}ans - {athlete.weight}kg</div></div>
               <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12}}>
                 <div style={{background:"#4ade8015",border:"1px solid #4ade8030",borderRadius:10,padding:"12px 18px",textAlign:"center"}}><div style={{color:"#7a95b0",fontSize:10,textTransform:"uppercase",letterSpacing:1}}>Best 2000m</div><div style={{color:"#4ade80",fontWeight:900,fontSize:26}}>{best?.time??"--"}</div><div style={{color:"#5a7a9a",fontSize:11}}>{best?.date??""}</div></div>
-                <div style={{background:"#a78bfa15",border:"1px solid #a78bfa30",borderRadius:10,padding:"12px 18px",textAlign:"center"}}><div style={{color:"#7a95b0",fontSize:10,textTransform:"uppercase",letterSpacing:1}}>W/kg</div><div style={{color:"#a78bfa",fontWeight:900,fontSize:26}}>{wpkg??"--"}</div><div style={{color:"#5a7a9a",fontSize:11}}>{last?.watts}W - {athlete.weight}kg</div></div>
+                <div style={{background:"#a78bfa15",border:"1px solid #a78bfa30",borderRadius:10,padding:"12px 18px",textAlign:"center"}}><div style={{color:"#7a95b0",fontSize:10,textTransform:"uppercase",letterSpacing:1}}>W/kg</div><div style={{color:"#a78bfa",fontWeight:900,fontSize:26}}>{wpkg??"--"}</div><div style={{color:"#5a7a9a",fontSize:11}}>{lastWatts}W - {athlete.weight}kg</div></div>
               </div>
             </div>
           </div>
@@ -1408,7 +1510,7 @@ function AthleteSpace({ currentUser, onLogout }) {
           </div>
           <div style={S.st}>Dernières performances</div>
           <div style={{display:"flex",flexDirection:"column",gap:8,marginBottom:20}}>
-            {[...myPerfs].reverse().slice(0,4).map(p=><div key={p.id} style={{...S.card,display:"flex",alignItems:"center",gap:16,padding:"12px 18px"}}><div style={{color:"#7a95b0",fontSize:12,minWidth:90}}>{p.date}</div><div style={{color:"#4ade80",fontWeight:700,fontSize:16,minWidth:55}}>{p.time}</div><div style={{color:"#0ea5e9",fontWeight:700}}>{p.watts}W</div><div style={{color:"#f59e0b"}}>{p.spm} spm</div><div style={{color:"#ef4444"}}>{p.hr} bpm</div><div style={{marginLeft:"auto",color:"#f97316",fontSize:12}}>{p.distance}km</div><div style={{...S.badge,background:`hsl(${(10-p.rpe)*12},80%,40%)`,color:"#fff"}}>{p.rpe}/10</div></div>)}
+            {[...myPerfs].reverse().slice(0,4).map(p=>{const pw=concept2WattsFast(p.time)||p.watts||0;const pwkg=pw&&athlete?.weight?(pw/athlete.weight).toFixed(2):null;return(<div key={p.id} style={{...S.card,display:"flex",alignItems:"center",gap:12,padding:"12px 18px",flexWrap:"wrap"}}><div style={{color:"#7a95b0",fontSize:12,minWidth:85}}>{p.date}</div><div style={{color:"#4ade80",fontWeight:700,fontSize:16,minWidth:55}}>{p.time}</div><div style={{color:"#0ea5e9",fontWeight:700}}>⚡ {pw}W</div>{pwkg&&<div style={{color:"#a78bfa",fontWeight:700,fontSize:13}}>{pwkg} W/kg</div>}<div style={{color:"#f59e0b",fontSize:12}}>{p.spm} spm</div><div style={{color:"#ef4444",fontSize:12}}>{p.hr} bpm</div><div style={{marginLeft:"auto",color:"#f97316",fontSize:12}}>{p.distance}km</div><div style={{...S.badge,background:`hsl(${(10-p.rpe)*12},80%,40%)`,color:"#fff"}}>{p.rpe}/10</div></div>);})}
             {!myPerfs.length&&<div style={{...S.card,textAlign:"center",color:"#5a7a9a",padding:"28px"}}>Aucune performance</div>}
           </div>
           <button style={{...S.btnP,background:"#a78bfa",color:"#0f1923"}} onClick={()=>setShowAddPerf(true)}>+ Ajouter une performance</button>
@@ -1422,9 +1524,15 @@ function AthleteSpace({ currentUser, onLogout }) {
           </Modal>}
           {showAddPerf&&<Modal title="Nouvelle performance" onClose={()=>setShowAddPerf(false)}>
             <FF label="Date"><input style={S.inp} type="date" value={newPerf.date} onChange={e=>setNP(p=>({...p,date:e.target.value}))}/></FF>
+            <FF label="Temps 2000m"><input style={S.inp} placeholder="6:45.0" value={newPerf.time} onChange={e=>setNP(p=>({...p,time:e.target.value}))}/></FF>
+            {newPerf.time&&concept2WattsFast(newPerf.time)&&(()=>{const w=concept2WattsFast(newPerf.time);const wpkgVal=athlete?.weight?(w/athlete.weight).toFixed(2):null;return(
+              <div style={{padding:"10px 14px",background:"#a78bfa10",border:"1px solid #a78bfa30",borderRadius:8,marginBottom:12,display:"flex",gap:16,alignItems:"center"}}>
+                <span style={{color:"#0ea5e9",fontWeight:700,fontSize:15}}>⚡ {w} W</span>
+                {wpkgVal&&<span style={{color:"#a78bfa",fontWeight:700,fontSize:15}}>= {wpkgVal} W/kg</span>}
+                <span style={{color:"#5a7a9a",fontSize:11,marginLeft:"auto"}}>Concept2 auto</span>
+              </div>
+            );})()}
             <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12}}>
-              <FF label="Temps 2000m"><input style={S.inp} placeholder="6:45" value={newPerf.time} onChange={e=>setNP(p=>({...p,time:e.target.value}))}/></FF>
-              <FF label="Watts"><input style={S.inp} type="number" value={newPerf.watts} onChange={e=>setNP(p=>({...p,watts:e.target.value}))}/></FF>
               <FF label="SPM"><input style={S.inp} type="number" value={newPerf.spm} onChange={e=>setNP(p=>({...p,spm:e.target.value}))}/></FF>
               <FF label="FC (bpm)"><input style={S.inp} type="number" value={newPerf.hr} onChange={e=>setNP(p=>({...p,hr:e.target.value}))}/></FF>
               <FF label="RPE (1-10)"><input style={S.inp} type="number" min="1" max="10" value={newPerf.rpe} onChange={e=>setNP(p=>({...p,rpe:e.target.value}))}/></FF>
@@ -1437,10 +1545,10 @@ function AthleteSpace({ currentUser, onLogout }) {
           <div style={S.ph}><div><h1 style={S.ttl}>Mes Stats</h1><p style={S.sub}>Progression</p></div></div>
           {myPerfs.length<2?<div style={{...S.card,textAlign:"center",padding:"40px",color:"#5a7a9a"}}>Ajoute au moins 2 sessions pour voir ta progression.</div>:(<>
             <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:14,marginBottom:24}}>
-              {[{l:"Best 2k",v:best?.time??"--",c:"#4ade80",ic:"~"},{l:"Record watts",v:`${Math.max(...myPerfs.map(p=>p.watts))}W`,c:"#0ea5e9",ic:"~"},{l:"W/kg actuel",v:wpkg??"--",c:"#a78bfa",ic:"~"},{l:"SPM moyen",v:Math.round(avg(myPerfs.map(p=>p.spm))),c:"#f59e0b",ic:"~"},{l:"FC moyenne",v:`${Math.round(avg(myPerfs.map(p=>p.hr)))}bpm`,c:"#ef4444",ic:"~"},{l:"Km totaux",v:`${myPerfs.reduce((s,p)=>s+(p.distance||0),0)}km`,c:"#f97316",ic:"~"}].map((k,i)=><div key={i} style={S.kpi}><div style={{color:k.c,fontSize:20,marginBottom:8}}>{k.ic}</div><div style={{color:k.c,fontSize:22,fontWeight:900}}>{k.v}</div><div style={{color:"#7a95b0",fontSize:11,textTransform:"uppercase",letterSpacing:1,marginTop:4}}>{k.l}</div></div>)}
+              {[{l:"Best 2k",v:best?.time??"--",c:"#4ade80",ic:"~"},{l:"Record watts",v:`${Math.max(...myPerfs.map(p=>concept2WattsFast(p.time)||p.watts||0))}W`,c:"#0ea5e9",ic:"~"},{l:"W/kg actuel",v:wpkg??"--",c:"#a78bfa",ic:"~"},{l:"SPM moyen",v:Math.round(avg(myPerfs.map(p=>p.spm))),c:"#f59e0b",ic:"~"},{l:"FC moyenne",v:`${Math.round(avg(myPerfs.map(p=>p.hr)))}bpm`,c:"#ef4444",ic:"~"},{l:"Km totaux",v:`${myPerfs.reduce((s,p)=>s+(p.distance||0),0)}km`,c:"#f97316",ic:"~"}].map((k,i)=><div key={i} style={S.kpi}><div style={{color:k.c,fontSize:20,marginBottom:8}}>{k.ic}</div><div style={{color:k.c,fontSize:22,fontWeight:900}}>{k.v}</div><div style={{color:"#7a95b0",fontSize:11,textTransform:"uppercase",letterSpacing:1,marginTop:4}}>{k.l}</div></div>)}
             </div>
             <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:14}}>
-              {[{l:"Puissance",vals:myPerfs.map(p=>p.watts),c:"#0ea5e9",hi:true},{l:"Temps 2k (s)",vals:myPerfs.map(p=>timeToSeconds(p.time)),c:"#4ade80",hi:false,disp:v=>secondsToTime(v)},{l:"W/kg",vals:myPerfs.map(p=>+(p.watts/(athlete.weight||1)).toFixed(2)),c:"#a78bfa",hi:true},{l:"SPM",vals:myPerfs.map(p=>p.spm),c:"#f59e0b",hi:true},{l:"FC",vals:myPerfs.map(p=>p.hr),c:"#ef4444",hi:false},{l:"Distance",vals:myPerfs.map(p=>p.distance||0),c:"#f97316",hi:true}].map(m=>{const lv=m.vals[m.vals.length-1],pv=m.vals[m.vals.length-2],diff=lv-pv,up=m.hi?diff>0:diff<0;return(<div key={m.l} style={S.mc}><div style={{color:"#7a95b0",fontSize:12,marginBottom:6}}>{m.l}</div><div style={{color:m.c,fontSize:22,fontWeight:900}}>{m.disp?m.disp(lv):lv}</div><div style={{color:up?"#4ade80":"#ef4444",fontSize:12,marginBottom:8}}>{up?"^":"v"} {Math.abs(diff)}</div><Sparkline data={m.vals} color={m.c} invert={!m.hi}/></div>);})}
+              {[{l:"Puissance",vals:myPerfs.map(p=>concept2WattsFast(p.time)||p.watts||0),c:"#0ea5e9",hi:true},{l:"Temps 2k (s)",vals:myPerfs.map(p=>timeToSeconds(p.time)),c:"#4ade80",hi:false,disp:v=>secondsToTime(v)},{l:"W/kg",vals:myPerfs.map(p=>+((concept2WattsFast(p.time)||p.watts||0)/(athlete.weight||1)).toFixed(2)),c:"#a78bfa",hi:true},{l:"SPM",vals:myPerfs.map(p=>p.spm),c:"#f59e0b",hi:true},{l:"FC",vals:myPerfs.map(p=>p.hr),c:"#ef4444",hi:false},{l:"Distance",vals:myPerfs.map(p=>p.distance||0),c:"#f97316",hi:true}].map(m=>{const lv=m.vals[m.vals.length-1],pv=m.vals[m.vals.length-2],diff=lv-pv,up=m.hi?diff>0:diff<0;return(<div key={m.l} style={S.mc}><div style={{color:"#7a95b0",fontSize:12,marginBottom:6}}>{m.l}</div><div style={{color:m.c,fontSize:22,fontWeight:900}}>{m.disp?m.disp(lv):lv}</div><div style={{color:up?"#4ade80":"#ef4444",fontSize:12,marginBottom:8}}>{up?"^":"v"} {Math.abs(diff)}</div><Sparkline data={m.vals} color={m.c} invert={!m.hi}/></div>);})}
             </div>
           </>)}
         </div>)}
