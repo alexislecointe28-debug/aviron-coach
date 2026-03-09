@@ -323,11 +323,11 @@ function suggestRigging(athlete, bladeType, boatType) {
   // Basé sur taille assise ou taille * 0.27
   if(taille_assise) {
     suggestions.longueur_pedale = Math.round(taille_assise * 0.72);
-    notes.push("Longueur pédale depuis taille assise (" + taille_assise + "cm)");
+    notes.push("Longueur pelles depuis taille assise (" + taille_assise + "cm)");
   } else if(taille) {
     const estimated_sitting = Math.round(taille * 0.52);
     suggestions.longueur_pedale = Math.round(estimated_sitting * 0.72);
-    notes.push("Longueur pédale estimée depuis taille (" + taille + "cm)");
+    notes.push("Longueur pelles estimée depuis taille (" + taille + "cm)");
   }
 
   // --- CROISEMENT ---
@@ -1376,7 +1376,7 @@ function CoachSpace({ currentUser, onLogout }) {
                             {l:"Bateau",v:myBoat?.name||"--"},
                             {l:"Poste",v:poste?"#"+poste:"--"},
                             {l:"Entraxe",v:lastSetting.entraxe?lastSetting.entraxe+" cm":"--"},
-                            {l:"Long. Pelle",v:lastSetting.longueur_pedale?lastSetting.longueur_pedale+" cm":"--"},
+                            {l:"Long. Pelles",v:lastSetting.longueur_pedale?lastSetting.longueur_pedale+" cm":"--"},
                             {l:"Levier int.",v:lastSetting.levier_interieur?lastSetting.levier_interieur+" cm":"--"},
                           ].map((k,i)=>(
                             <div key={i} style={{display:"flex",justifyContent:"space-between",padding:"4px 0",borderBottom:"1px solid #1e293b50"}}>
@@ -1647,7 +1647,7 @@ function CoachSpace({ currentUser, onLogout }) {
                 <div style={{overflowX:"auto",borderRadius:12,border:"1px solid #1e293b",marginBottom:28}}>
                   <table style={{width:"100%",borderCollapse:"collapse",background:"#182030"}}>
                     <thead>
-                      <tr>{["Poste","Rameur","Date","Réglé par","Entraxe","Long. Pelle","Levier int.","Ndeg pelle","Type pelle","Observations"].map(h=><th key={h} style={S.th}>{h}</th>)}</tr>
+                      <tr>{["Poste","Rameur","Date","Réglé par","Entraxe","Long. Pelles","Levier int.","Ndeg pelle","Type pelle","Observations"].map(h=><th key={h} style={S.th}>{h}</th>)}</tr>
                     </thead>
                     <tbody>
                       {postes.map(s=>{
@@ -1684,7 +1684,7 @@ function CoachSpace({ currentUser, onLogout }) {
                   <div style={S.st}>~ Historique complet des réglages</div>
                   <div style={{overflowX:"auto",borderRadius:12,border:"1px solid #1e293b"}}>
                     <table style={{width:"100%",borderCollapse:"collapse",background:"#182030"}}>
-                      <thead><tr>{["Poste","Date","Réglé par","Entraxe","Long. Pelle","Levier int.","Ndeg pelle","Type pelle","Observations",""].map(h=><th key={h} style={S.th}>{h}</th>)}</tr></thead>
+                      <thead><tr>{["Poste","Date","Réglé par","Entraxe","Long. Pelles","Levier int.","Ndeg pelle","Type pelle","Observations",""].map(h=><th key={h} style={S.th}>{h}</th>)}</tr></thead>
                       <tbody>
                         {allSettings.map(s=>(
                           <tr key={s.id} style={{borderBottom:"1px solid #1e293b"}}>
@@ -1762,7 +1762,7 @@ function CoachSpace({ currentUser, onLogout }) {
                         {rigging.suggestions.entraxe&&<div style={{background:"#182030",borderRadius:8,padding:"8px 10px",textAlign:"center"}}><div style={{color:"#64748b",fontSize:10,marginBottom:2}}>Entraxe</div><div style={{color:"#0ea5e9",fontWeight:700,fontSize:16}}>{rigging.suggestions.entraxe} cm</div></div>}
                         {rigging.suggestions.levier_interieur&&<div style={{background:"#182030",borderRadius:8,padding:"8px 10px",textAlign:"center"}}><div style={{color:"#64748b",fontSize:10,marginBottom:2}}>Levier int.</div><div style={{color:"#a78bfa",fontWeight:700,fontSize:16}}>{rigging.suggestions.levier_interieur} cm</div></div>}
                         {rigging.suggestions.levier_exterieur&&<div style={{background:"#182030",borderRadius:8,padding:"8px 10px",textAlign:"center"}}><div style={{color:"#64748b",fontSize:10,marginBottom:2}}>Levier ext.</div><div style={{color:"#f59e0b",fontWeight:700,fontSize:16}}>{rigging.suggestions.levier_exterieur} cm</div></div>}
-                        {rigging.suggestions.longueur_pedale&&<div style={{background:"#182030",borderRadius:8,padding:"8px 10px",textAlign:"center"}}><div style={{color:"#64748b",fontSize:10,marginBottom:2}}>Long. pédale</div><div style={{color:"#4ade80",fontWeight:700,fontSize:16}}>{rigging.suggestions.longueur_pedale} cm</div></div>}
+                        {rigging.suggestions.longueur_pedale&&<div style={{background:"#182030",borderRadius:8,padding:"8px 10px",textAlign:"center"}}><div style={{color:"#64748b",fontSize:10,marginBottom:2}}>Long. pelles</div><div style={{color:"#4ade80",fontWeight:700,fontSize:16}}>{rigging.suggestions.longueur_pedale} cm</div></div>}
                         {rigging.suggestions.croisement&&<div style={{background:"#182030",borderRadius:8,padding:"8px 10px",textAlign:"center"}}><div style={{color:"#64748b",fontSize:10,marginBottom:2}}>Croisement</div><div style={{color:"#f97316",fontWeight:700,fontSize:16}}>{rigging.suggestions.croisement} cm</div></div>}
                       </div>
                       <button style={{...S.btnP,fontSize:11,padding:"6px 14px",background:"#0ea5e920",color:"#0ea5e9",border:"1px solid #0ea5e940"}} onClick={()=>{const sg=rigging.suggestions;setNS(p=>({...p,...(sg.entraxe?{entraxe:sg.entraxe}:{}),...(sg.levier_interieur?{levier_interieur:sg.levier_interieur}:{}),...(sg.levier_exterieur?{levier_exterieur:sg.levier_exterieur}:{}),...(sg.longueur_pedale?{longueur_pedale:sg.longueur_pedale}:{}),...(sg.croisement?{croisement:sg.croisement}:{})}));}}>Appliquer ces valeurs</button>
@@ -1783,7 +1783,7 @@ function CoachSpace({ currentUser, onLogout }) {
                   <FF label="Date"><input style={S.inp} type="date" value={newSetting.date_reglage} onChange={e=>setNS(p=>({...p,date_reglage:e.target.value}))}/></FF>
                   <FF label="Réglé par"><input style={S.inp} value={newSetting.regle_par} onChange={e=>setNS(p=>({...p,regle_par:e.target.value}))} placeholder="Nom du coach"/></FF>
                   <FF label="Entraxe (cm)"><input style={S.inp} type="number" value={newSetting.entraxe} onChange={e=>setNS(p=>({...p,entraxe:e.target.value}))}/></FF>
-                  <FF label="Long. Pelle (cm)"><input style={S.inp} type="number" value={newSetting.longueur_pedale} onChange={e=>setNS(p=>({...p,longueur_pedale:e.target.value}))}/></FF>
+                  <FF label="Long. Pelles (cm)"><input style={S.inp} type="number" value={newSetting.longueur_pedale} onChange={e=>setNS(p=>({...p,longueur_pedale:e.target.value}))}/></FF>
                   <FF label="Levier intérieur (cm)"><input style={S.inp} type="number" value={newSetting.levier_interieur} onChange={e=>setNS(p=>({...p,levier_interieur:e.target.value}))}/></FF>
                   <FF label="Levier extérieur (cm)"><input style={S.inp} type="number" value={newSetting.levier_exterieur} onChange={e=>setNS(p=>({...p,levier_exterieur:e.target.value}))}/></FF>
                   <FF label="Croisement (cm)"><input style={S.inp} type="number" value={newSetting.croisement} onChange={e=>setNS(p=>({...p,croisement:e.target.value}))}/></FF>
@@ -2072,7 +2072,7 @@ function AthleteSpace({ currentUser, onLogout }) {
                     {l:"Date réglage",v:lastSetting.date_reglage,c:"#7a95b0"},
                     {l:"Réglé par",v:lastSetting.regle_par||"--",c:"#a8bfd4"},
                     {l:"Entraxe",v:lastSetting.entraxe?`${lastSetting.entraxe} cm`:"--",c:"#0ea5e9"},
-                    {l:"Long. Pelle",v:lastSetting.longueur_pedale?`${lastSetting.longueur_pedale} cm`:"--",c:"#a78bfa"},
+                    {l:"Long. Pelles",v:lastSetting.longueur_pedale?`${lastSetting.longueur_pedale} cm`:"--",c:"#a78bfa"},
                     {l:"Levier int.",v:lastSetting.levier_interieur?`${lastSetting.levier_interieur} cm`:"--",c:"#f59e0b"},
                     {l:"Ndeg pelle",v:lastSetting.numero_pelle||"--",c:"#f97316"},
                     {l:"Type de pelle",v:lastSetting.type_pelle||"--",c:"#4ade80"},
@@ -2091,7 +2091,7 @@ function AthleteSpace({ currentUser, onLogout }) {
                 <div style={S.st}>~ Historique de mes réglages</div>
                 <div style={{overflowX:"auto",borderRadius:12,border:"1px solid #1e293b"}}>
                   <table style={{width:"100%",borderCollapse:"collapse",background:"#182030"}}>
-                    <thead><tr>{["Date","Réglé par","Entraxe","Long. Pelle","Levier int.","Ndeg pelle","Type pelle","Observations"].map(h=><th key={h} style={S.th}>{h}</th>)}</tr></thead>
+                    <thead><tr>{["Date","Réglé par","Entraxe","Long. Pelles","Levier int.","Ndeg pelle","Type pelle","Observations"].map(h=><th key={h} style={S.th}>{h}</th>)}</tr></thead>
                     <tbody>
                       {mySettings.map(s=>(
                         <tr key={s.id} style={{borderBottom:"1px solid #1e293b"}}>
