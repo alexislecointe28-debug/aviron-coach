@@ -509,8 +509,16 @@ function AdminSpace({ currentUser, onLogout }) {
   const [confirm,setConfirm] = useState(null);
   const [toast,setToast]     = useState(null);
   const [newUser,setNU]      = useState({name:"",email:"",password:"",role:"athlete"});
+  const [codes,setCodes]     = useState([]);
+  const [showAddCode,setShowAddCode] = useState(false);
+  const [newCode,setNewCode] = useState({code:"",role:"athlete",max_uses:"",active:true});
 
-  const load = useCallback(async()=>{ setLoading(true); setUsers(await api.getUsers()); setLoading(false); },[]);
+  const load = useCallback(async()=>{
+    setLoading(true);
+    const [u,c] = await Promise.all([api.getUsers(), api.getInviteCodes().catch(()=>[])]);
+    setUsers(u); setCodes(c);
+    setLoading(false);
+  },[]);
   useEffect(()=>{ load(); },[]);
 
   async function addUser() {
@@ -538,6 +546,27 @@ function AdminSpace({ currentUser, onLogout }) {
     setToast({m:"Compte supprimé",t:"success"});
   }
 
+  async function addCode() {
+    if(!newCode.code.trim()) return;
+    try {
+      await api.createInviteCode({code:newCode.code.trim().toUpperCase(),role:newCode.role,max_uses:newCode.max_uses?+newCode.max_uses:null,uses_count:0,active:true});
+      setToast({m:"Code créé ✓",t:"success"}); load();
+      setNewCode({code:"",role:"athlete",max_uses:"",active:true}); setShowAddCode(false);
+    } catch(e){ setToast({m:"Erreur: "+e.message,t:"error"}); }
+  }
+  async function toggleCode(id, active) {
+    await api.updateInviteCode(id,{active:!active}); load();
+    setToast({m:active?"Code désactivé":"Code activé",t:"success"});
+  }
+  async function deleteCode(id) {
+    await api.deleteInviteCode(id); load();
+    setToast({m:"Code supprimé",t:"success"});
+  }
+  async function resetCode(id) {
+    await api.updateInviteCode(id,{uses_count:0}); load();
+    setToast({m:"Compteur remis à zéro",t:"success"});
+  }
+
   const filtered = filterRole==="all"?users:users.filter(u=>u.role===filterRole);
   const counts   = { admin:users.filter(u=>u.role==="admin").length, coach:users.filter(u=>u.role==="coach").length, athlete:users.filter(u=>u.role==="athlete").length };
 
@@ -547,7 +576,7 @@ function AdminSpace({ currentUser, onLogout }) {
       <aside style={{...S.sidebar,borderColor:"#3a2a0a"}}>
         <div style={{...S.logo,borderColor:"#3a2a0a"}}><span style={{fontSize:28}}>~</span><div><div style={{...S.logoT,color:"#f59e0b"}}>AvironCoach</div><div style={S.logoS}>Super Admin</div></div></div>
         <nav style={{flex:1,padding:"8px 12px"}}>
-          {[{id:"users",label:"Comptes",icon:"o"},{id:"stats",label:"Vue globale",icon:"*"}].map(n=>(
+          {[{id:"users",label:"Comptes",icon:"o"},{id:"codes",label:"Codes invit.",icon:"#"},{id:"stats",label:"Vue globale",icon:"*"}].map(n=>(
             <button key={n.id} style={{...S.nb,...(tab===n.id?{...S.nba,color:"#f59e0b",background:"#f59e0b15",borderLeftColor:"#f59e0b"}:{})}} onClick={()=>setTab(n.id)}><span style={{fontSize:16}}>{n.icon}</span>{n.label}</button>
           ))}
         </nav>
@@ -650,6 +679,73 @@ function AdminSpace({ currentUser, onLogout }) {
                     onClick={()=>confirm.action==="delete"?deleteUser(confirm.u.id):toggleActive(confirm.u.id,confirm.u.active)}>Confirmer</button>
                 </div>
               </div>
+            </Modal>}
+          </div>
+        )}
+        {tab==="codes"&&(
+          <div style={S.page}>
+            <div style={S.ph}>
+              <div><h1 style={S.ttl}>Codes d&apos;invitation</h1><p style={S.sub}>Gérer les accès à la plateforme</p></div>
+              <button style={{...S.btnP,background:"#f59e0b",color:"#0f1923"}} onClick={()=>setShowAddCode(true)}>+ Nouveau code</button>
+            </div>
+            <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:14,marginBottom:24}}>
+              {[{l:"Total",v:codes.length,c:"#f1f5f9"},{l:"Actifs",v:codes.filter(c=>c.active).length,c:"#4ade80"},{l:"Utilisations",v:codes.reduce((s,c)=>s+(c.uses_count||0),0),c:"#0ea5e9"}].map((k,i)=>(
+                <div key={i} style={S.kpi}><div style={{color:k.c,fontSize:28,fontWeight:900}}>{k.v}</div><div style={{color:"#7a95b0",fontSize:11,textTransform:"uppercase",letterSpacing:1,marginTop:4}}>{k.l}</div></div>
+              ))}
+            </div>
+            {loading?<Loader/>:(
+              <div style={{overflowX:"auto",borderRadius:12,border:"1px solid #1e293b"}}>
+                <table style={{width:"100%",borderCollapse:"collapse",background:"#182030"}}>
+                  <thead><tr>{["Code","Rôle","Utilisations","Statut","Actions"].map(h=><th key={h} style={S.th}>{h}</th>)}</tr></thead>
+                  <tbody>
+                    {codes.map(c=>(
+                      <tr key={c.id} style={{borderBottom:"1px solid #1e293b",opacity:c.active?1:0.5}}>
+                        <td style={S.td}>
+                          <div style={{fontFamily:"monospace",fontWeight:900,fontSize:16,color:"#f59e0b",letterSpacing:2}}>{c.code}</div>
+                        </td>
+                        <td style={S.td}>
+                          <span style={{...S.badge,background:(ROLE_COLORS[c.role]||"#374151")+"22",color:ROLE_COLORS[c.role]||"#94a3b8",border:"1px solid "+(ROLE_COLORS[c.role]||"#374151")+"40"}}>
+                            {ROLE_LABELS[c.role]||c.role}
+                          </span>
+                        </td>
+                        <td style={{...S.td,color:"#0ea5e9",fontWeight:700}}>
+                          {c.uses_count||0}{c.max_uses?` / ${c.max_uses}`:" / ∞"}
+                        </td>
+                        <td style={S.td}>
+                          <span style={{...S.badge,background:c.active?"#4ade8020":"#ef444420",color:c.active?"#4ade80":"#ef4444",border:`1px solid ${c.active?"#4ade8040":"#ef444440"}`}}>
+                            {c.active?"Actif":"Inactif"}
+                          </span>
+                        </td>
+                        <td style={S.td}>
+                          <div style={{display:"flex",gap:6}}>
+                            <button style={{...S.actionBtn,color:"#f59e0b",borderColor:"#f59e0b30"}} onClick={()=>toggleCode(c.id,c.active)}>{c.active?"Désact.":"Activer"}</button>
+                            <button style={{...S.actionBtn,color:"#0ea5e9",borderColor:"#0ea5e930",fontSize:10}} onClick={()=>resetCode(c.id)}>Reset</button>
+                            <button style={{...S.actionBtn,color:"#ef4444",borderColor:"#ef444430"}} onClick={()=>deleteCode(c.id)}>X</button>
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                    {!codes.length&&<tr><td colSpan={5} style={{...S.td,textAlign:"center",padding:"32px",color:"#5a7a9a"}}>Aucun code d&apos;invitation</td></tr>}
+                  </tbody>
+                </table>
+              </div>
+            )}
+            <div style={{marginTop:20,padding:"14px 18px",background:"#182030",border:"1px solid #1e293b",borderRadius:10,fontSize:12,color:"#7a95b0"}}>
+              Communique les codes à tes membres par SMS ou email. Code actuel athlète : <strong style={{color:"#f59e0b",fontFamily:"monospace"}}>CLUB2026</strong> — Coach : <strong style={{color:"#0ea5e9",fontFamily:"monospace"}}>COACH2026</strong>
+            </div>
+            {showAddCode&&<Modal title="Nouveau code d&apos;invitation" onClose={()=>setShowAddCode(false)}>
+              <FF label="Code (majuscules)"><input style={{...S.inp,textTransform:"uppercase",letterSpacing:3,fontFamily:"monospace",fontWeight:700}} placeholder="ex: CLUB2026" value={newCode.code} onChange={e=>setNewCode(p=>({...p,code:e.target.value.toUpperCase()}))}/></FF>
+              <FF label="Rôle accordé">
+                <div style={{display:"flex",gap:8}}>
+                  {[["athlete","Athlète"],["coach","Coach"],["admin","Admin"]].map(([v,l])=>(
+                    <button key={v} style={{...S.fb,flex:1,...(newCode.role===v?{background:(ROLE_COLORS[v]||"#374151")+"20",border:"1px solid "+(ROLE_COLORS[v]||"#374151")+"60",color:ROLE_COLORS[v]||"#94a3b8"}:{})}} onClick={()=>setNewCode(p=>({...p,role:v}))}>{l}</button>
+                  ))}
+                </div>
+              </FF>
+              <FF label="Nombre max d&apos;utilisations (vide = illimité)">
+                <input style={S.inp} type="number" min="1" placeholder="illimité" value={newCode.max_uses} onChange={e=>setNewCode(p=>({...p,max_uses:e.target.value}))}/>
+              </FF>
+              <button style={{...S.btnP,width:"100%",marginTop:8,background:"#f59e0b",color:"#0f1923"}} onClick={addCode}>Créer le code</button>
             </Modal>}
           </div>
         )}
@@ -1541,6 +1637,73 @@ function AthleteSpace({ currentUser, onLogout }) {
             <button style={{...S.btnP,width:"100%",marginTop:8,background:"#a78bfa",color:"#0f1923"}} onClick={addPerf}>Enregistrer</button>
           </Modal>}
         </div>)}
+        {tab==="codes"&&(
+          <div style={S.page}>
+            <div style={S.ph}>
+              <div><h1 style={S.ttl}>Codes d&apos;invitation</h1><p style={S.sub}>Gérer les accès à la plateforme</p></div>
+              <button style={{...S.btnP,background:"#f59e0b",color:"#0f1923"}} onClick={()=>setShowAddCode(true)}>+ Nouveau code</button>
+            </div>
+            <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:14,marginBottom:24}}>
+              {[{l:"Total",v:codes.length,c:"#f1f5f9"},{l:"Actifs",v:codes.filter(c=>c.active).length,c:"#4ade80"},{l:"Utilisations",v:codes.reduce((s,c)=>s+(c.uses_count||0),0),c:"#0ea5e9"}].map((k,i)=>(
+                <div key={i} style={S.kpi}><div style={{color:k.c,fontSize:28,fontWeight:900}}>{k.v}</div><div style={{color:"#7a95b0",fontSize:11,textTransform:"uppercase",letterSpacing:1,marginTop:4}}>{k.l}</div></div>
+              ))}
+            </div>
+            {loading?<Loader/>:(
+              <div style={{overflowX:"auto",borderRadius:12,border:"1px solid #1e293b"}}>
+                <table style={{width:"100%",borderCollapse:"collapse",background:"#182030"}}>
+                  <thead><tr>{["Code","Rôle","Utilisations","Statut","Actions"].map(h=><th key={h} style={S.th}>{h}</th>)}</tr></thead>
+                  <tbody>
+                    {codes.map(c=>(
+                      <tr key={c.id} style={{borderBottom:"1px solid #1e293b",opacity:c.active?1:0.5}}>
+                        <td style={S.td}>
+                          <div style={{fontFamily:"monospace",fontWeight:900,fontSize:16,color:"#f59e0b",letterSpacing:2}}>{c.code}</div>
+                        </td>
+                        <td style={S.td}>
+                          <span style={{...S.badge,background:(ROLE_COLORS[c.role]||"#374151")+"22",color:ROLE_COLORS[c.role]||"#94a3b8",border:"1px solid "+(ROLE_COLORS[c.role]||"#374151")+"40"}}>
+                            {ROLE_LABELS[c.role]||c.role}
+                          </span>
+                        </td>
+                        <td style={{...S.td,color:"#0ea5e9",fontWeight:700}}>
+                          {c.uses_count||0}{c.max_uses?` / ${c.max_uses}`:" / ∞"}
+                        </td>
+                        <td style={S.td}>
+                          <span style={{...S.badge,background:c.active?"#4ade8020":"#ef444420",color:c.active?"#4ade80":"#ef4444",border:`1px solid ${c.active?"#4ade8040":"#ef444440"}`}}>
+                            {c.active?"Actif":"Inactif"}
+                          </span>
+                        </td>
+                        <td style={S.td}>
+                          <div style={{display:"flex",gap:6}}>
+                            <button style={{...S.actionBtn,color:"#f59e0b",borderColor:"#f59e0b30"}} onClick={()=>toggleCode(c.id,c.active)}>{c.active?"Désact.":"Activer"}</button>
+                            <button style={{...S.actionBtn,color:"#0ea5e9",borderColor:"#0ea5e930",fontSize:10}} onClick={()=>resetCode(c.id)}>Reset</button>
+                            <button style={{...S.actionBtn,color:"#ef4444",borderColor:"#ef444430"}} onClick={()=>deleteCode(c.id)}>X</button>
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                    {!codes.length&&<tr><td colSpan={5} style={{...S.td,textAlign:"center",padding:"32px",color:"#5a7a9a"}}>Aucun code d&apos;invitation</td></tr>}
+                  </tbody>
+                </table>
+              </div>
+            )}
+            <div style={{marginTop:20,padding:"14px 18px",background:"#182030",border:"1px solid #1e293b",borderRadius:10,fontSize:12,color:"#7a95b0"}}>
+              Communique les codes à tes membres par SMS ou email. Code actuel athlète : <strong style={{color:"#f59e0b",fontFamily:"monospace"}}>CLUB2026</strong> — Coach : <strong style={{color:"#0ea5e9",fontFamily:"monospace"}}>COACH2026</strong>
+            </div>
+            {showAddCode&&<Modal title="Nouveau code d&apos;invitation" onClose={()=>setShowAddCode(false)}>
+              <FF label="Code (majuscules)"><input style={{...S.inp,textTransform:"uppercase",letterSpacing:3,fontFamily:"monospace",fontWeight:700}} placeholder="ex: CLUB2026" value={newCode.code} onChange={e=>setNewCode(p=>({...p,code:e.target.value.toUpperCase()}))}/></FF>
+              <FF label="Rôle accordé">
+                <div style={{display:"flex",gap:8}}>
+                  {[["athlete","Athlète"],["coach","Coach"],["admin","Admin"]].map(([v,l])=>(
+                    <button key={v} style={{...S.fb,flex:1,...(newCode.role===v?{background:(ROLE_COLORS[v]||"#374151")+"20",border:"1px solid "+(ROLE_COLORS[v]||"#374151")+"60",color:ROLE_COLORS[v]||"#94a3b8"}:{})}} onClick={()=>setNewCode(p=>({...p,role:v}))}>{l}</button>
+                  ))}
+                </div>
+              </FF>
+              <FF label="Nombre max d&apos;utilisations (vide = illimité)">
+                <input style={S.inp} type="number" min="1" placeholder="illimité" value={newCode.max_uses} onChange={e=>setNewCode(p=>({...p,max_uses:e.target.value}))}/>
+              </FF>
+              <button style={{...S.btnP,width:"100%",marginTop:8,background:"#f59e0b",color:"#0f1923"}} onClick={addCode}>Créer le code</button>
+            </Modal>}
+          </div>
+        )}
         {tab==="stats"&&(<div style={S.page}>
           <div style={S.ph}><div><h1 style={S.ttl}>Mes Stats</h1><p style={S.sub}>Progression</p></div></div>
           {myPerfs.length<2?<div style={{...S.card,textAlign:"center",padding:"40px",color:"#5a7a9a"}}>Ajoute au moins 2 sessions pour voir ta progression.</div>:(<>
