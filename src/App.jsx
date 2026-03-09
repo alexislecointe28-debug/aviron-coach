@@ -902,21 +902,27 @@ function CoachSpace({ currentUser, onLogout }) {
   }
 
   async function addStrengthSession() {
-    const rows = newStrength.exercices.filter(e=>e.exercice&&e.charge&&e.reps&&e.series);
-    if(!rows.length) return;
-    for(const e of rows) {
-      const one_rm = calcOneRM(e.charge, e.reps);
-      const volume = parseFloat(e.series)*parseFloat(e.reps)*parseFloat(e.charge);
-      await api.createStrengthSession({
-        athlete_id:selAth, date:newStrength.date,
-        exercice:e.exercice, series:+e.series, reps:+e.reps,
-        charge:+e.charge, one_rm, volume
-      });
+    const rows = newStrength.exercices.filter(e=>e.exercice&&e.exercice!=="Autre..."&&e.charge&&e.reps&&e.series);
+    const rowsCustom = newStrength.exercices.filter(e=>e.exercice==="Autre..."&&e.customEx&&e.charge&&e.reps&&e.series);
+    const allRows = [...rows, ...rowsCustom.map(e=>({...e,exercice:e.customEx}))];
+    if(!allRows.length){setToast({m:"Remplis au moins un exercice complet (séries/reps/charge)",t:"error"});return;}
+    try {
+      for(const e of allRows) {
+        const one_rm = calcOneRM(e.charge, e.reps);
+        const volume = parseFloat(e.series)*parseFloat(e.reps)*parseFloat(e.charge);
+        await api.createStrengthSession({
+          athlete_id:selAth, date:newStrength.date,
+          exercice:e.exercice, series:+e.series, reps:+e.reps,
+          charge:+e.charge, one_rm, volume
+        });
+      }
+      setToast({m:"Séance enregistrée ✓",t:"success"});
+      setShowStrengthForm(false);
+      setNewStrength({date:new Date().toISOString().split("T")[0],exercices:[{exercice:"Squat",series:"",reps:"",charge:""}]});
+      api.getStrengthSessions(selAth).then(d=>setStrengthSessions(d||[]));
+    } catch(err) {
+      setToast({m:"Erreur: "+err.message,t:"error"});
     }
-    setToast({m:"Séance enregistrée ✓",t:"success"});
-    setShowStrengthForm(false);
-    setNewStrength({date:new Date().toISOString().split("T")[0],exercices:[{exercice:"Squat",series:"",reps:"",charge:""},{exercice:"",series:"",reps:"",charge:""}]});
-    api.getStrengthSessions(selAth).then(d=>setStrengthSessions(d||[]));
   }
 
   async function deleteStrengthSession(id) {
@@ -1271,9 +1277,22 @@ function CoachSpace({ currentUser, onLogout }) {
           const wpkg=bestW&&a.weight?(bestW/a.weight).toFixed(2):null;
           const aCrew=getCrewForAthlete(a);
           const crewMemberList=aCrew?athletes.filter(x=>crewMembers.some(m=>m.crew_id===aCrew.id&&m.athlete_id===x.id)):[];
-          const myBoatCrew=aCrew?boatCrews.find(bc=>bc.crew_id===aCrew.id):null;
-          const myBoat=myBoatCrew?boats.find(b=>b.id===myBoatCrew.boat_id):null;
-          const poste=aCrew?crewMembers.filter(m=>m.crew_id===aCrew.id).findIndex(m=>m.athlete_id===a.id)+1:null;
+          // Tous les bateaux de l'athlète (via tous ses équipages)
+          const allCrewsAth=crewMembers.filter(m=>m.athlete_id===a.id).map(m=>({
+            crew:crews.find(c=>c.id===m.crew_id),
+            poste:crewMembers.filter(x=>x.crew_id===m.crew_id).findIndex(x=>x.athlete_id===a.id)+1
+          })).filter(x=>x.crew);
+          const athBoats=allCrewsAth.reduce((acc,{crew,poste})=>{
+            const bc=boatCrews.find(x=>x.crew_id===crew.id);
+            if(!bc) return acc;
+            const boat=boats.find(b=>b.id===bc.boat_id);
+            if(!boat||acc.find(x=>x.boat.id===boat.id)) return acc;
+            return [...acc,{boat,poste,crew}];
+          },[]);
+          const activeBId=selBoatDetail&&athBoats.find(x=>x.boat.id===selBoatDetail)?selBoatDetail:(athBoats[0]?.boat.id||null);
+          const activeBEntry=athBoats.find(x=>x.boat.id===activeBId)||null;
+          const myBoat=activeBEntry?.boat||null;
+          const poste=activeBEntry?.poste||null;
           const mySettings=myBoat?boatSettings.filter(s=>s.boat_id===myBoat.id&&s.poste===poste).sort((x,y)=>y.date_reglage.localeCompare(x.date_reglage)):[];
           const lastSetting=mySettings[0]||null;
           const ageDisplay=a.date_naissance?calcRealAge(a.date_naissance):a.age;
@@ -1418,13 +1437,22 @@ function CoachSpace({ currentUser, onLogout }) {
                     </div>
                     <div style={S.card}>
                       <div style={{...S.st,marginBottom:12}}>🛶 Réglages bateau</div>
+                      {athBoats.length>1&&(
+                        <div style={{display:"flex",gap:6,marginBottom:12,flexWrap:"wrap"}}>
+                          {athBoats.map(({boat})=>(
+                            <button key={boat.id} style={{...S.fb,...(activeBId===boat.id?S.fbon:{})}} onClick={()=>setSelBoatDetail(boat.id)}>
+                              {boat.name}
+                            </button>
+                          ))}
+                        </div>
+                      )}
                       {lastSetting
                         ?<div style={{display:"flex",flexDirection:"column",gap:6}}>
                           {[
                             {l:"Bateau",v:myBoat?.name||"--"},
                             {l:"Poste",v:poste?"#"+poste:"--"},
                             {l:"Entraxe",v:lastSetting.entraxe?lastSetting.entraxe+" cm":"--"},
-                            {l:"Long. Pelle",v:lastSetting.longueur_pedale?lastSetting.longueur_pedale+" cm":"--"},
+                            {l:"Long. Pelles",v:lastSetting.longueur_pedale?lastSetting.longueur_pedale+" cm":"--"},
                             {l:"Levier int.",v:lastSetting.levier_interieur?lastSetting.levier_interieur+" cm":"--"},
                           ].map((k,i)=>(
                             <div key={i} style={{display:"flex",justifyContent:"space-between",padding:"4px 0",borderBottom:"1px solid #1e293b50"}}>
@@ -1433,8 +1461,20 @@ function CoachSpace({ currentUser, onLogout }) {
                             </div>
                           ))}
                           <div style={{color:"#7a95b0",fontSize:10,marginTop:4}}>Réglé le {lastSetting.date_reglage}</div>
+                          {mySettings.length>1&&(
+                            <div style={{marginTop:8,borderTop:"1px solid #1e293b",paddingTop:8}}>
+                              <div style={{color:"#5a7a9a",fontSize:10,textTransform:"uppercase",letterSpacing:1,marginBottom:6}}>Historique</div>
+                              {mySettings.slice(1,4).map((s,i)=>(
+                                <div key={i} style={{display:"flex",gap:8,fontSize:11,color:"#7a95b0",padding:"3px 0",borderBottom:"1px solid #1e293b30"}}>
+                                  <span style={{minWidth:80}}>{s.date_reglage}</span>
+                                  {s.entraxe&&<span>Entr. {s.entraxe}cm</span>}
+                                  {s.longueur_pedale&&<span>Pelles {s.longueur_pedale}cm</span>}
+                                </div>
+                              ))}
+                            </div>
+                          )}
                         </div>
-                        :<div style={{color:"#5a7a9a",fontSize:12,textAlign:"center",padding:"12px 0"}}>Aucun réglage</div>
+                        :<div style={{color:"#5a7a9a",fontSize:12,textAlign:"center",padding:"12px 0"}}>{athBoats.length===0?"Aucun bateau lié":"Aucun réglage pour ce bateau"}</div>
                       }
                     </div>
                   </div>
