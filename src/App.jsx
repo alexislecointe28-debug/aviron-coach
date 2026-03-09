@@ -186,27 +186,29 @@ const CMP_COLORS  = ["#0ea5e9","#f97316","#a78bfa","#4ade80"];
 function getAgeCategory(age) {
   if(!age) return "N/A";
   const a = parseInt(age);
-  if(a <= 9)  return "U10";
-  if(a <= 11) return "U12";
+  if(a <= 9)   return "U10";
+  if(a <= 11)  return "U12";
   if(a === 12) return "J12";
   if(a === 13) return "J13";
   if(a === 14) return "J14";
-  if(a <= 16) return "U17";
-  if(a <= 18) return "U19";
-  if(a <= 26) return "Senior";
-  if(a <= 35) return "Master A";
-  if(a <= 42) return "Master B";
-  if(a <= 49) return "Master C";
-  if(a <= 54) return "Master D";
-  if(a <= 59) return "Master E";
+  if(a === 15) return "J15";
+  if(a === 16) return "J16";
+  if(a === 17) return "J17";
+  if(a === 18) return "J18";
+  if(a <= 26)  return "Senior";
+  if(a <= 35)  return "Master A";
+  if(a <= 42)  return "Master B";
+  if(a <= 49)  return "Master C";
+  if(a <= 54)  return "Master D";
+  if(a <= 59)  return "Master E";
   return "Master F";
 }
 const AGE_CAT_COLORS = {
   "U10":"#4ade80","U12":"#0ea5e9","J12":"#06b6d4","J13":"#0ea5e9","J14":"#3b82f6",
-  "U17":"#a78bfa","U19":"#c084fc","Senior":"#f59e0b","Master A":"#f97316",
+  "J15":"#8b5cf6","J16":"#7c3aed","J17":"#6d28d9","J18":"#5b21b6","Senior":"#f59e0b","Master A":"#f97316",
   "Master B":"#fb923c","Master C":"#fbbf24","Master D":"#a3e635","Master E":"#34d399","Master F":"#2dd4bf"
 };
-const AGE_CAT_GROUPS = ["Tous","U10","U12","Jeunes (J12-J14)","U17","U19","Senior","Master"];
+const AGE_CAT_GROUPS = ["Tous","U10","U12","Jeunes (J12-J14)","J15","J16","J17","J18","Senior","Master"];
 function matchesAgeGroup(athlete, group) {
   if(group === "Tous") return true;
   const cat = getAgeCategory(athlete.age);
@@ -216,11 +218,21 @@ function matchesAgeGroup(athlete, group) {
 }
 
 function calcAgeFromDOB(dob) {
-  // Aviron : on utilise l'année en cours - année de naissance (pas l'âge au jour J)
+  // Aviron fédéral : année en cours - année de naissance (peu importe le mois)
   if(!dob) return null;
   const currentYear = new Date().getFullYear();
   const birthYear = new Date(dob).getFullYear();
   return currentYear - birthYear;
+}
+function calcRealAge(dob) {
+  // Âge réel (tient compte du mois et du jour)
+  if(!dob) return null;
+  const today = new Date();
+  const birth = new Date(dob);
+  let age = today.getFullYear() - birth.getFullYear();
+  const m = today.getMonth() - birth.getMonth();
+  if(m < 0 || (m === 0 && today.getDate() < birth.getDate())) age--;
+  return age;
 }
 function getCategoryFromAge(age, genre="H") {
   if(!age && age !== 0) return `Senior ${genre}`;
@@ -1048,7 +1060,7 @@ function CoachSpace({ currentUser, onLogout }) {
                   const val=rankMode==="wpkg"?a.wpkg.toFixed(2)+" W/kg":rankMode==="time"?(a.best?.time??"-"):rankMode==="km"?a.km+"km":a.sessions+" sessions";
                   const sub=rankMode==="wpkg"?a.watts+"W":rankMode==="time"?a.wpkg+" W/kg":rankMode==="km"?a.sessions+" sessions":a.km+"km";
                   const col=rankMode==="wpkg"?"#a78bfa":rankMode==="time"?"#4ade80":rankMode==="km"?"#f97316":"#0ea5e9";
-                  const ageCat=getAgeCategory(a.age);
+                  const ageCat=getAgeCategory(a.date_naissance?calcAgeFromDOB(a.date_naissance):a.age);
                   return(<div key={a.id} style={S.topCard} onClick={()=>{setSelAth(a.id);setTab("athlete_detail");}}>
                     <div style={{width:28,color:"#0ea5e9",fontWeight:900,fontSize:18}}>#{i+1}</div>
                     {a.photo_url?<img src={a.photo_url} style={{...S.av,objectFit:"cover"}} onError={e=>{e.target.style.display="none";}}/>:<div style={{...S.av,backgroundImage:a.photo_url?`url(${a.photo_url})`:"none",backgroundSize:"cover",backgroundPosition:"center"}}>{!a.photo_url&&a.avatar}</div>}
@@ -1082,7 +1094,7 @@ function CoachSpace({ currentUser, onLogout }) {
               return(<div key={a.id} style={{...S.card,cursor:"pointer"}}>
                 <div style={{display:"flex",alignItems:"center",gap:14,marginBottom:14}}>
                   {a.photo_url?<img src={a.photo_url} style={{...S.av,objectFit:"cover"}} onError={e=>{e.target.style.display="none";}}/>:<div style={{...S.av,backgroundImage:a.photo_url?`url(${a.photo_url})`:"none",backgroundSize:"cover",backgroundPosition:"center"}}>{!a.photo_url&&a.avatar}</div>}
-                  <div style={{flex:1}} onClick={()=>{setSelAth(a.id);setTab("athlete_detail");}}><div style={{fontWeight:800,color:"#f1f5f9",fontSize:15,display:"flex",alignItems:"center",gap:8}}>{a.name}<span style={{fontSize:10,padding:"2px 7px",borderRadius:10,background:(AGE_CAT_COLORS[getAgeCategory(a.age)] ? AGE_CAT_COLORS[getAgeCategory(a.age)] : "#374151")+"25",color:(AGE_CAT_COLORS[getAgeCategory(a.age)] ? AGE_CAT_COLORS[getAgeCategory(a.age)] : "#94a3b8"),fontWeight:700}}>{getAgeCategory(a.age)}</span></div><div style={{color:"#7a95b0",fontSize:12}}>{a.category} — {a.age} ans — {a.weight} kg{a.taille?" — "+a.taille+"cm":""}</div>{aCrew&&<div style={{color:"#0ea5e9",fontSize:11,marginTop:2}}>~ {aCrew.name}</div>}</div>
+                  <div style={{flex:1}} onClick={()=>{setSelAth(a.id);setTab("athlete_detail");}}><div style={{fontWeight:800,color:"#f1f5f9",fontSize:15,display:"flex",alignItems:"center",gap:8}}>{a.name}<span style={{fontSize:10,padding:"2px 7px",borderRadius:10,background:(AGE_CAT_COLORS[getAgeCategory(a.date_naissance?calcAgeFromDOB(a.date_naissance):a.age)] ? AGE_CAT_COLORS[getAgeCategory(a.date_naissance?calcAgeFromDOB(a.date_naissance):a.age)] : "#374151")+"25",color:(AGE_CAT_COLORS[getAgeCategory(a.date_naissance?calcAgeFromDOB(a.date_naissance):a.age)] ? AGE_CAT_COLORS[getAgeCategory(a.date_naissance?calcAgeFromDOB(a.date_naissance):a.age)] : "#94a3b8"),fontWeight:700}}>{getAgeCategory(a.date_naissance?calcAgeFromDOB(a.date_naissance):a.age)}</span></div><div style={{color:"#7a95b0",fontSize:12}}>{a.category} — {a.date_naissance?calcRealAge(a.date_naissance):a.age} ans — {a.weight} kg{a.taille?" — "+a.taille+"cm":""}</div>{aCrew&&<div style={{color:"#0ea5e9",fontSize:11,marginTop:2}}>~ {aCrew.name}</div>}</div>
                   <button style={{...S.actionBtn,color:"#0ea5e9",borderColor:"#22d3ee30",flexShrink:0}} onClick={e=>{e.stopPropagation();setEditAth({...a});}}>✏️ Edit</button>
                 </div>
                 {last?(<>
@@ -1105,7 +1117,7 @@ function CoachSpace({ currentUser, onLogout }) {
               <FF label="Date de naissance"><input style={S.inp} type="date" value={newAth.date_naissance} onChange={e=>setNA(p=>({...p,date_naissance:e.target.value}))}/></FF>
               <FF label="Genre"><select style={S.inp} value={newAth.genre} onChange={e=>setNA(p=>({...p,genre:e.target.value}))}><option value="H">Homme</option><option value="F">Femme</option></select></FF>
             </div>
-            {newAth.date_naissance&&(()=>{const age=calcAgeFromDOB(newAth.date_naissance);const cat=getCategoryFromAge(age,newAth.genre);return(<div style={{padding:"8px 12px",background:"#0ea5e910",border:"1px solid #0ea5e930",borderRadius:8,marginBottom:12,fontSize:13}}><span style={{color:"#64748b"}}>Catégorie auto : </span><span style={{color:"#0ea5e9",fontWeight:700}}>{cat}</span><span style={{color:"#64748b"}}> · {age} ans</span></div>);})()}
+            {newAth.date_naissance&&(()=>{const age=calcAgeFromDOB(newAth.date_naissance);const realAge=calcRealAge(newAth.date_naissance);const cat=getCategoryFromAge(age,newAth.genre);return(<div style={{padding:"8px 12px",background:"#0ea5e910",border:"1px solid #0ea5e930",borderRadius:8,marginBottom:12,fontSize:13}}><span style={{color:"#64748b"}}>Catégorie auto : </span><span style={{color:"#0ea5e9",fontWeight:700}}>{cat}</span><span style={{color:"#64748b"}}> · {realAge} ans réels ({age} fédéral)</span></div>);})()}
             <FF label="Poids (kg)"><input style={S.inp} type="number" value={newAth.weight} onChange={e=>setNA(p=>({...p,weight:e.target.value}))} placeholder="ex: 75"/></FF>
             <FF label="Photo">
               <div style={{display:"flex",gap:10,alignItems:"center"}}>
@@ -1188,8 +1200,9 @@ function CoachSpace({ currentUser, onLogout }) {
           const poste=aCrew?crewMembers.filter(m=>m.crew_id===aCrew.id).findIndex(m=>m.athlete_id===a.id)+1:null;
           const mySettings=myBoat?boatSettings.filter(s=>s.boat_id===myBoat.id&&s.poste===poste).sort((x,y)=>y.date_reglage.localeCompare(x.date_reglage)):[];
           const lastSetting=mySettings[0]||null;
-          const ageDisplay=a.date_naissance?calcAgeFromDOB(a.date_naissance):a.age;
-          const ageCat=getAgeCategory(ageDisplay);
+          const ageDisplay=a.date_naissance?calcRealAge(a.date_naissance):a.age;
+          const ageFederal=a.date_naissance?calcAgeFromDOB(a.date_naissance):a.age;
+          const ageCat=getAgeCategory(ageFederal);
           return(
             <div style={S.page}>
               {/* Header */}
@@ -1430,7 +1443,7 @@ function CoachSpace({ currentUser, onLogout }) {
                 </div>
                 {(()=>{
                   const members = getCrewMembersFor(cr.id);
-                  const ages = members.map(a=>a.date_naissance?calcAgeFromDOB(a.date_naissance):a.age).filter(Boolean);
+                  const ages = members.map(a=>a.date_naissance?calcRealAge(a.date_naissance):a.age).filter(Boolean);
                   const avgAge = ages.length ? Math.round(ages.reduce((s,a)=>s+a,0)/ages.length) : null;
                   const avgW = members.map(a=>{const{best}=aStats(a);return best?concept2WattsFast(best.time):null;}).filter(Boolean);
                   const avgWatts = avgW.length ? Math.round(avgW.reduce((s,w)=>s+w,0)/avgW.length) : null;
@@ -1440,7 +1453,7 @@ function CoachSpace({ currentUser, onLogout }) {
                       {avgAge&&<span style={{color:"#f59e0b"}}>⌀ {avgAge} ans</span>}
                       {avgWatts&&<span style={{color:"#0ea5e9"}}>⌀ {avgWatts}W</span>}
                     </div>
-                    <div style={{display:"flex",gap:6,flexWrap:"wrap"}}>{members.map(a=>{const{last,watts,wpkg}=aStats(a);const ageA=a.date_naissance?calcAgeFromDOB(a.date_naissance):a.age;return(<div key={a.id} style={{background:"#263547",borderRadius:8,padding:"5px 10px",display:"flex",alignItems:"center",gap:8}}><div style={{...S.av,width:26,height:26,fontSize:10}}>{a.avatar}</div><div><div style={{color:"#f1f5f9",fontSize:12,fontWeight:600}}>{a.name.split(" ")[0]}{ageA?<span style={{color:"#64748b",fontSize:10,marginLeft:4}}>{ageA}ans</span>:""}</div>{last&&<div style={{color:"#0ea5e9",fontSize:10}}>{watts||0}W · {wpkg}W/kg</div>}</div></div>);})}</div>
+                    <div style={{display:"flex",gap:6,flexWrap:"wrap"}}>{members.map(a=>{const{last,watts,wpkg}=aStats(a);const ageA=a.date_naissance?calcRealAge(a.date_naissance):a.age;return(<div key={a.id} style={{background:"#263547",borderRadius:8,padding:"5px 10px",display:"flex",alignItems:"center",gap:8}}><div style={{...S.av,width:26,height:26,fontSize:10}}>{a.avatar}</div><div><div style={{color:"#f1f5f9",fontSize:12,fontWeight:600}}>{a.name.split(" ")[0]}{ageA?<span style={{color:"#64748b",fontSize:10,marginLeft:4}}>{ageA}ans</span>:""}</div>{last&&<div style={{color:"#0ea5e9",fontSize:10}}>{watts||0}W · {wpkg}W/kg</div>}</div></div>);})}</div>
                   </>);
                 })()}
               </div>)}
