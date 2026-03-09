@@ -1397,58 +1397,7 @@ function CoachSpace({ currentUser, onLogout }) {
                   </div>
                 </div>
               </div>
-            </div>
-          );
-        })()}
-        {tab==="performances"&&(<div style={S.page}>
-          <div style={S.ph}><div><h1 style={S.ttl}>Performances</h1><p style={S.sub}>Vue globale</p></div><button style={S.btnP} onClick={()=>{setNP(p=>({...p,athleteId:selAth||""}));setShowAddPerf(true);}}>+ Ajouter</button></div>          <div style={{display:"flex",gap:8,marginBottom:20,flexWrap:"wrap"}}>
-            <button style={{...S.fb,...(selAth===null?S.fbon:{})}} onClick={()=>setSelAth(null)}>Tous</button>
-            {athletes.map(a=><button key={a.id} style={{...S.fb,...(selAth===a.id?S.fbon:{})}} onClick={()=>setSelAth(a.id)}>{a.name}</button>)}
-          </div>
-          {selAth&&(()=>{const a=athletes.find(x=>x.id===selAth);if(!a)return null;const perfs=getPerfFor(selAth),best=getBestTime(perfs),last=getLastPerf(perfs),wpkg=best&&a.weight?(concept2WattsFast(best.time)/a.weight).toFixed(2):null;return(<div style={{...S.card,display:"flex",alignItems:"center",gap:16,marginBottom:16}}><div style={{...S.av,backgroundImage:a.photo_url?`url(${a.photo_url})`:"none",backgroundSize:"cover",backgroundPosition:"center"}}>{!a.photo_url&&a.avatar}</div><div style={{flex:1}}><div style={{fontSize:18,fontWeight:800,color:"#f1f5f9"}}>{a.name}</div><div style={{color:"#7a95b0",fontSize:13}}>{a.category} - {a.weight}kg</div></div><button style={{...S.actionBtn,color:"#0ea5e9",borderColor:"#22d3ee30"}} onClick={()=>setEditAth({...a})}>✏️ Edit</button><div style={{display:"flex",gap:10}}><div style={{background:"#4ade8015",border:"1px solid #4ade8030",borderRadius:10,padding:"10px 16px",textAlign:"center"}}><div style={{color:"#7a95b0",fontSize:10,textTransform:"uppercase",letterSpacing:1}}>Best 2k</div><div style={{color:"#4ade80",fontWeight:900,fontSize:22}}>{best?.time??"-"}</div></div><div style={{background:"#a78bfa15",border:"1px solid #a78bfa30",borderRadius:10,padding:"10px 16px",textAlign:"center"}}><div style={{color:"#7a95b0",fontSize:10,textTransform:"uppercase",letterSpacing:1}}>W/kg</div><div style={{color:"#a78bfa",fontWeight:900,fontSize:22}}>{wpkg??"-"}</div></div></div></div>);})()}
-          <div style={{overflowX:"auto",borderRadius:12,border:"1px solid #1e293b"}}>
-            <table style={{width:"100%",borderCollapse:"collapse",background:"#182030"}}>
-              <thead><tr>{["Athlète","Date","2000m","Best 2k","W/kg","Watts","FC","RPE","Km",""].map(h=><th key={h} style={S.th}>{h}</th>)}</tr></thead>
-              <tbody>{performances.filter(p=>selAth===null||p.athlete_id===selAth).sort((a,b)=>b.date.localeCompare(a.date)).map(p=>{const a=athletes.find(x=>x.id===p.athlete_id);const best=getBestTime(getPerfFor(p.athlete_id));return(<tr key={p.id} style={{borderBottom:"1px solid #1e293b"}}><td style={S.td}><div style={{display:"flex",alignItems:"center",gap:8}}><div style={{...S.av,width:28,height:28,fontSize:11}}>{a?.avatar}</div>{a?.name}</div></td><td style={{...S.td,color:"#7a95b0"}}>{p.date}</td><td style={{...S.td,color:"#0ea5e9",fontWeight:700}}>{p.time}</td><td style={{...S.td,color:"#4ade80",fontWeight:700}}>{best?.time??"-"}</td><td style={{...S.td,color:"#a78bfa",fontWeight:700}}>{a&&a.weight?((concept2WattsFast(p.time)||p.watts)/a.weight).toFixed(2):"--"}</td><td style={{...S.td,color:"#0ea5e9"}}>{concept2WattsFast(p.time)||p.watts}W</td><td style={{...S.td,color:"#ef4444"}}>{p.hr}</td><td style={S.td}><div style={{...S.badge,background:`hsl(${(10-p.rpe)*12},80%,40%)`,color:"#fff"}}>{p.rpe}/10</div></td><td style={{...S.td,color:"#f97316"}}>{p.distance}km</td><td style={S.td}><div style={{display:"flex",gap:4}}><button style={{...S.actionBtn,color:"#0ea5e9",borderColor:"#22d3ee30"}} onClick={()=>setEditPerf({...p})}>✏️</button><button style={{...S.actionBtn,color:"#ef4444",borderColor:"#ef444430"}} onClick={async()=>{await api.deletePerf(p.id);load();setToast({m:"Performance supprimée",t:"success"});}}>✕</button></div></td></tr>);})}
-              </tbody>
-            </table>
-          </div>
-          {showAddPerf&&<Modal title="Nouvelle performance" onClose={()=>setShowAddPerf(false)}>
-            <FF label="Athlète"><select style={S.inp} value={newPerf.athleteId} onChange={e=>setNP(p=>({...p,athleteId:e.target.value}))}><option value="">Sélectionner...</option>{athletes.map(a=><option key={a.id} value={a.id}>{a.name}</option>)}</select></FF>
-            <FF label="Date"><input style={S.inp} type="date" value={newPerf.date} onChange={e=>setNP(p=>({...p,date:e.target.value}))}/></FF>
-            <FF label="Temps 2000m"><input style={S.inp} placeholder="6:45.0" value={newPerf.time} onChange={e=>setNP(p=>({...p,time:e.target.value}))}/></FF>
-            {newPerf.time&&concept2WattsFast(newPerf.time)&&(()=>{const w=concept2WattsFast(newPerf.time);const ath=athletes.find(a=>a.id==newPerf.athleteId);const wpkgVal=ath?.weight?(w/ath.weight).toFixed(2):null;return(
-              <div style={{padding:"10px 14px",background:"#0ea5e910",border:"1px solid #0ea5e930",borderRadius:8,marginBottom:12,display:"flex",gap:16,alignItems:"center"}}>
-                <span style={{color:"#0ea5e9",fontWeight:700,fontSize:15}}>⚡ {w} W</span>
-                {wpkgVal&&<span style={{color:"#a78bfa",fontWeight:700,fontSize:15}}>= {wpkgVal} W/kg</span>}
-                <span style={{color:"#5a7a9a",fontSize:11,marginLeft:"auto"}}>Concept2 auto</span>
-              </div>
-            );})()}
-            <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12}}>
-              <FF label="SPM"><input style={S.inp} type="number" value={newPerf.spm} onChange={e=>setNP(p=>({...p,spm:e.target.value}))}/></FF>
-              <FF label="FC"><input style={S.inp} type="number" value={newPerf.hr} onChange={e=>setNP(p=>({...p,hr:e.target.value}))}/></FF>
-              <FF label="RPE"><input style={S.inp} type="number" min="1" max="10" value={newPerf.rpe} onChange={e=>setNP(p=>({...p,rpe:e.target.value}))}/></FF>
-              <FF label="Distance (km)"><input style={S.inp} type="number" value={newPerf.distance} onChange={e=>setNP(p=>({...p,distance:e.target.value}))}/></FF>
-            </div>
-            <button style={{...S.btnP,width:"100%",marginTop:8}} onClick={addPerf}>Enregistrer</button>
-          </Modal>}
-          {editPerf&&<Modal title="Éditer la performance" onClose={()=>setEditPerf(null)}>
-            <FF label="Date"><input style={S.inp} type="date" value={editPerf.date} onChange={e=>setEditPerf(p=>({...p,date:e.target.value}))}/></FF>
-            <FF label="Temps 2000m"><input style={S.inp} placeholder="6:45" value={editPerf.time} onChange={e=>setEditPerf(p=>({...p,time:e.target.value}))}/></FF>
-            {editPerf.time&&concept2WattsFast(editPerf.time)&&(()=>{const w=concept2WattsFast(editPerf.time);const ath=athletes.find(a=>a.id===editPerf.athlete_id);const wpkgVal=ath?.weight?(w/ath.weight).toFixed(2):null;return(<div style={{padding:"10px 14px",background:"#0ea5e910",border:"1px solid #0ea5e930",borderRadius:8,marginBottom:12,display:"flex",gap:16,alignItems:"center"}}><span style={{color:"#0ea5e9",fontWeight:700,fontSize:15}}>⚡ {w} W</span>{wpkgVal&&<span style={{color:"#a78bfa",fontWeight:700,fontSize:15}}>= {wpkgVal} W/kg</span>}<span style={{color:"#5a7a9a",fontSize:11,marginLeft:"auto"}}>Concept2 auto</span></div>);})()}
-            <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12}}>
-              <FF label="FC (bpm)"><input style={S.inp} type="number" value={editPerf.hr} onChange={e=>setEditPerf(p=>({...p,hr:e.target.value}))}/></FF>
-              <FF label="RPE (1-10)"><input style={S.inp} type="number" min="1" max="10" value={editPerf.rpe} onChange={e=>setEditPerf(p=>({...p,rpe:e.target.value}))}/></FF>
-              <FF label="Distance (km)"><input style={S.inp} type="number" value={editPerf.distance} onChange={e=>setEditPerf(p=>({...p,distance:e.target.value}))}/></FF>
-            </div>
-            <button style={{...S.btnP,width:"100%",marginTop:8}} onClick={saveEditPerf}>Enregistrer</button>
-          </Modal>}
-          {/* ── Suivi morphologique ── */}
-          {tab==="athlete_detail"&&selAth&&(()=>{
-            const sorted=[...bodyMeasurements].sort((a,b)=>a.date.localeCompare(b.date));
-            const last=sorted[sorted.length-1]||null;
-            const chartData=sorted.map(m=>({date:m.date,Poids:m.poids,MG:m.masse_grasse,IMC:m.imc}));
-            return(
+          {/* Suivi morphologique */}
               <div style={{...S.card,marginTop:20}}>
                 <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:16}}>
                   <div style={S.st}>⚖️ Suivi morphologique</div>
@@ -1504,8 +1453,54 @@ function CoachSpace({ currentUser, onLogout }) {
                         </LineChart>
                       </ResponsiveContainer>
                     </div>
-                  );
-                })()}
+            </div>
+            </div>
+          );
+        })()}
+        {tab==="performances"&&(<div style={S.page}>
+          <div style={S.ph}><div><h1 style={S.ttl}>Performances</h1><p style={S.sub}>Vue globale</p></div><button style={S.btnP} onClick={()=>{setNP(p=>({...p,athleteId:selAth||""}));setShowAddPerf(true);}}>+ Ajouter</button></div>          <div style={{display:"flex",gap:8,marginBottom:20,flexWrap:"wrap"}}>
+            <button style={{...S.fb,...(selAth===null?S.fbon:{})}} onClick={()=>setSelAth(null)}>Tous</button>
+            {athletes.map(a=><button key={a.id} style={{...S.fb,...(selAth===a.id?S.fbon:{})}} onClick={()=>setSelAth(a.id)}>{a.name}</button>)}
+          </div>
+          {selAth&&(()=>{const a=athletes.find(x=>x.id===selAth);if(!a)return null;const perfs=getPerfFor(selAth),best=getBestTime(perfs),last=getLastPerf(perfs),wpkg=best&&a.weight?(concept2WattsFast(best.time)/a.weight).toFixed(2):null;return(<div style={{...S.card,display:"flex",alignItems:"center",gap:16,marginBottom:16}}><div style={{...S.av,backgroundImage:a.photo_url?`url(${a.photo_url})`:"none",backgroundSize:"cover",backgroundPosition:"center"}}>{!a.photo_url&&a.avatar}</div><div style={{flex:1}}><div style={{fontSize:18,fontWeight:800,color:"#f1f5f9"}}>{a.name}</div><div style={{color:"#7a95b0",fontSize:13}}>{a.category} - {a.weight}kg</div></div><button style={{...S.actionBtn,color:"#0ea5e9",borderColor:"#22d3ee30"}} onClick={()=>setEditAth({...a})}>✏️ Edit</button><div style={{display:"flex",gap:10}}><div style={{background:"#4ade8015",border:"1px solid #4ade8030",borderRadius:10,padding:"10px 16px",textAlign:"center"}}><div style={{color:"#7a95b0",fontSize:10,textTransform:"uppercase",letterSpacing:1}}>Best 2k</div><div style={{color:"#4ade80",fontWeight:900,fontSize:22}}>{best?.time??"-"}</div></div><div style={{background:"#a78bfa15",border:"1px solid #a78bfa30",borderRadius:10,padding:"10px 16px",textAlign:"center"}}><div style={{color:"#7a95b0",fontSize:10,textTransform:"uppercase",letterSpacing:1}}>W/kg</div><div style={{color:"#a78bfa",fontWeight:900,fontSize:22}}>{wpkg??"-"}</div></div></div></div>);})()}
+          <div style={{overflowX:"auto",borderRadius:12,border:"1px solid #1e293b"}}>
+            <table style={{width:"100%",borderCollapse:"collapse",background:"#182030"}}>
+              <thead><tr>{["Athlète","Date","2000m","Best 2k","W/kg","Watts","FC","RPE","Km",""].map(h=><th key={h} style={S.th}>{h}</th>)}</tr></thead>
+              <tbody>{performances.filter(p=>selAth===null||p.athlete_id===selAth).sort((a,b)=>b.date.localeCompare(a.date)).map(p=>{const a=athletes.find(x=>x.id===p.athlete_id);const best=getBestTime(getPerfFor(p.athlete_id));return(<tr key={p.id} style={{borderBottom:"1px solid #1e293b"}}><td style={S.td}><div style={{display:"flex",alignItems:"center",gap:8}}><div style={{...S.av,width:28,height:28,fontSize:11}}>{a?.avatar}</div>{a?.name}</div></td><td style={{...S.td,color:"#7a95b0"}}>{p.date}</td><td style={{...S.td,color:"#0ea5e9",fontWeight:700}}>{p.time}</td><td style={{...S.td,color:"#4ade80",fontWeight:700}}>{best?.time??"-"}</td><td style={{...S.td,color:"#a78bfa",fontWeight:700}}>{a&&a.weight?((concept2WattsFast(p.time)||p.watts)/a.weight).toFixed(2):"--"}</td><td style={{...S.td,color:"#0ea5e9"}}>{concept2WattsFast(p.time)||p.watts}W</td><td style={{...S.td,color:"#ef4444"}}>{p.hr}</td><td style={S.td}><div style={{...S.badge,background:`hsl(${(10-p.rpe)*12},80%,40%)`,color:"#fff"}}>{p.rpe}/10</div></td><td style={{...S.td,color:"#f97316"}}>{p.distance}km</td><td style={S.td}><div style={{display:"flex",gap:4}}><button style={{...S.actionBtn,color:"#0ea5e9",borderColor:"#22d3ee30"}} onClick={()=>setEditPerf({...p})}>✏️</button><button style={{...S.actionBtn,color:"#ef4444",borderColor:"#ef444430"}} onClick={async()=>{await api.deletePerf(p.id);load();setToast({m:"Performance supprimée",t:"success"});}}>✕</button></div></td></tr>);})}
+              </tbody>
+            </table>
+          </div>
+          {showAddPerf&&<Modal title="Nouvelle performance" onClose={()=>setShowAddPerf(false)}>
+            <FF label="Athlète"><select style={S.inp} value={newPerf.athleteId} onChange={e=>setNP(p=>({...p,athleteId:e.target.value}))}><option value="">Sélectionner...</option>{athletes.map(a=><option key={a.id} value={a.id}>{a.name}</option>)}</select></FF>
+            <FF label="Date"><input style={S.inp} type="date" value={newPerf.date} onChange={e=>setNP(p=>({...p,date:e.target.value}))}/></FF>
+            <FF label="Temps 2000m"><input style={S.inp} placeholder="6:45.0" value={newPerf.time} onChange={e=>setNP(p=>({...p,time:e.target.value}))}/></FF>
+            {newPerf.time&&concept2WattsFast(newPerf.time)&&(()=>{const w=concept2WattsFast(newPerf.time);const ath=athletes.find(a=>a.id==newPerf.athleteId);const wpkgVal=ath?.weight?(w/ath.weight).toFixed(2):null;return(
+              <div style={{padding:"10px 14px",background:"#0ea5e910",border:"1px solid #0ea5e930",borderRadius:8,marginBottom:12,display:"flex",gap:16,alignItems:"center"}}>
+                <span style={{color:"#0ea5e9",fontWeight:700,fontSize:15}}>⚡ {w} W</span>
+                {wpkgVal&&<span style={{color:"#a78bfa",fontWeight:700,fontSize:15}}>= {wpkgVal} W/kg</span>}
+                <span style={{color:"#5a7a9a",fontSize:11,marginLeft:"auto"}}>Concept2 auto</span>
+              </div>
+            );})()}
+            <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12}}>
+              <FF label="SPM"><input style={S.inp} type="number" value={newPerf.spm} onChange={e=>setNP(p=>({...p,spm:e.target.value}))}/></FF>
+              <FF label="FC"><input style={S.inp} type="number" value={newPerf.hr} onChange={e=>setNP(p=>({...p,hr:e.target.value}))}/></FF>
+              <FF label="RPE"><input style={S.inp} type="number" min="1" max="10" value={newPerf.rpe} onChange={e=>setNP(p=>({...p,rpe:e.target.value}))}/></FF>
+              <FF label="Distance (km)"><input style={S.inp} type="number" value={newPerf.distance} onChange={e=>setNP(p=>({...p,distance:e.target.value}))}/></FF>
+            </div>
+            <button style={{...S.btnP,width:"100%",marginTop:8}} onClick={addPerf}>Enregistrer</button>
+          </Modal>}
+          {editPerf&&<Modal title="Éditer la performance" onClose={()=>setEditPerf(null)}>
+            <FF label="Date"><input style={S.inp} type="date" value={editPerf.date} onChange={e=>setEditPerf(p=>({...p,date:e.target.value}))}/></FF>
+            <FF label="Temps 2000m"><input style={S.inp} placeholder="6:45" value={editPerf.time} onChange={e=>setEditPerf(p=>({...p,time:e.target.value}))}/></FF>
+            {editPerf.time&&concept2WattsFast(editPerf.time)&&(()=>{const w=concept2WattsFast(editPerf.time);const ath=athletes.find(a=>a.id===editPerf.athlete_id);const wpkgVal=ath?.weight?(w/ath.weight).toFixed(2):null;return(<div style={{padding:"10px 14px",background:"#0ea5e910",border:"1px solid #0ea5e930",borderRadius:8,marginBottom:12,display:"flex",gap:16,alignItems:"center"}}><span style={{color:"#0ea5e9",fontWeight:700,fontSize:15}}>⚡ {w} W</span>{wpkgVal&&<span style={{color:"#a78bfa",fontWeight:700,fontSize:15}}>= {wpkgVal} W/kg</span>}<span style={{color:"#5a7a9a",fontSize:11,marginLeft:"auto"}}>Concept2 auto</span></div>);})()}
+            <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12}}>
+              <FF label="FC (bpm)"><input style={S.inp} type="number" value={editPerf.hr} onChange={e=>setEditPerf(p=>({...p,hr:e.target.value}))}/></FF>
+              <FF label="RPE (1-10)"><input style={S.inp} type="number" min="1" max="10" value={editPerf.rpe} onChange={e=>setEditPerf(p=>({...p,rpe:e.target.value}))}/></FF>
+              <FF label="Distance (km)"><input style={S.inp} type="number" value={editPerf.distance} onChange={e=>setEditPerf(p=>({...p,distance:e.target.value}))}/></FF>
+            </div>
+            <button style={{...S.btnP,width:"100%",marginTop:8}} onClick={saveEditPerf}>Enregistrer</button>
+          </Modal>}
+
 
                 {/* Historique liste */}
                 {bodyMeasurements.length>0?(
