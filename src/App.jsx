@@ -1440,7 +1440,7 @@ function CoachSpace({ currentUser, onLogout }) {
                   </div>
                 </div>
               </div>
-            </div>
+            </div>}
             {ficheTab==="muscu"&&(()=>{
               const EXOS=["Squat","Hip Thrust","RDL","Soulevé de terre","Développé couché","Tirades rowing","Tractions lestées","Leg press","Fentes","Rowing barre"];
               const athStrength=strengthSessions;
