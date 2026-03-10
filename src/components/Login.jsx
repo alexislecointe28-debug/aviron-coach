@@ -43,6 +43,7 @@ export default function Login({ onLogin }) {
       if(!res.ok) throw new Error("Erreur création compte");
       const newUser = await res.json();
       // Si athlète → créer automatiquement la fiche athlète et lier
+      let finalUser = newUser[0];
       if(role==="athlete" && newUser && newUser[0]) {
         try {
           const AVATARS=["🚣","🏅","💪","⚡","🌊","🎯"];
@@ -59,10 +60,16 @@ export default function Login({ onLogin }) {
             await api.updateUser(newUser[0].id, {athlete_id: ath[0].id});
           }
         } catch(e) { console.warn("Athlete auto-create:", e); }
+        // Relire le user frais pour avoir athlete_id à jour
+        try {
+          const fresh = await api.loginUser(reg.email, reg.password);
+          if(fresh && fresh[0]) finalUser = fresh[0];
+        } catch(e) {}
       }
       // Incrémenter uses_count
       await api.updateInviteCode(inviteCode.id,{uses_count:(inviteCode.uses_count||0)+1});
-      setRegOk(true);
+      // Connexion automatique
+      onLogin(finalUser);
     } catch(e) { setErr("Erreur : "+e.message); }
     setLoading(false);
   }
