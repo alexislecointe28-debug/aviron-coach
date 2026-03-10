@@ -154,7 +154,7 @@ export default function CoachSpace({ currentUser, onLogout }) {
   async function addPerf() {
     try {
       const watts = concept2WattsFast(newPerf.time, newPerf.distance_type||"2000m");
-      await api.createPerf({athlete_id:+newPerf.athleteId,date:newPerf.date,time:newPerf.time,watts:watts||0,spm:0,hr:+newPerf.hr,rpe:+newPerf.rpe,distance:+newPerf.distance});
+      await api.createPerf({athlete_id:+newPerf.athleteId,date:newPerf.date,time:newPerf.time,watts:watts||0,spm:0,hr:+newPerf.hr,rpe:+newPerf.rpe,distance:+newPerf.distance,distance_type:newPerf.distance_type||"2000m"});
       setToast({m:"Performance ajoutée v",t:"success"}); load();
       setNP({athleteId:"",date:"",time:"",hr:"",rpe:"",distance:""}); setShowAddPerf(false);
     } catch(e){setToast({m:"Erreur "+e.message,t:"error"});}
@@ -162,7 +162,7 @@ export default function CoachSpace({ currentUser, onLogout }) {
   async function saveEditPerf() {
     try {
       const watts = concept2WattsFast(editPerf.time, editPerf.distance_type||"2000m");
-      await api.updatePerf(editPerf.id,{date:editPerf.date,time:editPerf.time,watts:watts||0,hr:+editPerf.hr,rpe:+editPerf.rpe,distance:+editPerf.distance});
+      await api.updatePerf(editPerf.id,{date:editPerf.date,time:editPerf.time,watts:watts||0,hr:+editPerf.hr,rpe:+editPerf.rpe,distance:+editPerf.distance,distance_type:editPerf.distance_type||"2000m"});
       setToast({m:"Performance modifiée v",t:"success"}); load(); setEditPerf(null);
     } catch(e){setToast({m:"Erreur",t:"error"});}
   }
