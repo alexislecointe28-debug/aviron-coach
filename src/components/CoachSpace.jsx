@@ -27,6 +27,8 @@ export default function CoachSpace({ currentUser, onLogout }) {
   const [selAth,setSelAth]   = useState(null);
   const [filterCat,setFilterCat] = useState("Tous");
   const [rankMode,setRankMode] = useState("wpkg");
+  const [dashDistType,setDashDistType] = useState("2000m");
+  const [dashCatFilter,setDashCatFilter] = useState("Tous");
   const [compareIds,setCompareIds] = useState([]);
   const [compareType,setCompareType] = useState("2000m");
   const [crewBoat,setCrewBoat] = useState("4-");
@@ -300,8 +302,10 @@ export default function CoachSpace({ currentUser, onLogout }) {
 
     const categories=["Tous",...new Set(athletes.map(a=>a.category))];
   const filteredAths=filterCat==="Tous"?athletes:athletes.filter(a=>matchesAgeGroup(a,filterCat)||a.category===filterCat);
-  const globalAvgW=performances.length?Math.round(performances.reduce((s,p)=>s+(p.watts||0),0)/performances.length):0;
-  const globalBest=performances.reduce((b,p)=>timeToSeconds(p.time)<timeToSeconds(b)?p.time:b,"9:99");
+  const dashPerfs=performances.filter(p=>(p.distance_type||"2000m")===dashDistType);
+  const dashAthletes=dashCatFilter==="Tous"?athletes:athletes.filter(a=>matchesAgeGroup(a,dashCatFilter)||a.category===dashCatFilter);
+  const globalAvgW=dashPerfs.length?Math.round(dashPerfs.reduce((s,p)=>s+(concept2WattsFast(p.time,p.distance_type||"2000m")||p.watts||0),0)/dashPerfs.length):0;
+  const globalBest=dashPerfs.reduce((b,p)=>timeToSeconds(p.time)<timeToSeconds(b)?p.time:b,"9:99");
 
   // Responsive mobile
   const [isMobile, setIsMobile] = useState(()=>window.innerWidth<768);
@@ -337,20 +341,33 @@ export default function CoachSpace({ currentUser, onLogout }) {
       <div style={{...S.main,paddingBottom:isMobile?64:0,width:isMobile?"100%":0}}>
 
         {tab==="dashboard"&&(<div style={{...S.page,padding:isMobile?"16px 12px":"28px 32px"}}>
-          <div style={{...S.ph,marginBottom:isMobile?16:32}}><div><h1 style={{...S.ttl,fontSize:isMobile?22:28}}>Dashboard</h1><p style={S.sub}>{athletes.length} athlètes - données en direct</p></div></div>
+          <div style={{...S.ph,marginBottom:isMobile?12:20,flexWrap:"wrap",gap:10}}>
+            <div><h1 style={{...S.ttl,fontSize:isMobile?22:28}}>Dashboard</h1><p style={S.sub}>{dashAthletes.length} athlètes · {dashPerfs.length} sessions</p></div>
+            <div style={{display:"flex",gap:8,flexWrap:"wrap",alignItems:"center"}}>
+              <div style={{display:"flex",gap:4}}>{"500m 1000m 2000m".split(" ").map(t=><button key={t} onClick={()=>setDashDistType(t)} style={{padding:"5px 12px",borderRadius:7,border:`1px solid ${dashDistType===t?"#0ea5e9":"#1e293b"}`,background:dashDistType===t?"#0ea5e920":"transparent",color:dashDistType===t?"#0ea5e9":"#5a7a9a",fontSize:12,cursor:"pointer",fontWeight:dashDistType===t?700:400}}>{t}</button>)}</div>
+              <div style={{display:"flex",gap:4}}>{["Tous",...AGE_CAT_GROUPS.slice(1)].map(cat=><button key={cat} onClick={()=>setDashCatFilter(cat)} style={{padding:"5px 12px",borderRadius:7,border:`1px solid ${dashCatFilter===cat?"#a78bfa":"#1e293b"}`,background:dashCatFilter===cat?"#a78bfa20":"transparent",color:dashCatFilter===cat?"#a78bfa":"#5a7a9a",fontSize:12,cursor:"pointer",fontWeight:dashCatFilter===cat?700:400}}>{cat}</button>)}</div>
+            </div>
+          </div>
           <div style={{display:"grid",gridTemplateColumns:isMobile?"repeat(3,1fr)":"repeat(5,1fr)",gap:isMobile?10:14,marginBottom:isMobile?20:36}}>
-            {[{l:"Athlètes",v:athletes.length,c:"#0ea5e9",ic:"o"},{l:"Sessions",v:performances.length,c:"#f59e0b",ic:"*"},{l:"Puissance moy.",v:`${globalAvgW}W`,c:"#a78bfa",ic:"~"},{l:"Meilleur 2k",v:globalBest,c:"#4ade80",ic:"~"},{l:"Équipages",v:crews.length,c:"#f97316",ic:"~"}].map((k,i)=>(
+            {[{l:"Athlètes",v:dashAthletes.length,c:"#0ea5e9",ic:"o"},{l:"Sessions",v:dashPerfs.length,c:"#f59e0b",ic:"*"},{l:"Puissance moy.",v:`${globalAvgW}W`,c:"#a78bfa",ic:"~"},{l:`Meilleur ${dashDistType}`,v:globalBest,c:"#4ade80",ic:"~"},{l:"Équipages",v:crews.length,c:"#f97316",ic:"~"}].map((k,i)=>(
               <div key={i} style={S.kpi}><div style={{color:k.c,fontSize:22,marginBottom:8}}>{k.ic}</div><div style={{color:k.c,fontSize:26,fontWeight:900,letterSpacing:-1}}>{k.v}</div><div style={{color:"#a8bfd4",fontSize:11,textTransform:"uppercase",letterSpacing:1,marginTop:4}}>{k.l}</div></div>
             ))}
           </div>
           {(()=>{
             // rankMode from parent state
-            const ranked=athletes.map(a=>{const{last,wpkg,perfs,best,watts}=aStats(a);const km=perfs.reduce((s,p)=>s+(p.distance||0),0);return last?{...a,watts:watts||0,wpkg:parseFloat(wpkg)||0,wT:perfs.map(p=>concept2WattsFast(p.time, p.distance_type||"2000m")||p.watts||0),best,km,sessions:perfs.length}:null;}).filter(Boolean);
+            const ranked=dashAthletes.map(a=>{
+              const perfs=getPerfFor(a.id).filter(p=>(p.distance_type||"2000m")===dashDistType);
+              const best=getBestTime(perfs),last=getLastPerf(perfs);
+              const w=best?concept2WattsFast(best.time,best.distance_type||"2000m"):null;
+              const wpkg=w&&a.weight?(w/a.weight).toFixed(2):null;
+              const km=perfs.reduce((s,p)=>s+(p.distance||0),0);
+              return last?{...a,watts:w||0,wpkg:parseFloat(wpkg)||0,wT:perfs.map(p=>concept2WattsFast(p.time,p.distance_type||"2000m")||p.watts||0),best,km,sessions:perfs.length}:null;
+            }).filter(Boolean);
             const sorted=rankMode==="wpkg"?[...ranked].sort((a,b)=>b.wpkg-a.wpkg):rankMode==="time"?[...ranked].filter(a=>a.best).sort((a,b)=>timeToSeconds(a.best.time)-timeToSeconds(b.best.time)):rankMode==="km"?[...ranked].sort((a,b)=>b.km-a.km):[...ranked].sort((a,b)=>b.sessions-a.sessions);
             return(<>
               <div style={{display:"flex",alignItems:isMobile?"flex-start":"center",justifyContent:"space-between",marginBottom:14,flexDirection:isMobile?"column":"row",gap:isMobile?8:0}}>
                 <div style={S.st}>Classements</div>
-                <div style={{display:"flex",gap:6}}>{[["wpkg","W/kg","#a78bfa"],["time","Temps 2k","#4ade80"],["km","Km totaux","#f97316"],["sessions","Sessions","#0ea5e9"]].map(([k,l,c])=><button key={k} style={{...S.fb,...(rankMode===k?{background:c+"20",border:"1px solid "+c+"60",color:c}:{})}} onClick={()=>setRankMode(k)}>{l}</button>)}</div>
+                <div style={{display:"flex",gap:6}}>{[["wpkg","W/kg","#a78bfa"],["time",`Temps ${dashDistType}`,"#4ade80"],["km","Km totaux","#f97316"],["sessions","Sessions","#0ea5e9"]].map(([k,l,c])=><button key={k} style={{...S.fb,...(rankMode===k?{background:c+"20",border:"1px solid "+c+"60",color:c}:{})}} onClick={()=>setRankMode(k)}>{l}</button>)}</div>
               </div>
               <div style={{display:"flex",flexDirection:"column",gap:10,marginBottom:32}}>
                 {sorted.map((a,i)=>{
