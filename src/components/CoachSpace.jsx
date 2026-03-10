@@ -951,7 +951,7 @@ export default function CoachSpace({ currentUser, onLogout }) {
           })()}
           {/* Scatter plot Force vs Puissance */}
           {(()=>{
-            const scatterAths=athletes.map(a=>{
+            const scatterAths=(compareIds.length>0?athletes.filter(a=>compareIds.includes(a.id)):athletes).map(a=>{
               const perfs=getPerfFor(a.id),best=getBestTime(perfs);
               const wpkg=best&&a.weight?(concept2WattsFast(best.time)/a.weight):null;
               const squat=allStrengthSessions.filter(s=>s.athlete_id===a.id&&s.exercice==="Squat").sort((x,y)=>y.one_rm-x.one_rm)[0];
