@@ -316,7 +316,8 @@ export default function PlanningSpace({ athletes, isMobile, currentUser }) {
         {(()=>{
           const includes = overrides.filter(o=>o.type==="include");
           const excludes = overrides.filter(o=>o.type==="exclude");
-          const catAthletes = athletes.filter(a=>a.category===selPlan.category);
+          const planCats = (selPlan.category||"").split(",").map(s=>s.trim()).filter(Boolean);
+          const catAthletes = athletes.filter(a=>planCats.includes(a.category)||planCats.includes("Tous"));
           const total = catAthletes.length + includes.length - excludes.length;
           return (
             <div style={{...S.card,marginBottom:16,padding:"12px 16px",display:"flex",alignItems:"center",gap:12,flexWrap:"wrap"}}>
@@ -484,15 +485,31 @@ export default function PlanningSpace({ athletes, isMobile, currentUser }) {
   function ModalPlan() {
     const [form, setForm] = useState(editPlan||{});
     function set(k,v) { setForm(f=>({...f,[k]:v})); }
+
+    // category stored as comma-separated string, work with array internally
+    const selectedCats = (form.category||"").split(",").map(s=>s.trim()).filter(Boolean);
+    function toggleCat(cat) {
+      const next = selectedCats.includes(cat)
+        ? selectedCats.filter(c=>c!==cat)
+        : [...selectedCats, cat];
+      set("category", next.join(", "));
+    }
+
     return (
       <Modal title={form.id?"Modifier le plan":"Nouveau plan de saison"} onClose={()=>setShowPlanModal(false)}>
         <FF label="Nom du plan"><input style={{...S.inp}} value={form.name||""} onChange={e=>set("name",e.target.value)} placeholder="Ex: Saison 2026 Masters"/></FF>
-        <FF label="Groupe / Catégorie">
-          <select style={{...S.inp}} value={form.category||""} onChange={e=>set("category",e.target.value)}>
-            <option value="">-- Sélectionner --</option>
-            {CATEGORIES.map(c=><option key={c} value={c}>{c}</option>)}
-            <option value="Tous">Tous les groupes</option>
-          </select>
+        <FF label="Groupes / Catégories">
+          <div style={{display:"flex",gap:8,flexWrap:"wrap"}}>
+            {[...CATEGORIES,"Tous"].map(c=>{
+              const active = selectedCats.includes(c);
+              return (
+                <button key={c} onClick={()=>toggleCat(c)} style={{...S.actionBtn,background:active?"#0ea5e920":"transparent",borderColor:active?"#0ea5e9":"#334155",color:active?"#0ea5e9":"#64748b",padding:"6px 14px",fontWeight:active?700:500}}>
+                  {active?"✓ ":""}{c}
+                </button>
+              );
+            })}
+          </div>
+          {selectedCats.length>0&&<div style={{marginTop:8,color:"#64748b",fontSize:12}}>Sélectionné : {form.category}</div>}
         </FF>
         <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12}}>
           <FF label="Date début"><input style={{...S.inp}} type="date" value={form.date_debut||""} onChange={e=>set("date_debut",e.target.value)}/></FF>
@@ -667,10 +684,12 @@ export default function PlanningSpace({ athletes, isMobile, currentUser }) {
     const includes = overrides.filter(o=>o.type==="include");
     const excludes = overrides.filter(o=>o.type==="exclude");
 
-    // Athlètes de la catégorie du plan (base)
-    const catAthletes = athletes.filter(a=>a.category===selPlan.category);
+    // Catégories du plan (peut être multiple "Master A, Master B")
+    const planCats = (selPlan.category||"").split(",").map(s=>s.trim()).filter(Boolean);
+    // Athlètes de la/les catégorie(s) du plan (base)
+    const catAthletes = athletes.filter(a=>planCats.includes(a.category)||planCats.includes("Tous"));
     // Athlètes hors catégorie (pour pouvoir en ajouter)
-    const otherAthletes = athletes.filter(a=>a.category!==selPlan.category);
+    const otherAthletes = athletes.filter(a=>!planCats.includes(a.category)&&!planCats.includes("Tous"));
 
     const isIncluded  = (id) => includes.some(o=>o.athlete_id===id);
     const isExcluded  = (id) => excludes.some(o=>o.athlete_id===id);
