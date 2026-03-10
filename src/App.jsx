@@ -906,6 +906,7 @@ function CoachSpace({ currentUser, onLogout }) {
     const rows = newStrength.exercices.filter(e=>e.exercice&&e.exercice!=="Autre..."&&e.charge&&e.reps&&e.series);
     const rowsCustom = newStrength.exercices.filter(e=>e.exercice==="Autre..."&&e.customEx&&e.charge&&e.reps&&e.series);
     const allRows = [...rows, ...rowsCustom.map(e=>({...e,exercice:e.customEx}))];
+    console.log("addStrengthSession called, allRows:", allRows, "selAth:", selAth);
     if(!allRows.length){setToast({m:"Remplis au moins un exercice complet (séries/reps/charge)",t:"error"});return;}
     try {
       for(const e of allRows) {
