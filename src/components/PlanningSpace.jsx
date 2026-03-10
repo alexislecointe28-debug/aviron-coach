@@ -265,34 +265,34 @@ export default function PlanningSpace({ athletes, isMobile, currentUser }) {
       allSessions[w.id] = s || [];
     }));
 
-    // Couleurs hex (jsPDF ne supporte pas #rrggbbaa)
+    // Palette impression fond blanc
     const CHARGE_HEX = {
-      "Légère":     { bg:[40,80,60],  text:[74,222,128]  },
-      "Modérée":    { bg:[60,50,20],  text:[245,158,11]  },
-      "Élevée":     { bg:[60,35,20],  text:[249,115,22]  },
-      "Maximale":   { bg:[60,20,20],  text:[239,68,68]   },
-      "Compétition":{ bg:[50,30,70],  text:[167,139,250] },
+      "Légère":     { bg:[220,252,231], border:[134,239,172], text:[22,101,52]   },
+      "Modérée":    { bg:[254,243,199], border:[253,224,71],  text:[133,77,14]   },
+      "Élevée":     { bg:[255,237,213], border:[253,186,116], text:[154,52,18]   },
+      "Maximale":   { bg:[254,226,226], border:[252,165,165], text:[153,27,27]   },
+      "Compétition":{ bg:[243,232,255], border:[216,180,254], text:[88,28,135]   },
     };
     const TYPE_HEX = {
-      MUSCU:        [249,115,22],
-      ERGO:         [14,165,233],
-      BATEAU:       [34,211,238],
-      RECUP:        [74,222,128],
-      REPOS:        [100,116,139],
-      TEST:         [167,139,250],
-      COMPETITION:  [232,121,249],
+      MUSCU:        { bg:[255,237,213], border:[253,186,116], text:[154,52,18]  },
+      ERGO:         { bg:[224,242,254], border:[125,211,252], text:[12,74,110]  },
+      BATEAU:       { bg:[207,250,254], border:[103,232,249], text:[21,94,117]  },
+      RECUP:        { bg:[220,252,231], border:[134,239,172], text:[22,101,52]  },
+      REPOS:        { bg:[241,245,249], border:[203,213,225], text:[71,85,105]  },
+      TEST:         { bg:[243,232,255], border:[216,180,254], text:[88,28,135]  },
+      COMPETITION:  { bg:[253,244,255], border:[240,171,252], text:[134,25,143] },
     };
     const SEMAINE_HEX = {
-      TRANSITION:      [100,116,139],
-      CONSTRUCTION:    [14,165,233],
-      "DÉCHARGE":      [74,222,128],
-      SURCOMPENSATION: [167,139,250],
-      "CHARGE 1":      [249,115,22],
-      "CHARGE 2":      [239,68,68],
-      "SPÉCIFIQUE":    [232,121,249],
-      "AFFÛTAGE":      [251,191,36],
-      "COMPÉTITION":   [232,121,249],
-      RECONSTRUCTION:  [34,211,238],
+      TRANSITION:      [71,85,105],
+      CONSTRUCTION:    [14,116,144],
+      "DÉCHARGE":      [22,101,52],
+      SURCOMPENSATION: [88,28,135],
+      "CHARGE 1":      [154,52,18],
+      "CHARGE 2":      [153,27,27],
+      "SPÉCIFIQUE":    [134,25,143],
+      "AFFÛTAGE":      [133,77,14],
+      "COMPÉTITION":   [134,25,143],
+      RECONSTRUCTION:  [21,94,117],
     };
 
     const JOURS_SHORT = ["Lun","Mar","Mer","Jeu","Ven","Sam","Dim"];
@@ -315,89 +315,94 @@ export default function PlanningSpace({ athletes, isMobile, currentUser }) {
 
     // ---- Page header ----
     function drawPageHeader(pageNum, totalPages) {
-      // Fond header
-      setFill([15,25,35]);
+      // Fond header blanc avec bordure basse
+      doc.setFillColor(255,255,255);
       doc.rect(0,0,PW,14,"F");
+      doc.setDrawColor(200,210,220);
+      doc.setLineWidth(0.4);
+      doc.line(0,14,PW,14);
       // Titre plan
       doc.setFont("helvetica","bold");
       doc.setFontSize(11);
-      setRGB([241,245,249]);
+      doc.setTextColor(30,41,59);
       doc.text(selPlan.name, MARGIN, 9);
       // Catégorie
       doc.setFont("helvetica","normal");
       doc.setFontSize(8);
-      setRGB([100,116,139]);
+      doc.setTextColor(100,116,139);
       doc.text(selPlan.category || "", MARGIN + doc.getTextWidth(selPlan.name) + 4, 9);
       // Page
       doc.setFontSize(8);
-      setRGB([100,116,139]);
+      doc.setTextColor(100,116,139);
       doc.text(`Page ${pageNum}/${totalPages}`, PW-MARGIN, 9, {align:"right"});
       // Date export
       doc.text(`Export : ${new Date().toLocaleDateString("fr-FR")}`, PW/2, 9, {align:"center"});
-      // Ligne séparatrice
-      setDraw([30,60,90]);
-      doc.setLineWidth(0.3);
-      doc.line(0,14,PW,14);
     }
 
     // ---- Dessin d'un bloc semaine ----
     function drawWeekBlock(w, x, y, bw, bh) {
-      const typeColor = SEMAINE_HEX[w.type_semaine] || [100,116,139];
+      const typeColor = SEMAINE_HEX[w.type_semaine] || [71,85,105];
       const chargeConf = CHARGE_HEX[w.charge];
 
-      // Fond bloc
-      setFill([18,28,42]);
-      setDraw([30,50,75]);
+      // Fond blanc + bordure gris clair
+      doc.setFillColor(255,255,255);
+      doc.setDrawColor(203,213,225);
       doc.setLineWidth(0.4);
       doc.roundedRect(x, y, bw, bh, 3, 3, "FD");
 
-      // Bandeau header semaine
+      // Bandeau header coloré (léger)
       const headerH = 10;
-      setFill([typeColor[0]*0.3, typeColor[1]*0.3, typeColor[2]*0.3]);
       doc.setFillColor(
-        Math.round(typeColor[0]*0.15 + 18),
-        Math.round(typeColor[1]*0.15 + 28),
-        Math.round(typeColor[2]*0.15 + 42)
+        Math.min(255, typeColor[0]*0.15 + 235),
+        Math.min(255, typeColor[1]*0.15 + 235),
+        Math.min(255, typeColor[2]*0.15 + 235)
       );
       doc.roundedRect(x, y, bw, headerH, 3, 3, "F");
-      doc.rect(x, y+headerH-4, bw, 4, "F"); // fill bottom corners
+      doc.rect(x, y+headerH-4, bw, 4, "F");
 
       // Bordure gauche colorée
       doc.setFillColor(typeColor[0], typeColor[1], typeColor[2]);
-      doc.rect(x, y, 2, headerH, "F");
+      doc.rect(x, y, 2.5, headerH, "F");
 
-      // Titre semaine
+      // Numéro semaine
       doc.setFont("helvetica","bold");
       doc.setFontSize(8.5);
       doc.setTextColor(typeColor[0], typeColor[1], typeColor[2]);
-      doc.text(`S${w.num_semaine}`, x+4, y+6.5);
+      doc.text(`S${w.num_semaine}`, x+5, y+6.5);
 
       // Type semaine
       doc.setFont("helvetica","normal");
       doc.setFontSize(7);
-      setRGB([200,215,230]);
-      doc.text(truncate(w.type_semaine||"",18), x+14, y+6.5);
+      doc.setTextColor(50,65,85);
+      doc.text(truncate(w.type_semaine||"",18), x+16, y+6.5);
 
       // Badge charge
       if(chargeConf) {
         const chargeText = w.charge || "";
-        const cw = doc.getTextWidth(chargeText) + 4;
+        const cw = doc.getTextWidth(chargeText) + 5;
         const cx = x + bw - cw - 3;
         doc.setFillColor(chargeConf.bg[0], chargeConf.bg[1], chargeConf.bg[2]);
-        doc.roundedRect(cx, y+2.5, cw, 6, 1.5, 1.5, "F");
+        doc.setDrawColor(chargeConf.border[0], chargeConf.border[1], chargeConf.border[2]);
+        doc.setLineWidth(0.3);
+        doc.roundedRect(cx, y+2.5, cw, 6, 1.5, 1.5, "FD");
         doc.setFontSize(6.5);
         doc.setFont("helvetica","bold");
         doc.setTextColor(chargeConf.text[0], chargeConf.text[1], chargeConf.text[2]);
-        doc.text(chargeText, cx+2, y+6.8);
+        doc.text(chargeText, cx+2.5, y+6.8);
       }
 
+      // Séparateur sous header
+      doc.setDrawColor(220,228,237);
+      doc.setLineWidth(0.2);
+      doc.line(x, y+headerH, x+bw, y+headerH);
+
       // Date + objectif
-      let metaY = y + headerH + 3;
+      let metaY = y + headerH + 3.5;
       if(w.date_debut || w.objectif) {
         doc.setFont("helvetica","normal");
         doc.setFontSize(6.5);
-        setRGB([100,116,139]);
-        const meta = [w.date_debut, w.objectif].filter(Boolean).map(s=>truncate(s,30)).join(" · ");
+        doc.setTextColor(100,116,139);
+        const meta = [w.date_debut, w.objectif].filter(Boolean).map(s=>truncate(s,32)).join(" · ");
         doc.text(meta, x+3, metaY);
         metaY += 4;
       }
@@ -408,42 +413,44 @@ export default function PlanningSpace({ athletes, isMobile, currentUser }) {
       const gridStartX = x + 3;
       const gridStartY = metaY;
       const gridH = bh - (metaY - y) - 2;
-      const cellH = gridH;
 
       JOURS_SHORT.forEach((jour, ji) => {
         const cx = gridStartX + ji * cellW;
         const cy = gridStartY;
         const fullJour = JOURS_FULL[ji];
         const daysSessions = weeksessions.filter(s=>s.jour===fullJour);
+        const isWeekend = ji >= 5;
 
         // Fond cellule
-        const isWeekend = ji >= 5;
-        doc.setFillColor(isWeekend ? 12 : 15, isWeekend ? 20 : 25, isWeekend ? 30 : 38);
-        doc.roundedRect(cx, cy, cellW-1, cellH, 1, 1, "F");
+        doc.setFillColor(isWeekend ? 248 : 252, isWeekend ? 249 : 253, isWeekend ? 250 : 254);
+        doc.setDrawColor(220,228,237);
+        doc.setLineWidth(0.2);
+        doc.roundedRect(cx, cy, cellW-1, gridH, 1, 1, "FD");
 
         // Header jour
         doc.setFont("helvetica","bold");
         doc.setFontSize(6);
-        setRGB(isWeekend ? [80,100,120] : [148,163,184]);
+        doc.setTextColor(isWeekend ? 148 : 100, isWeekend ? 163 : 116, isWeekend ? 184 : 139);
         doc.text(jour, cx + cellW/2 - 1, cy+4.5, {align:"center"});
 
-        // Ligne séparatrice
-        setDraw([30,50,75]);
-        doc.setLineWidth(0.2);
+        // Ligne sous header jour
+        doc.setDrawColor(220,228,237);
         doc.line(cx, cy+6, cx+cellW-1, cy+6);
 
         // Séances
         let sessY = cy + 8;
         daysSessions.slice(0,4).forEach(s => {
-          const sc = TYPE_HEX[s.type_seance] || [100,116,139];
+          const sc = TYPE_HEX[s.type_seance] || TYPE_HEX.REPOS;
           const contenu = typeof s.contenu==="string" ? JSON.parse(s.contenu||"{}") : (s.contenu||{});
-
-          // Badge type
           const typeLabel = s.type_seance ? s.type_seance.slice(0,3) : "???";
           const badgeW = cellW - 3;
-          doc.setFillColor(Math.round(sc[0]*0.2+15), Math.round(sc[1]*0.2+20), Math.round(sc[2]*0.2+30));
-          doc.roundedRect(cx+1, sessY-2, badgeW, 4.5, 1, 1, "F");
-          doc.setTextColor(sc[0], sc[1], sc[2]);
+
+          // Badge type séance
+          doc.setFillColor(sc.bg[0], sc.bg[1], sc.bg[2]);
+          doc.setDrawColor(sc.border[0], sc.border[1], sc.border[2]);
+          doc.setLineWidth(0.25);
+          doc.roundedRect(cx+1, sessY-2, badgeW, 4.5, 1, 1, "FD");
+          doc.setTextColor(sc.text[0], sc.text[1], sc.text[2]);
           doc.setFont("helvetica","bold");
           doc.setFontSize(5.5);
           doc.text(typeLabel, cx+2.5, sessY+1.5);
@@ -452,29 +459,28 @@ export default function PlanningSpace({ athletes, isMobile, currentUser }) {
           if(s.titre) {
             doc.setFont("helvetica","normal");
             doc.setFontSize(5);
-            setRGB([200,215,230]);
-            doc.text(truncate(s.titre, 12), cx+1, sessY+5.5);
+            doc.setTextColor(50,65,85);
+            doc.text(truncate(s.titre, 13), cx+1, sessY+5.5);
           }
 
           // Durée
           if(contenu.duree_min) {
             doc.setFontSize(4.5);
-            setRGB([100,116,139]);
+            doc.setTextColor(100,116,139);
             doc.text(`${contenu.duree_min}min`, cx+1, sessY+9);
             sessY += 12;
           } else {
             sessY += 9;
           }
-
-          if(sessY > cy + cellH - 3) return; // stop si débordement
+          if(sessY > cy + gridH - 3) return;
         });
 
         // Repos si aucune séance
         if(daysSessions.length === 0) {
           doc.setFont("helvetica","normal");
           doc.setFontSize(5);
-          setRGB([40,60,80]);
-          doc.text("—", cx + cellW/2 - 1, cy + cellH/2 + 1, {align:"center"});
+          doc.setTextColor(203,213,225);
+          doc.text("—", cx + cellW/2 - 1, cy + gridH/2 + 1, {align:"center"});
         }
       });
     }
@@ -495,8 +501,8 @@ export default function PlanningSpace({ athletes, isMobile, currentUser }) {
 
       if(posInPage === 0) {
         if(pageIdx > 0) doc.addPage();
-        // Fond page
-        setFill([10,18,28]);
+        // Fond blanc
+        doc.setFillColor(255,255,255);
         doc.rect(0,0,PW,PH,"F");
         drawPageHeader(pageIdx+1, totalPages);
       }
@@ -509,47 +515,50 @@ export default function PlanningSpace({ athletes, isMobile, currentUser }) {
       drawWeekBlock(w, bx, by, BLOCK_W, BLOCK_H);
     });
 
-    // Légende couleurs (dernière page)
+    // Légende (dernière page)
     doc.addPage();
-    setFill([10,18,28]);
+    doc.setFillColor(255,255,255);
     doc.rect(0,0,PW,PH,"F");
     drawPageHeader(totalPages+1, totalPages+1);
 
-    // Titre légende
     doc.setFont("helvetica","bold");
     doc.setFontSize(10);
-    setRGB([241,245,249]);
+    doc.setTextColor(30,41,59);
     doc.text("Légende", MARGIN, 26);
 
     // Types de séances
     doc.setFontSize(8);
-    setRGB([100,116,139]);
+    doc.setTextColor(100,116,139);
     doc.text("TYPES DE SÉANCES", MARGIN, 34);
     const typeEntries = Object.entries(TYPE_HEX);
-    typeEntries.forEach(([label, color], i) => {
-      const lx = MARGIN + (i % 4) * 55;
+    typeEntries.forEach(([label, conf], i) => {
+      const lx = MARGIN + (i % 4) * 65;
       const ly = 40 + Math.floor(i/4) * 10;
-      doc.setFillColor(color[0], color[1], color[2]);
-      doc.roundedRect(lx, ly-3, 12, 5.5, 1, 1, "F");
+      doc.setFillColor(conf.bg[0], conf.bg[1], conf.bg[2]);
+      doc.setDrawColor(conf.border[0], conf.border[1], conf.border[2]);
+      doc.setLineWidth(0.3);
+      doc.roundedRect(lx, ly-3, 14, 5.5, 1.5, 1.5, "FD");
       doc.setFont("helvetica","bold");
       doc.setFontSize(6);
-      doc.setTextColor(15,25,38);
+      doc.setTextColor(conf.text[0], conf.text[1], conf.text[2]);
       doc.text(label.slice(0,3), lx+1.5, ly+0.5);
       doc.setFont("helvetica","normal");
       doc.setFontSize(7);
-      setRGB([148,163,184]);
-      doc.text(label, lx+14, ly+0.5);
+      doc.setTextColor(50,65,85);
+      doc.text(label, lx+16, ly+0.5);
     });
 
     // Charges
     let chargeY = 70;
     doc.setFontSize(8);
-    setRGB([100,116,139]);
+    doc.setTextColor(100,116,139);
     doc.text("CHARGES SEMAINE", MARGIN, chargeY);
     Object.entries(CHARGE_HEX).forEach(([label, conf], i) => {
       const lx = MARGIN + i*55;
       doc.setFillColor(conf.bg[0], conf.bg[1], conf.bg[2]);
-      doc.roundedRect(lx, chargeY+5, 30, 6, 1.5, 1.5, "F");
+      doc.setDrawColor(conf.border[0], conf.border[1], conf.border[2]);
+      doc.setLineWidth(0.3);
+      doc.roundedRect(lx, chargeY+5, 36, 6, 1.5, 1.5, "FD");
       doc.setFont("helvetica","bold");
       doc.setFontSize(7);
       doc.setTextColor(conf.text[0], conf.text[1], conf.text[2]);
