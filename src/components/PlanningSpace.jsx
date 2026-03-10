@@ -1,0 +1,656 @@
+import { useState, useEffect } from "react";
+import { S } from "../styles.js";
+import { api } from "../config/supabase.js";
+
+// ---- Constantes ----
+const CHARGE_COLORS = {
+  "Légère":    { bg:"#4ade8020", border:"#4ade8050", text:"#4ade80" },
+  "Modérée":   { bg:"#f59e0b20", border:"#f59e0b50", text:"#f59e0b" },
+  "Élevée":    { bg:"#f9731620", border:"#f9731650", text:"#f97316" },
+  "Maximale":  { bg:"#ef444420", border:"#ef444450", text:"#ef4444" },
+  "Compétition":{ bg:"#a78bfa20",border:"#a78bfa50", text:"#a78bfa" },
+};
+const TYPE_SEMAINE_COLORS = {
+  "TRANSITION":    "#64748b",
+  "CONSTRUCTION":  "#0ea5e9",
+  "DÉCHARGE":      "#4ade80",
+  "SURCOMPENSATION":"#22d3ee",
+  "CHARGE 1":      "#f97316",
+  "CHARGE 2":      "#ef4444",
+  "SPÉCIFIQUE 500m":"#a78bfa",
+  "AFFÛTAGE SPRINT":"#f59e0b",
+  "AFFÛTAGE 1000m": "#f59e0b",
+  "COMPÉTITION":   "#e879f9",
+  "RECONSTRUCTION":"#38bdf8",
+};
+const TYPES_SEMAINE = ["TRANSITION","CONSTRUCTION","DÉCHARGE","SURCOMPENSATION","CHARGE 1","CHARGE 2","SPÉCIFIQUE 500m","AFFÛTAGE SPRINT","AFFÛTAGE 1000m","COMPÉTITION","RECONSTRUCTION"];
+const CHARGES = ["Légère","Modérée","Élevée","Maximale","Compétition"];
+const JOURS = ["Lundi","Mardi","Mercredi","Jeudi","Vendredi","Samedi","Dimanche"];
+const TYPE_SEANCE_COLORS = {
+  MUSCU:"#f97316", ERGO:"#0ea5e9", BATEAU:"#22d3ee",
+  RECUP:"#4ade80", REPOS:"#64748b", TEST:"#a78bfa", COMPETITION:"#e879f9",
+};
+const TYPE_SEANCE_LABELS = {
+  MUSCU:"💪 Muscu", ERGO:"🚣 Ergo", BATEAU:"⛵ Bateau",
+  RECUP:"🔄 Récup", REPOS:"😴 Repos", TEST:"📊 Test", COMPETITION:"🏆 Compét",
+};
+
+function chargeBadge(charge, isMobile) {
+  const c = CHARGE_COLORS[charge] || { bg:"#33415520", border:"#33415550", text:"#94a3b8" };
+  return <span style={{background:c.bg,border:`1px solid ${c.border}`,color:c.text,borderRadius:6,padding:"2px 8px",fontSize:11,fontWeight:700}}>{charge}</span>;
+}
+
+function typeBadge(type) {
+  const col = TYPE_SEMAINE_COLORS[type] || "#64748b";
+  return <span style={{background:col+"20",border:`1px solid ${col}50`,color:col,borderRadius:6,padding:"2px 8px",fontSize:11,fontWeight:700}}>{type}</span>;
+}
+
+function FF({ label, children }) {
+  return <div style={{marginBottom:12}}><label style={{display:"block",color:"#7a95b0",fontSize:11,marginBottom:4,textTransform:"uppercase",letterSpacing:1}}>{label}</label>{children}</div>;
+}
+function Modal({ title, onClose, children, wide }) {
+  return (
+    <div style={S.overlay} onClick={e=>e.target===e.currentTarget&&onClose()}>
+      <div style={{...S.modal,width:wide?700:460,maxWidth:"95vw"}}>
+        <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:20}}>
+          <h2 style={{color:"#f1f5f9",fontSize:18,fontWeight:800,margin:0}}>{title}</h2>
+          <button style={{background:"none",border:"none",color:"#7a95b0",cursor:"pointer",fontSize:20}} onClick={onClose}>×</button>
+        </div>
+        {children}
+      </div>
+    </div>
+  );
+}
+
+export default function PlanningSpace({ athletes, isMobile, currentUser }) {
+  const [view, setView]           = useState("plans");   // plans | timeline | semaine | templates
+  const [plans, setPlans]         = useState([]);
+  const [selPlan, setSelPlan]     = useState(null);
+  const [weeks, setWeeks]         = useState([]);
+  const [selWeek, setSelWeek]     = useState(null);
+  const [sessions, setSessions]   = useState([]);
+  const [templates, setTemplates] = useState([]);
+  const [loading, setLoading]     = useState(true);
+  const [toast, setToast]         = useState(null);
+
+  // Modals
+  const [showPlanModal,    setShowPlanModal]    = useState(false);
+  const [showWeekModal,    setShowWeekModal]    = useState(false);
+  const [showSessionModal, setShowSessionModal] = useState(false);
+  const [showTplModal,     setShowTplModal]     = useState(false);
+  const [editPlan,         setEditPlan]         = useState(null);
+  const [editWeek,         setEditWeek]         = useState(null);
+  const [editSession,      setEditSession]      = useState(null);
+  const [editTpl,          setEditTpl]          = useState(null);
+
+  const CATEGORIES = [...new Set(athletes.map(a=>a.category).filter(Boolean))].sort();
+
+  // ---- Load ----
+  useEffect(()=>{
+    loadAll();
+  },[]);
+
+  async function loadAll() {
+    setLoading(true);
+    try {
+      const [pl, tpl] = await Promise.all([
+        api.getSeasonPlans(),
+        api.getSessionTemplates(),
+      ]);
+      setPlans(pl||[]);
+      setTemplates(tpl||[]);
+    } catch(e) { showToast("Erreur chargement","error"); }
+    setLoading(false);
+  }
+
+  async function loadWeeks(planId) {
+    try {
+      const w = await api.getPlanWeeks(planId);
+      setWeeks(w||[]);
+    } catch(e) {}
+  }
+
+  async function loadSessions(weekId) {
+    try {
+      const s = await api.getPlannedSessions(weekId);
+      setSessions(s||[]);
+    } catch(e) {}
+  }
+
+  function showToast(m, t="success") {
+    setToast({m,t});
+    setTimeout(()=>setToast(null),2500);
+  }
+
+  // ---- Plan CRUD ----
+  async function savePlan(data) {
+    try {
+      if(data.id) {
+        await api.updateSeasonPlan(data.id, data);
+        setPlans(pl=>pl.map(p=>p.id===data.id?{...p,...data}:p));
+      } else {
+        const res = await api.createSeasonPlan(data);
+        if(res&&res[0]) setPlans(pl=>[...pl,res[0]]);
+      }
+      showToast(data.id?"Plan modifié":"Plan créé");
+      setShowPlanModal(false);
+    } catch(e) { showToast("Erreur sauvegarde","error"); }
+  }
+
+  async function deletePlan(id) {
+    if(!window.confirm("Supprimer ce plan ? Toutes les semaines et séances seront supprimées.")) return;
+    try {
+      await api.deleteSeasonPlan(id);
+      setPlans(pl=>pl.filter(p=>p.id!==id));
+      if(selPlan?.id===id) { setSelPlan(null); setView("plans"); }
+      showToast("Plan supprimé");
+    } catch(e) { showToast("Erreur suppression","error"); }
+  }
+
+  // ---- Week CRUD ----
+  async function saveWeek(data) {
+    try {
+      if(data.id) {
+        await api.updatePlanWeek(data.id, data);
+        setWeeks(w=>w.map(x=>x.id===data.id?{...x,...data}:x));
+      } else {
+        const res = await api.createPlanWeek({...data,plan_id:selPlan.id});
+        if(res&&res[0]) setWeeks(w=>[...w,res[0]].sort((a,b)=>a.num_semaine-b.num_semaine));
+      }
+      showToast(data.id?"Semaine modifiée":"Semaine ajoutée");
+      setShowWeekModal(false);
+    } catch(e) { showToast("Erreur sauvegarde","error"); }
+  }
+
+  async function deleteWeek(id) {
+    if(!window.confirm("Supprimer cette semaine ?")) return;
+    try {
+      await api.deletePlanWeek(id);
+      setWeeks(w=>w.filter(x=>x.id!==id));
+      if(selWeek?.id===id) { setSelWeek(null); setView("timeline"); }
+      showToast("Semaine supprimée");
+    } catch(e) { showToast("Erreur","error"); }
+  }
+
+  // ---- Session CRUD ----
+  async function saveSession(data) {
+    try {
+      if(data.id) {
+        await api.updatePlannedSession(data.id, data);
+        setSessions(s=>s.map(x=>x.id===data.id?{...x,...data}:x));
+      } else {
+        const res = await api.createPlannedSession({...data,week_id:selWeek.id});
+        if(res&&res[0]) setSessions(s=>[...s,res[0]]);
+      }
+      showToast(data.id?"Séance modifiée":"Séance ajoutée");
+      setShowSessionModal(false);
+    } catch(e) { showToast("Erreur sauvegarde","error"); }
+  }
+
+  async function deleteSession(id) {
+    try {
+      await api.deletePlannedSession(id);
+      setSessions(s=>s.filter(x=>x.id!==id));
+      showToast("Séance supprimée");
+    } catch(e) { showToast("Erreur","error"); }
+  }
+
+  // ---- Template CRUD ----
+  async function saveTpl(data) {
+    try {
+      if(data.id) {
+        await api.updateSessionTemplate(data.id, data);
+        setTemplates(t=>t.map(x=>x.id===data.id?{...x,...data}:x));
+      } else {
+        const res = await api.createSessionTemplate({...data,created_by:currentUser?.name});
+        if(res&&res[0]) setTemplates(t=>[...t,res[0]]);
+      }
+      showToast(data.id?"Template modifié":"Template créé");
+      setShowTplModal(false);
+    } catch(e) { showToast("Erreur sauvegarde","error"); }
+  }
+
+  async function deleteTpl(id) {
+    if(!window.confirm("Supprimer ce template ?")) return;
+    try {
+      await api.deleteSessionTemplate(id);
+      setTemplates(t=>t.filter(x=>x.id!==id));
+      showToast("Template supprimé");
+    } catch(e) { showToast("Erreur","error"); }
+  }
+
+  // ---- Navigation helpers ----
+  function openPlan(plan) {
+    setSelPlan(plan);
+    loadWeeks(plan.id);
+    setView("timeline");
+  }
+
+  function openWeek(week) {
+    setSelWeek(week);
+    loadSessions(week.id);
+    setView("semaine");
+  }
+
+  // ==================== VIEWS ====================
+
+  // ---- Vue liste des plans ----
+  function ViewPlans() {
+    return (
+      <div>
+        <div style={{...S.ph,marginBottom:isMobile?16:28}}>
+          <div>
+            <h1 style={{...S.ttl,fontSize:isMobile?22:28}}>📅 Planning</h1>
+            <p style={S.sub}>{plans.length} plan{plans.length!==1?"s":""} de saison</p>
+          </div>
+          <div style={{display:"flex",gap:8}}>
+            <button style={{...S.btnP,background:"#1e293b",border:"1px solid #334155",color:"#94a3b8",fontSize:12}} onClick={()=>setView("templates")}>📋 Templates</button>
+            <button style={S.btnP} onClick={()=>{setEditPlan({name:"",category:"",date_debut:"",date_fin:"",description:""});setShowPlanModal(true);}}>+ Nouveau plan</button>
+          </div>
+        </div>
+        {plans.length===0?(
+          <div style={{...S.card,textAlign:"center",padding:48}}>
+            <div style={{fontSize:48,marginBottom:16}}>📅</div>
+            <div style={{color:"#f1f5f9",fontWeight:700,fontSize:16,marginBottom:8}}>Aucun plan de saison</div>
+            <div style={{color:"#64748b",fontSize:13,marginBottom:24}}>Crée ton premier plan pour commencer à planifier</div>
+            <button style={S.btnP} onClick={()=>{setEditPlan({name:"",category:"",date_debut:"",date_fin:"",description:""});setShowPlanModal(true);}}>+ Créer un plan</button>
+          </div>
+        ):(
+          <div style={{display:"grid",gridTemplateColumns:isMobile?"1fr":"repeat(auto-fill,minmax(320px,1fr))",gap:16}}>
+            {plans.map(p=>(
+              <div key={p.id} style={{...S.card,cursor:"pointer",transition:"border-color 0.15s"}} onClick={()=>openPlan(p)}>
+                <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:12}}>
+                  <div>
+                    <div style={{fontWeight:800,color:"#f1f5f9",fontSize:16,marginBottom:4}}>{p.name}</div>
+                    <div style={{color:"#0ea5e9",fontSize:12,fontWeight:600}}>{p.category}</div>
+                  </div>
+                  <div style={{display:"flex",gap:6}}>
+                    <button style={{...S.actionBtn,borderColor:"#334155",color:"#94a3b8",fontSize:11}} onClick={e=>{e.stopPropagation();setEditPlan({...p});setShowPlanModal(true);}}>✏️</button>
+                    <button style={{...S.actionBtn,borderColor:"#ef444430",color:"#ef4444",fontSize:11}} onClick={e=>{e.stopPropagation();deletePlan(p.id);}}>🗑</button>
+                  </div>
+                </div>
+                {p.description&&<div style={{color:"#7a95b0",fontSize:13,marginBottom:12}}>{p.description}</div>}
+                <div style={{display:"flex",gap:8,fontSize:12,color:"#64748b"}}>
+                  <span>📆 {p.date_debut} → {p.date_fin}</span>
+                </div>
+                <div style={{marginTop:12,color:"#38bdf8",fontSize:12,fontWeight:600}}>Voir le plan →</div>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+    );
+  }
+
+  // ---- Vue timeline ----
+  function ViewTimeline() {
+    if(!selPlan) return null;
+    const totalWeeks = weeks.length;
+    return (
+      <div>
+        <div style={{display:"flex",alignItems:"center",gap:12,marginBottom:isMobile?16:24}}>
+          <button style={{...S.actionBtn,borderColor:"#334155",color:"#94a3b8"}} onClick={()=>setView("plans")}>← Retour</button>
+          <div style={{flex:1}}>
+            <h1 style={{...S.ttl,fontSize:isMobile?18:24,margin:0}}>{selPlan.name}</h1>
+            <p style={{...S.sub,marginTop:2}}>{selPlan.category} · {totalWeeks} semaine{totalWeeks!==1?"s":""}</p>
+          </div>
+          <button style={S.btnP} onClick={()=>{
+            const nextNum = weeks.length>0?Math.max(...weeks.map(w=>w.num_semaine))+1:1;
+            setEditWeek({num_semaine:nextNum,date_debut:"",type_semaine:"CONSTRUCTION",charge:"Modérée",objectif:"",notes:""});
+            setShowWeekModal(true);
+          }}>+ Semaine</button>
+        </div>
+
+        {weeks.length===0?(
+          <div style={{...S.card,textAlign:"center",padding:40}}>
+            <div style={{color:"#64748b",fontSize:14,marginBottom:16}}>Aucune semaine dans ce plan</div>
+            <button style={S.btnP} onClick={()=>{setEditWeek({num_semaine:1,date_debut:"",type_semaine:"CONSTRUCTION",charge:"Modérée",objectif:"",notes:""});setShowWeekModal(true);}}>+ Ajouter la semaine 1</button>
+          </div>
+        ):(
+          <div style={{display:"flex",flexDirection:"column",gap:8}}>
+            {weeks.map((w,i)=>{
+              const col = TYPE_SEMAINE_COLORS[w.type_semaine]||"#64748b";
+              const ch  = CHARGE_COLORS[w.charge]||{bg:"#33415520",border:"#33415550",text:"#94a3b8"};
+              const sessCount = 0; // sera chargé plus tard
+              return (
+                <div key={w.id} style={{background:"#1e293b",border:`1px solid ${col}40`,borderLeft:`4px solid ${col}`,borderRadius:10,padding:isMobile?"12px":"14px 18px",cursor:"pointer",display:"flex",alignItems:isMobile?"flex-start":"center",gap:isMobile?8:16,flexDirection:isMobile?"column":"row"}}
+                  onClick={()=>openWeek(w)}>
+                  {/* Numéro */}
+                  <div style={{width:isMobile?32:40,height:isMobile?32:40,borderRadius:8,background:col+"20",border:`1px solid ${col}40`,display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}>
+                    <span style={{color:col,fontWeight:900,fontSize:isMobile?13:15}}>S{w.num_semaine}</span>
+                  </div>
+                  {/* Dates + type */}
+                  <div style={{flex:1,minWidth:0}}>
+                    <div style={{display:"flex",alignItems:"center",gap:8,flexWrap:"wrap",marginBottom:4}}>
+                      <span style={{color:col,fontWeight:700,fontSize:13}}>{w.type_semaine}</span>
+                      {chargeBadge(w.charge)}
+                    </div>
+                    {w.date_debut&&<div style={{color:"#64748b",fontSize:12}}>📆 {w.date_debut}</div>}
+                    {w.objectif&&<div style={{color:"#94a3b8",fontSize:12,marginTop:2}}>{w.objectif}</div>}
+                  </div>
+                  {/* Actions */}
+                  <div style={{display:"flex",gap:6,flexShrink:0}}>
+                    <button style={{...S.actionBtn,borderColor:"#334155",color:"#94a3b8",fontSize:11}} onClick={e=>{e.stopPropagation();setEditWeek({...w});setShowWeekModal(true);}}>✏️</button>
+                    <button style={{...S.actionBtn,borderColor:"#ef444430",color:"#ef4444",fontSize:11}} onClick={e=>{e.stopPropagation();deleteWeek(w.id);}}>🗑</button>
+                    <span style={{color:"#38bdf8",fontSize:12,fontWeight:600,padding:"5px 0"}}>→</span>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </div>
+    );
+  }
+
+  // ---- Vue semaine (grille Lun-Dim) ----
+  function ViewSemaine() {
+    if(!selWeek) return null;
+    const col = TYPE_SEMAINE_COLORS[selWeek.type_semaine]||"#64748b";
+
+    // Group sessions by day
+    const byDay = {};
+    JOURS.forEach(j=>{ byDay[j]=[]; });
+    sessions.forEach(s=>{ if(byDay[s.jour]) byDay[s.jour].push(s); });
+
+    return (
+      <div>
+        {/* Header */}
+        <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:isMobile?12:20,flexWrap:"wrap"}}>
+          <button style={{...S.actionBtn,borderColor:"#334155",color:"#94a3b8"}} onClick={()=>{setView("timeline");}}>← Retour</button>
+          <div style={{flex:1}}>
+            <div style={{display:"flex",alignItems:"center",gap:8,flexWrap:"wrap"}}>
+              <h1 style={{...S.ttl,fontSize:isMobile?17:22,margin:0}}>Semaine {selWeek.num_semaine}</h1>
+              <span style={{color:col,fontWeight:700,fontSize:13}}>{selWeek.type_semaine}</span>
+              {chargeBadge(selWeek.charge)}
+            </div>
+            {selWeek.date_debut&&<p style={{...S.sub,marginTop:4}}>📆 {selWeek.date_debut}</p>}
+            {selWeek.objectif&&<p style={{color:"#94a3b8",fontSize:13,margin:"4px 0 0"}}>{selWeek.objectif}</p>}
+          </div>
+        </div>
+
+        {/* Notes de la semaine */}
+        {selWeek.notes&&(
+          <div style={{...S.card,marginBottom:16,borderLeft:`3px solid ${col}`,background:col+"08"}}>
+            <div style={{color:"#94a3b8",fontSize:13}}>{selWeek.notes}</div>
+          </div>
+        )}
+
+        {/* Grille jours */}
+        <div style={{display:"grid",gridTemplateColumns:isMobile?"1fr 1fr":"repeat(7,1fr)",gap:isMobile?8:10}}>
+          {JOURS.map(jour=>{
+            const joursessions = byDay[jour]||[];
+            return (
+              <div key={jour} style={{background:"#1e293b",border:"1px solid #334155",borderRadius:10,padding:isMobile?"10px 8px":"12px 10px",minHeight:isMobile?90:120,display:"flex",flexDirection:"column",gap:6}}>
+                <div style={{fontWeight:700,color:"#f1f5f9",fontSize:isMobile?11:12,marginBottom:4,borderBottom:"1px solid #334155",paddingBottom:4}}>{isMobile?jour.slice(0,3):jour}</div>
+                {joursessions.map(s=>{
+                  const sc = TYPE_SEANCE_COLORS[s.type_seance]||"#64748b";
+                  return (
+                    <div key={s.id} style={{background:sc+"18",border:`1px solid ${sc}40`,borderRadius:6,padding:"5px 7px",cursor:"pointer"}}
+                      onClick={()=>{setEditSession({...s});setShowSessionModal(true);}}>
+                      <div style={{color:sc,fontSize:10,fontWeight:700}}>{TYPE_SEANCE_LABELS[s.type_seance]||s.type_seance}</div>
+                      <div style={{color:"#cbd5e1",fontSize:11,fontWeight:600,marginTop:1}}>{s.titre}</div>
+                      {s.contenu?.duree_min>0&&<div style={{color:"#64748b",fontSize:10}}>{s.contenu.duree_min}'</div>}
+                    </div>
+                  );
+                })}
+                <button style={{background:"none",border:"1px dashed #334155",borderRadius:6,color:"#475569",fontSize:isMobile?16:18,cursor:"pointer",padding:"4px",marginTop:"auto"}}
+                  onClick={()=>{setEditSession({jour,type_seance:"ERGO",titre:"",contenu:{blocs:[],duree_min:60}});setShowSessionModal(true);}}>
+                  +
+                </button>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+    );
+  }
+
+  // ---- Vue templates ----
+  function ViewTemplates() {
+    const byType = {};
+    templates.forEach(t=>{
+      if(!byType[t.type_seance]) byType[t.type_seance]=[];
+      byType[t.type_seance].push(t);
+    });
+    return (
+      <div>
+        <div style={{display:"flex",alignItems:"center",gap:12,marginBottom:isMobile?16:24}}>
+          <button style={{...S.actionBtn,borderColor:"#334155",color:"#94a3b8"}} onClick={()=>setView("plans")}>← Retour</button>
+          <div style={{flex:1}}>
+            <h1 style={{...S.ttl,fontSize:isMobile?18:24,margin:0}}>📋 Templates de séance</h1>
+            <p style={{...S.sub,marginTop:2}}>{templates.length} modèles disponibles</p>
+          </div>
+          <button style={S.btnP} onClick={()=>{setEditTpl({name:"",type_seance:"ERGO",contenu:{blocs:[],duree_min:60}});setShowTplModal(true);}}>+ Template</button>
+        </div>
+        {Object.entries(byType).map(([type,tpls])=>(
+          <div key={type} style={{marginBottom:24}}>
+            <div style={{...S.st,marginBottom:10,color:TYPE_SEANCE_COLORS[type]||"#64748b"}}>{TYPE_SEANCE_LABELS[type]||type}</div>
+            <div style={{display:"grid",gridTemplateColumns:isMobile?"1fr":"repeat(auto-fill,minmax(280px,1fr))",gap:10}}>
+              {tpls.map(t=>(
+                <div key={t.id} style={{...S.card,padding:"14px 16px"}}>
+                  <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:8}}>
+                    <div style={{fontWeight:700,color:"#f1f5f9",fontSize:14}}>{t.name}</div>
+                    <div style={{display:"flex",gap:4}}>
+                      <button style={{...S.actionBtn,borderColor:"#334155",color:"#94a3b8",fontSize:10,padding:"3px 8px"}} onClick={()=>{setEditTpl({...t,contenu:typeof t.contenu==="string"?JSON.parse(t.contenu):t.contenu});setShowTplModal(true);}}>✏️</button>
+                      {!t.is_default&&<button style={{...S.actionBtn,borderColor:"#ef444430",color:"#ef4444",fontSize:10,padding:"3px 8px"}} onClick={()=>deleteTpl(t.id)}>🗑</button>}
+                    </div>
+                  </div>
+                  {(()=>{
+                    const c = typeof t.contenu==="string"?JSON.parse(t.contenu):t.contenu;
+                    return (<>
+                      {c.blocs?.map((b,i)=><div key={i} style={{fontSize:12,color:"#94a3b8",marginBottom:2}}><span style={{color:"#64748b"}}>• </span><b style={{color:"#cbd5e1"}}>{b.titre}</b> — {b.detail}</div>)}
+                      {c.duree_min>0&&<div style={{color:"#64748b",fontSize:11,marginTop:6}}>⏱ {c.duree_min} min</div>}
+                    </>);
+                  })()}
+                  {t.is_default&&<div style={{marginTop:8,fontSize:10,color:"#475569",fontStyle:"italic"}}>Template système</div>}
+                </div>
+              ))}
+            </div>
+          </div>
+        ))}
+      </div>
+    );
+  }
+
+  // ==================== MODALS ====================
+
+  function ModalPlan() {
+    const [form, setForm] = useState(editPlan||{});
+    function set(k,v) { setForm(f=>({...f,[k]:v})); }
+    return (
+      <Modal title={form.id?"Modifier le plan":"Nouveau plan de saison"} onClose={()=>setShowPlanModal(false)}>
+        <FF label="Nom du plan"><input style={{...S.inp}} value={form.name||""} onChange={e=>set("name",e.target.value)} placeholder="Ex: Saison 2026 Masters"/></FF>
+        <FF label="Groupe / Catégorie">
+          <select style={{...S.inp}} value={form.category||""} onChange={e=>set("category",e.target.value)}>
+            <option value="">-- Sélectionner --</option>
+            {CATEGORIES.map(c=><option key={c} value={c}>{c}</option>)}
+            <option value="Tous">Tous les groupes</option>
+          </select>
+        </FF>
+        <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12}}>
+          <FF label="Date début"><input style={{...S.inp}} type="date" value={form.date_debut||""} onChange={e=>set("date_debut",e.target.value)}/></FF>
+          <FF label="Date fin"><input style={{...S.inp}} type="date" value={form.date_fin||""} onChange={e=>set("date_fin",e.target.value)}/></FF>
+        </div>
+        <FF label="Description (optionnel)"><textarea style={{...S.inp,minHeight:60,resize:"vertical"}} value={form.description||""} onChange={e=>set("description",e.target.value)} placeholder="Objectifs, contexte..."/></FF>
+        <div style={{display:"flex",gap:10,justifyContent:"flex-end",marginTop:8}}>
+          <button style={{...S.btnP,background:"transparent",color:"#64748b",border:"1px solid #334155"}} onClick={()=>setShowPlanModal(false)}>Annuler</button>
+          <button style={S.btnP} onClick={()=>savePlan(form)} disabled={!form.name||!form.category}>Enregistrer</button>
+        </div>
+      </Modal>
+    );
+  }
+
+  function ModalWeek() {
+    const [form, setForm] = useState(editWeek||{});
+    function set(k,v) { setForm(f=>({...f,[k]:v})); }
+    return (
+      <Modal title={form.id?"Modifier la semaine":"Nouvelle semaine"} onClose={()=>setShowWeekModal(false)}>
+        <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12}}>
+          <FF label="N° semaine"><input style={{...S.inp}} type="number" min="1" value={form.num_semaine||""} onChange={e=>set("num_semaine",parseInt(e.target.value))}/></FF>
+          <FF label="Date début"><input style={{...S.inp}} type="date" value={form.date_debut||""} onChange={e=>set("date_debut",e.target.value)}/></FF>
+        </div>
+        <FF label="Type de semaine">
+          <select style={{...S.inp}} value={form.type_semaine||""} onChange={e=>set("type_semaine",e.target.value)}>
+            {TYPES_SEMAINE.map(t=><option key={t} value={t}>{t}</option>)}
+          </select>
+        </FF>
+        <FF label="Charge">
+          <div style={{display:"flex",gap:8,flexWrap:"wrap"}}>
+            {CHARGES.map(c=>{
+              const col=CHARGE_COLORS[c]||{bg:"#33415520",border:"#33415550",text:"#94a3b8"};
+              return <button key={c} style={{...S.actionBtn,background:form.charge===c?col.bg:"transparent",borderColor:form.charge===c?col.border:"#334155",color:form.charge===c?col.text:"#64748b",padding:"6px 14px"}} onClick={()=>set("charge",c)}>{c}</button>;
+            })}
+          </div>
+        </FF>
+        <FF label="Objectif"><input style={{...S.inp}} value={form.objectif||""} onChange={e=>set("objectif",e.target.value)} placeholder="Ex: Régate 1000m · 4/5 avr."/></FF>
+        <FF label="Notes coach"><textarea style={{...S.inp,minHeight:60,resize:"vertical"}} value={form.notes||""} onChange={e=>set("notes",e.target.value)} placeholder="Consignes, contexte..."/></FF>
+        <div style={{display:"flex",gap:10,justifyContent:"flex-end",marginTop:8}}>
+          <button style={{...S.btnP,background:"transparent",color:"#64748b",border:"1px solid #334155"}} onClick={()=>setShowWeekModal(false)}>Annuler</button>
+          <button style={S.btnP} onClick={()=>saveWeek(form)}>Enregistrer</button>
+        </div>
+      </Modal>
+    );
+  }
+
+  function ModalSession() {
+    const initContenu = editSession?.contenu && typeof editSession.contenu==="object" ? editSession.contenu : {blocs:[],duree_min:60};
+    const [form, setForm] = useState({...editSession, contenu: initContenu});
+    const [newBloc, setNewBloc] = useState({titre:"",detail:""});
+    function set(k,v) { setForm(f=>({...f,[k]:v})); }
+    function setContenu(k,v) { setForm(f=>({...f,contenu:{...f.contenu,[k]:v}})); }
+
+    function applyTemplate(tpl) {
+      const c = typeof tpl.contenu==="string"?JSON.parse(tpl.contenu):tpl.contenu;
+      setForm(f=>({...f,type_seance:tpl.type_seance,titre:tpl.name,contenu:{...c}}));
+    }
+
+    const myTemplates = templates.filter(t=>!form.type_seance||t.type_seance===form.type_seance);
+
+    return (
+      <Modal title={form.id?"Modifier la séance":"Nouvelle séance"} onClose={()=>setShowSessionModal(false)} wide>
+        <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12}}>
+          <FF label="Jour">
+            <select style={{...S.inp}} value={form.jour||JOURS[0]} onChange={e=>set("jour",e.target.value)}>
+              {JOURS.map(j=><option key={j} value={j}>{j}</option>)}
+            </select>
+          </FF>
+          <FF label="Type">
+            <select style={{...S.inp}} value={form.type_seance||"ERGO"} onChange={e=>set("type_seance",e.target.value)}>
+              {Object.entries(TYPE_SEANCE_LABELS).map(([k,v])=><option key={k} value={k}>{v}</option>)}
+            </select>
+          </FF>
+        </div>
+        <FF label="Titre"><input style={{...S.inp}} value={form.titre||""} onChange={e=>set("titre",e.target.value)} placeholder="Ex: Ergo B1 45' continu"/></FF>
+
+        {/* Templates rapides */}
+        {myTemplates.length>0&&(
+          <FF label="Utiliser un template">
+            <div style={{display:"flex",gap:6,flexWrap:"wrap"}}>
+              {myTemplates.map(t=>(
+                <button key={t.id} style={{...S.fb,fontSize:11}} onClick={()=>applyTemplate(t)}>{t.name}</button>
+              ))}
+            </div>
+          </FF>
+        )}
+
+        {/* Blocs de contenu */}
+        <div style={{marginBottom:12}}>
+          <label style={{display:"block",color:"#7a95b0",fontSize:11,marginBottom:8,textTransform:"uppercase",letterSpacing:1}}>Contenu (blocs)</label>
+          {(form.contenu?.blocs||[]).map((b,i)=>(
+            <div key={i} style={{display:"flex",gap:8,marginBottom:6,alignItems:"center"}}>
+              <div style={{...S.inp,background:"#0ea5e915",border:"1px solid #0ea5e930",color:"#0ea5e9",fontSize:12,fontWeight:700,width:100,flexShrink:0,padding:"8px 10px"}}>{b.titre}</div>
+              <div style={{...S.inp,flex:1,fontSize:12,color:"#cbd5e1",padding:"8px 10px"}}>{b.detail}</div>
+              <button style={{...S.actionBtn,borderColor:"#ef444430",color:"#ef4444",padding:"6px 10px"}} onClick={()=>setContenu("blocs",form.contenu.blocs.filter((_,j)=>j!==i))}>×</button>
+            </div>
+          ))}
+          {/* Ajouter un bloc */}
+          <div style={{display:"flex",gap:8,marginTop:8}}>
+            <input style={{...S.inp,width:110,fontSize:12}} placeholder="Titre (ex: Muscu)" value={newBloc.titre} onChange={e=>setNewBloc(b=>({...b,titre:e.target.value}))}/>
+            <input style={{...S.inp,flex:1,fontSize:12}} placeholder="Détail (ex: 4×10-12 · 60%)" value={newBloc.detail} onChange={e=>setNewBloc(b=>({...b,detail:e.target.value}))}/>
+            <button style={S.btnP} onClick={()=>{
+              if(!newBloc.titre) return;
+              setContenu("blocs",[...(form.contenu?.blocs||[]),{...newBloc}]);
+              setNewBloc({titre:"",detail:""});
+            }}>+</button>
+          </div>
+        </div>
+
+        <FF label="Durée (min)"><input style={{...S.inp,width:100}} type="number" min="0" value={form.contenu?.duree_min||0} onChange={e=>setContenu("duree_min",parseInt(e.target.value))}/></FF>
+
+        <div style={{display:"flex",gap:10,justifyContent:"space-between",marginTop:8,flexWrap:"wrap"}}>
+          <div>
+            {form.id&&<button style={{...S.actionBtn,borderColor:"#ef444430",color:"#ef4444"}} onClick={()=>{deleteSession(form.id);setShowSessionModal(false);}}>Supprimer</button>}
+          </div>
+          <div style={{display:"flex",gap:10}}>
+            <button style={{...S.btnP,background:"transparent",color:"#64748b",border:"1px solid #334155"}} onClick={()=>setShowSessionModal(false)}>Annuler</button>
+            <button style={S.btnP} onClick={()=>saveSession(form)}>Enregistrer</button>
+          </div>
+        </div>
+      </Modal>
+    );
+  }
+
+  function ModalTemplate() {
+    const initContenu = editTpl?.contenu && typeof editTpl.contenu==="object" ? editTpl.contenu : {blocs:[],duree_min:60};
+    const [form, setForm] = useState({...editTpl, contenu: initContenu});
+    const [newBloc, setNewBloc] = useState({titre:"",detail:""});
+    function set(k,v) { setForm(f=>({...f,[k]:v})); }
+    function setContenu(k,v) { setForm(f=>({...f,contenu:{...f.contenu,[k]:v}})); }
+    return (
+      <Modal title={form.id?"Modifier le template":"Nouveau template"} onClose={()=>setShowTplModal(false)} wide>
+        <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12}}>
+          <FF label="Nom"><input style={{...S.inp}} value={form.name||""} onChange={e=>set("name",e.target.value)} placeholder="Ex: Ergo B1 45' continu"/></FF>
+          <FF label="Type">
+            <select style={{...S.inp}} value={form.type_seance||"ERGO"} onChange={e=>set("type_seance",e.target.value)}>
+              {Object.entries(TYPE_SEANCE_LABELS).map(([k,v])=><option key={k} value={k}>{v}</option>)}
+            </select>
+          </FF>
+        </div>
+        <div style={{marginBottom:12}}>
+          <label style={{display:"block",color:"#7a95b0",fontSize:11,marginBottom:8,textTransform:"uppercase",letterSpacing:1}}>Blocs de contenu</label>
+          {(form.contenu?.blocs||[]).map((b,i)=>(
+            <div key={i} style={{display:"flex",gap:8,marginBottom:6,alignItems:"center"}}>
+              <input style={{...S.inp,width:110,fontSize:12}} value={b.titre} onChange={e=>setContenu("blocs",form.contenu.blocs.map((x,j)=>j===i?{...x,titre:e.target.value}:x))}/>
+              <input style={{...S.inp,flex:1,fontSize:12}} value={b.detail} onChange={e=>setContenu("blocs",form.contenu.blocs.map((x,j)=>j===i?{...x,detail:e.target.value}:x))}/>
+              <button style={{...S.actionBtn,borderColor:"#ef444430",color:"#ef4444",padding:"6px 10px"}} onClick={()=>setContenu("blocs",form.contenu.blocs.filter((_,j)=>j!==i))}>×</button>
+            </div>
+          ))}
+          <div style={{display:"flex",gap:8,marginTop:8}}>
+            <input style={{...S.inp,width:110,fontSize:12}} placeholder="Titre" value={newBloc.titre} onChange={e=>setNewBloc(b=>({...b,titre:e.target.value}))}/>
+            <input style={{...S.inp,flex:1,fontSize:12}} placeholder="Détail" value={newBloc.detail} onChange={e=>setNewBloc(b=>({...b,detail:e.target.value}))}/>
+            <button style={S.btnP} onClick={()=>{
+              if(!newBloc.titre) return;
+              setContenu("blocs",[...(form.contenu?.blocs||[]),{...newBloc}]);
+              setNewBloc({titre:"",detail:""});
+            }}>+</button>
+          </div>
+        </div>
+        <FF label="Durée (min)"><input style={{...S.inp,width:100}} type="number" min="0" value={form.contenu?.duree_min||0} onChange={e=>setContenu("duree_min",parseInt(e.target.value))}/></FF>
+        <div style={{display:"flex",gap:10,justifyContent:"flex-end",marginTop:8}}>
+          <button style={{...S.btnP,background:"transparent",color:"#64748b",border:"1px solid #334155"}} onClick={()=>setShowTplModal(false)}>Annuler</button>
+          <button style={S.btnP} onClick={()=>saveTpl(form)} disabled={!form.name}>Enregistrer</button>
+        </div>
+      </Modal>
+    );
+  }
+
+  // ==================== RENDER ====================
+  if(loading) return <div style={{padding:48,textAlign:"center",color:"#64748b"}}>Chargement du planning...</div>;
+
+  return (
+    <div style={{position:"relative"}}>
+      {toast&&<div style={{position:"fixed",bottom:isMobile?80:24,right:24,background:toast.t==="error"?"#ef444420":"#4ade8020",border:`1px solid ${toast.t==="error"?"#ef4444":"#4ade80"}`,color:toast.t==="error"?"#ef4444":"#4ade80",padding:"12px 20px",borderRadius:10,fontSize:14,fontWeight:700,zIndex:200}}>{toast.m}</div>}
+
+      {view==="plans"    && <ViewPlans/>}
+      {view==="timeline" && <ViewTimeline/>}
+      {view==="semaine"  && <ViewSemaine/>}
+      {view==="templates"&& <ViewTemplates/>}
+
+      {showPlanModal    && <ModalPlan/>}
+      {showWeekModal    && <ModalWeek/>}
+      {showSessionModal && <ModalSession/>}
+      {showTplModal     && <ModalTemplate/>}
+    </div>
+  );
+}

@@ -1,9 +1,9 @@
 // ------ SUPABASE CONFIG --------------------------------------------------------------------------------------------------------------------
-export const SUPABASE_URL = "https://kiyhjgikyjduyupnubuc.supabase.co";
-export const SUPABASE_KEY = "sb_publishable_VzHiBH0KcoJCOoPerdK0lA_baD53pYY";
+export  = "https://kiyhjgikyjduyupnubuc.supabase.co";
+export  = "sb_publishable_VzHiBH0KcoJCOoPerdK0lA_baD53pYY";
 
 // ------ SUPABASE AUTH -------------------------------------------------------
-export const supabaseAuth = {
+export  = {
   signIn: async (email, password) => {
     const res = await fetch(`${SUPABASE_URL}/auth/v1/token?grant_type=password`, {
       method: "POST",
@@ -152,4 +152,34 @@ export const api = {
   createBoatSetting: (data)    => sb("boat_settings", { method:"POST", body:JSON.stringify(data) }),
   updateBoatSetting: (id, data)=> sb(`boat_settings?id=eq.${id}`, { method:"PATCH", body:JSON.stringify(data) }),
   deleteBoatSetting: (id)      => sb(`boat_settings?id=eq.${id}`, { method:"DELETE", prefer:"" }),
+
+  // Planning — Season plans
+  getSeasonPlans:      ()          => sb("season_plans?select=*&order=created_at.desc"),
+  createSeasonPlan:    (data)      => sb("season_plans", { method:"POST", body:JSON.stringify(data) }),
+  updateSeasonPlan:    (id, data)  => sb(`season_plans?id=eq.${id}`, { method:"PATCH", body:JSON.stringify(data) }),
+  deleteSeasonPlan:    (id)        => sb(`season_plans?id=eq.${id}`, { method:"DELETE", prefer:"" }),
+
+  // Planning — Weeks
+  getPlanWeeks:        (planId)    => sb(`plan_weeks?plan_id=eq.${planId}&order=num_semaine`),
+  createPlanWeek:      (data)      => sb("plan_weeks", { method:"POST", body:JSON.stringify(data) }),
+  updatePlanWeek:      (id, data)  => sb(`plan_weeks?id=eq.${id}`, { method:"PATCH", body:JSON.stringify(data) }),
+  deletePlanWeek:      (id)        => sb(`plan_weeks?id=eq.${id}`, { method:"DELETE", prefer:"" }),
+
+  // Planning — Sessions
+  getPlannedSessions:  (weekId)    => sb(`planned_sessions?week_id=eq.${weekId}&order=ordre,created_at`),
+  createPlannedSession:(data)      => sb("planned_sessions", { method:"POST", body:JSON.stringify(data) }),
+  updatePlannedSession:(id, data)  => sb(`planned_sessions?id=eq.${id}`, { method:"PATCH", body:JSON.stringify(data) }),
+  deletePlannedSession:(id)        => sb(`planned_sessions?id=eq.${id}`, { method:"DELETE", prefer:"" }),
+
+  // Planning — Templates
+  getSessionTemplates: ()          => sb("session_templates?select=*&order=type_seance,name"),
+  createSessionTemplate:(data)     => sb("session_templates", { method:"POST", body:JSON.stringify(data) }),
+  updateSessionTemplate:(id, data) => sb(`session_templates?id=eq.${id}`, { method:"PATCH", body:JSON.stringify(data) }),
+  deleteSessionTemplate:(id)       => sb(`session_templates?id=eq.${id}`, { method:"DELETE", prefer:"" }),
+
+  // Planning — Completions
+  getSessionCompletions:(athleteId) => sb(`session_completions?athlete_id=eq.${athleteId}&order=created_at.desc`),
+  createCompletion:    (data)       => sb("session_completions", { method:"POST", body:JSON.stringify(data) }),
+  updateCompletion:    (id, data)   => sb(`session_completions?id=eq.${id}`, { method:"PATCH", body:JSON.stringify(data) }),
 };
+

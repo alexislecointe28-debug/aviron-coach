@@ -3,6 +3,7 @@ import { LineChart, Line, XAxis, YAxis, Tooltip, Legend, ResponsiveContainer } f
 import { TYPE_COLORS, CMP_COLORS, AGE_CAT_COLORS, AGE_CAT_GROUPS, BLADE_TYPES, CREW_SLOTS, S } from "../styles.js";
 import { api } from "../config/supabase.js";
 import { FF, Modal, Toast, Loader, Sparkline, StatPill } from "./ui.jsx";
+import PlanningSpace from "./PlanningSpace.jsx";
 import {
   timeToSeconds, secondsToTime, concept2Watts, concept2WattsFast,
   getBestTime, getLastPerf, avg, getAgeCatFromBirthYear, getAgeCategory,
@@ -1260,19 +1261,20 @@ export default function CoachSpace({ currentUser, onLogout }) {
           })()}
         </div>)}
 
-        {tab==="planning"&&(<div style={{...S.page,padding:isMobile?"16px 12px":"28px 32px"}}>
-          <div style={S.ph}><div><h1 style={S.ttl}>Planning</h1><p style={S.sub}>Semaine en cours</p></div></div>
-          <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(200px,1fr))",gap:16}}>
-            {sessions.map(s=>(
-              <div key={s.id} style={{...S.card}}>
-                <div style={{fontWeight:800,fontSize:16,color:"#f1f5f9"}}>{s.day}</div>
-                <div style={{color:"#7a95b0",fontSize:12}}>{s.date}</div>
-                <div style={{color:"#a8bfd4",fontSize:13}}>{s.type}</div>
-                {s.duration&&<div style={{color:"#a8bfd4",fontSize:13}}>{s.duration}</div>}
-              </div>
-            ))}
-          </div>
-        </div>)}
+        {tab==="planning"&&(<div style={{...S.page,padding:isMobile?"16px 12px":"28px 32px"}}><PlanningSpace athletes={athletes} isMobile={isMobile} currentUser={currentUser}/></div>)}
+
+
+
+
+
+
+
+
+
+
+
+
+
       </div>
       {/* Mobile bottom navigation */}
       {isMobile&&(
