@@ -17,7 +17,7 @@ export default function AdminSpace({ currentUser, onLogout }) {
   const [sectionManagers,setSectionManagers] = useState([]); // toutes les lignes section_managers
   const [confirm,setConfirm] = useState(null);
   const [toast,setToast]     = useState(null);
-  const [newUser,setNU]      = useState({name:"",email:"",password:"",role:"athlete"});
+  const [newUser,setNU]      = useState({name:"",email:"",password:"",role:"athlete",athlete_id:null});
   const [codes,setCodes]     = useState([]);
   const [showAddCode,setShowAddCode] = useState(false);
   const [newCode,setNewCode] = useState({code:"",role:"athlete",max_uses:"",active:true});
@@ -37,9 +37,9 @@ export default function AdminSpace({ currentUser, onLogout }) {
 
   async function addUser() {
     try {
-      await api.createUser({...newUser,active:true,athlete_id:null});
+      await api.createUser({...newUser,active:true,athlete_id:newUser.role==="athlete"&&newUser.athlete_id?+newUser.athlete_id:null});
       setToast({m:"Compte créé v",t:"success"}); load();
-      setNU({name:"",email:"",password:"",role:"athlete"}); setShowAdd(false);
+      setNU({name:"",email:"",password:"",role:"athlete",athlete_id:null}); setShowAdd(false);
     } catch(e){ setToast({m:"Erreur : "+e.message,t:"error"}); }
   }
   async function saveEdit() {
@@ -186,8 +186,24 @@ export default function AdminSpace({ currentUser, onLogout }) {
                   <button key={v} style={{...S.fb,flex:1,...(newUser.role===v?{background:ROLE_COLORS[v]+"20",border:"1px solid "+(ROLE_COLORS[v])+"60",color:ROLE_COLORS[v]}:{})}} onClick={()=>setNU(p=>({...p,role:v}))}>{l}</button>
                 ))}
               </div></FF>
+              {newUser.role==="athlete"&&(()=>{
+                const unlinked=athletes.filter(a=>!users.some(u=>u.athlete_id===a.id));
+                return unlinked.length>0?(
+                  <FF label="Lier à une fiche existante (optionnel)">
+                    <select style={S.inp} value={newUser.athlete_id||""} onChange={e=>{
+                      const id=e.target.value;
+                      const ath=athletes.find(a=>a.id===+id);
+                      setNU(p=>({...p,athlete_id:id||null,name:ath?ath.name:p.name}));
+                    }}>
+                      <option value="">-- Nouveau compte sans fiche --</option>
+                      {unlinked.map(a=><option key={a.id} value={a.id}>{a.name} ({a.category})</option>)}
+                    </select>
+                  </FF>
+                ):null;
+              })()}
               <FF label="Nom complet"><input style={S.inp} value={newUser.name} onChange={e=>setNU(p=>({...p,name:e.target.value}))} placeholder="Prénom Nom"/></FF>
-              <FF label="Email"><input style={S.inp} type="email" value={newUser.email} onChange={e=>setNU(p=>({...p,email:e.target.value}))} placeholder="prenom@club.fr"/></FF>
+              <FF label="Email"><input style={S.inp} type="email" value={newUser.email} onChange={e=>setNU(p=>({...p,email:e.target.value}))} placeholder="prenom@club.fr"/>
+              </FF>
               <FF label="Mot de passe / PIN"><input style={S.inp} type="password" value={newUser.password} onChange={e=>setNU(p=>({...p,password:e.target.value}))} placeholder="Choisir un mot de passe"/></FF>
               <button style={{...S.btnP,width:"100%",marginTop:8,background:"#f59e0b",color:"#0f1923"}} onClick={addUser}>Créer le compte</button>
             </Modal>}
