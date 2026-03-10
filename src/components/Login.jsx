@@ -77,7 +77,7 @@ export default function Login({ onLogin }) {
 
   if(regOk) return (
     <div style={{minHeight:"100vh",width:"100%",background:"#0f1923",display:"flex",alignItems:"center",justifyContent:"center",fontFamily:"-apple-system,BlinkMacSystemFont,'Segoe UI','Inter',sans-serif"}}>
-      <div style={{width:420}}>{logoBlock}
+      <div style={{width:"100%",maxWidth:420,padding:"0 16px",boxSizing:"border-box"}}>{logoBlock}
         <div style={{background:"#182030",border:"1px solid #1e293b",borderRadius:16,padding:"36px 32px",textAlign:"center"}}>
           <div style={{fontSize:40,marginBottom:16}}>✓</div>
           <div style={{fontSize:18,fontWeight:800,color:"#4ade80",marginBottom:8}}>Compte créé !</div>
@@ -90,7 +90,7 @@ export default function Login({ onLogin }) {
 
   return (
     <div style={{minHeight:"100vh",width:"100%",background:"#0f1923",display:"flex",alignItems:"center",justifyContent:"center",fontFamily:"-apple-system,BlinkMacSystemFont,'Segoe UI','Inter',sans-serif"}}>
-      <div style={{width:420}}>{logoBlock}
+      <div style={{width:"100%",maxWidth:420,padding:"0 16px",boxSizing:"border-box"}}>{logoBlock}
         <div style={{background:"#182030",border:"1px solid #1e293b",borderRadius:16,padding:"36px 32px"}}>
           {/* Toggle login/register */}
           <div style={{display:"flex",gap:0,marginBottom:28,background:"#111827",borderRadius:10,padding:3}}>

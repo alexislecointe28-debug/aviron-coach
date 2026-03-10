@@ -301,14 +301,22 @@ export default function CoachSpace({ currentUser, onLogout }) {
   const globalAvgW=performances.length?Math.round(performances.reduce((s,p)=>s+(p.watts||0),0)/performances.length):0;
   const globalBest=performances.reduce((b,p)=>timeToSeconds(p.time)<timeToSeconds(b)?p.time:b,"9:99");
 
+  // Responsive mobile
+  const [isMobile, setIsMobile] = useState(()=>window.innerWidth<768);
+  useEffect(()=>{
+    const handler=()=>setIsMobile(window.innerWidth<768);
+    window.addEventListener('resize',handler);
+    return()=>window.removeEventListener('resize',handler);
+  },[]);
+
   const NAV=[{id:"dashboard",label:"Dashboard",icon:"📊"},{id:"athletes",label:"Athlètes",icon:"👤"},{id:"performances",label:"Performances",icon:"⚡"},{id:"compare",label:"Comparer",icon:"⚖️"},{id:"crew",label:"Équipages",icon:"🚣"},{id:"boats",label:"Bateaux",icon:"🛶"},{id:"planning",label:"Planning",icon:"📅"}];
 
   if(loading) return <div style={{...S.root,alignItems:"center",justifyContent:"center"}}><Loader text="Chargement depuis Supabase..."/></div>;
 
   return (
-    <div style={S.root}>
+    <div style={{...S.root,flexDirection:isMobile?"column":"row"}}>
       {toast&&<Toast message={toast.m} type={toast.t} onDone={()=>setToast(null)}/>}
-      <aside style={S.sidebar}>
+      <aside style={isMobile?{display:"none"}:S.sidebar}>
         <div style={S.logo}>
           <div style={{width:38,height:38,borderRadius:10,background:"#0ea5e920",border:"1px solid #0ea5e940",display:"flex",alignItems:"center",justifyContent:"center",fontSize:20}}>🚣</div>
           <div><div style={S.logoT}>AvironCoach</div><div style={S.logoS}>Espace Coach</div></div>
@@ -324,11 +332,11 @@ export default function CoachSpace({ currentUser, onLogout }) {
           <button style={{...S.btnP,width:"100%",background:"transparent",color:"#64748b",border:"1px solid #1e293b",fontSize:12,padding:"8px"}} onClick={onLogout}>← Déconnexion</button>
         </div>
       </aside>
-      <div style={S.main}>
+      <div style={{...S.main,paddingBottom:isMobile?64:0}}>
 
-        {tab==="dashboard"&&(<div style={S.page}>
-          <div style={S.ph}><div><h1 style={S.ttl}>Dashboard</h1><p style={S.sub}>{athletes.length} athlètes - données en direct</p></div></div>
-          <div style={{display:"grid",gridTemplateColumns:"repeat(5,1fr)",gap:14,marginBottom:36}}>
+        {tab==="dashboard"&&(<div style={{...S.page,padding:isMobile?"16px 12px":"28px 32px"}}>
+          <div style={{...S.ph,marginBottom:isMobile?16:32}}><div><h1 style={{...S.ttl,fontSize:isMobile?22:28}}>Dashboard</h1><p style={S.sub}>{athletes.length} athlètes - données en direct</p></div></div>
+          <div style={{display:"grid",gridTemplateColumns:isMobile?"repeat(3,1fr)":"repeat(5,1fr)",gap:isMobile?10:14,marginBottom:isMobile?20:36}}>
             {[{l:"Athlètes",v:athletes.length,c:"#0ea5e9",ic:"o"},{l:"Sessions",v:performances.length,c:"#f59e0b",ic:"*"},{l:"Puissance moy.",v:`${globalAvgW}W`,c:"#a78bfa",ic:"~"},{l:"Meilleur 2k",v:globalBest,c:"#4ade80",ic:"~"},{l:"Équipages",v:crews.length,c:"#f97316",ic:"~"}].map((k,i)=>(
               <div key={i} style={S.kpi}><div style={{color:k.c,fontSize:22,marginBottom:8}}>{k.ic}</div><div style={{color:k.c,fontSize:26,fontWeight:900,letterSpacing:-1}}>{k.v}</div><div style={{color:"#a8bfd4",fontSize:11,textTransform:"uppercase",letterSpacing:1,marginTop:4}}>{k.l}</div></div>
             ))}
@@ -338,7 +346,7 @@ export default function CoachSpace({ currentUser, onLogout }) {
             const ranked=athletes.map(a=>{const{last,wpkg,perfs,best,watts}=aStats(a);const km=perfs.reduce((s,p)=>s+(p.distance||0),0);return last?{...a,watts:watts||0,wpkg:parseFloat(wpkg)||0,wT:perfs.map(p=>concept2WattsFast(p.time)||p.watts||0),best,km,sessions:perfs.length}:null;}).filter(Boolean);
             const sorted=rankMode==="wpkg"?[...ranked].sort((a,b)=>b.wpkg-a.wpkg):rankMode==="time"?[...ranked].filter(a=>a.best).sort((a,b)=>timeToSeconds(a.best.time)-timeToSeconds(b.best.time)):rankMode==="km"?[...ranked].sort((a,b)=>b.km-a.km):[...ranked].sort((a,b)=>b.sessions-a.sessions);
             return(<>
-              <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:14}}>
+              <div style={{display:"flex",alignItems:isMobile?"flex-start":"center",justifyContent:"space-between",marginBottom:14,flexDirection:isMobile?"column":"row",gap:isMobile?8:0}}>
                 <div style={S.st}>Classements</div>
                 <div style={{display:"flex",gap:6}}>{[["wpkg","W/kg","#a78bfa"],["time","Temps 2k","#4ade80"],["km","Km totaux","#f97316"],["sessions","Sessions","#0ea5e9"]].map(([k,l,c])=><button key={k} style={{...S.fb,...(rankMode===k?{background:c+"20",border:"1px solid "+c+"60",color:c}:{})}} onClick={()=>setRankMode(k)}>{l}</button>)}</div>
               </div>
@@ -360,7 +368,7 @@ export default function CoachSpace({ currentUser, onLogout }) {
             </>);
           })()}
           <div style={S.st}>~ Planning semaine</div>
-          <div style={{display:"grid",gridTemplateColumns:"repeat(7,1fr)",gap:10}}>
+          <div style={{display:"grid",gridTemplateColumns:isMobile?"repeat(2,1fr)":"repeat(7,1fr)",gap:10}}>
             {sessions.map(s=><div key={s.id} style={{...S.card,minHeight:110}}>
               <div style={{fontWeight:800,color:"#f1f5f9",fontSize:13,marginBottom:8}}>{s.day}</div>
               <div style={{...S.badge,background:TYPE_COLORS[s.type]+"22",color:TYPE_COLORS[s.type]?""+TYPE_COLORS[s.type]:"#a8bfd4",border:"1px solid "+(TYPE_COLORS[s.type] ? TYPE_COLORS[s.type] : "#a8bfd4")+"44",marginBottom:8}}>{s.type}</div>
@@ -370,12 +378,12 @@ export default function CoachSpace({ currentUser, onLogout }) {
           </div>
         </div>)}
 
-        {tab==="athletes"&&(<div style={S.page}>
-          <div style={S.ph}><div><h1 style={S.ttl}>Athlètes</h1><p style={S.sub}>{athletes.length} rameurs</p></div><button style={S.btnP} onClick={()=>setShowAddAth(true)}>+ Ajouter</button></div>
+        {tab==="athletes"&&(<div style={{...S.page,padding:isMobile?"16px 12px":"28px 32px"}}>
+          <div style={{...S.ph,marginBottom:isMobile?16:32}}><div><h1 style={{...S.ttl,fontSize:isMobile?22:28}}>Athlètes</h1><p style={S.sub}>{athletes.length} rameurs</p></div><button style={S.btnP} onClick={()=>setShowAddAth(true)}>+ Ajouter</button></div>
           <div style={{display:"flex",gap:8,marginBottom:24,flexWrap:"wrap"}}>
             {AGE_CAT_GROUPS.map(c=><button key={c} style={{...S.fb,...(filterCat===c?S.fbon:{})}} onClick={()=>setFilterCat(c)}>{c}</button>)}
           </div>
-          <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(290px,1fr))",gap:16}}>
+          <div style={{display:"grid",gridTemplateColumns:isMobile?"1fr":"repeat(auto-fill,minmax(290px,1fr))",gap:isMobile?12:16}}>
             {filteredAths.map(a=>{
               const{perfs,best,last,wpkg}=aStats(a);const wTrend=perfs.length>=2?last.watts-perfs[perfs.length-2].watts:0;const aCrew=getCrewForAthlete(a);
               return(<div key={a.id} style={{...S.card,cursor:"pointer"}}>
@@ -518,7 +526,7 @@ export default function CoachSpace({ currentUser, onLogout }) {
                 ))}
               </div>
 
-              <div style={{display:ficheTab==="general"?"grid":"none",gridTemplateColumns:"320px 1fr",gap:20,marginBottom:20}}>
+              <div style={{display:ficheTab==="general"?"grid":"none",gridTemplateColumns:isMobile?"1fr":"320px 1fr",gap:isMobile?12:20,marginBottom:20}}>
                 {/* Left: Identity card */}
                 <div style={{display:"flex",flexDirection:"column",gap:16}}>
                   <div style={{...S.card,borderTop:"3px solid #0ea5e9",textAlign:"center",padding:"24px 20px"}}>
@@ -592,7 +600,7 @@ export default function CoachSpace({ currentUser, onLogout }) {
 
                   {/* Dernières perfs */}
                   <div style={S.card}>
-                    <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:14}}>
+                    <div style={{display:"flex",alignItems:isMobile?"flex-start":"center",justifyContent:"space-between",marginBottom:14,flexDirection:isMobile?"column":"row",gap:isMobile?8:0}}>
                       <div style={S.st}>⚡ Dernières performances</div>
                       <button style={{...S.actionBtn,color:"#0ea5e9",borderColor:"#0ea5e930",fontSize:12}} onClick={()=>setTab("performances")}>Voir tout →</button>
                     </div>
@@ -808,7 +816,7 @@ export default function CoachSpace({ currentUser, onLogout }) {
             </div>
           );
         })()}
-        {tab==="performances"&&(<div style={S.page}>
+        {tab==="performances"&&(<div style={{...S.page,padding:isMobile?"16px 12px":"28px 32px"}}>
           <div style={S.ph}><div><h1 style={S.ttl}>Performances</h1><p style={S.sub}>Vue globale</p></div><button style={S.btnP} onClick={()=>{setNP(p=>({...p,athleteId:selAth||""}));setShowAddPerf(true);}}>+ Ajouter</button></div>          <div style={{display:"flex",gap:8,marginBottom:20,flexWrap:"wrap"}}>
             <button style={{...S.fb,...(selAth===null?S.fbon:{})}} onClick={()=>setSelAth(null)}>Tous</button>
             {athletes.map(a=><button key={a.id} style={{...S.fb,...(selAth===a.id?S.fbon:{})}} onClick={()=>setSelAth(a.id)}>{a.name}</button>)}
@@ -929,7 +937,7 @@ export default function CoachSpace({ currentUser, onLogout }) {
           );
         })()}
 
-        {tab==="compare"&&(<div style={S.page}>
+        {tab==="compare"&&(<div style={{...S.page,padding:isMobile?"16px 12px":"28px 32px"}}>
           <div style={S.ph}><div><h1 style={S.ttl}>Comparer</h1><p style={S.sub}>2 à 4 athlètes</p></div></div>
           <div style={{display:"flex",gap:8,marginBottom:24,flexWrap:"wrap"}}>{athletes.map(a=>{const on=compareIds.includes(a.id);return(<button key={a.id} style={{...S.fb,...(on?{background:"#22d3ee20",border:"1px solid #22d3ee60",color:"#0ea5e9"}:{})}} onClick={()=>setCompareIds(prev=>prev.includes(a.id)?(prev.length>2?prev.filter(x=>x!==a.id):prev):prev.length<4?[...prev,a.id]:prev)}>{on?"v ":""}{a.name}</button>);})}</div>
           {compareIds.length>=2&&(()=>{
@@ -984,7 +992,7 @@ export default function CoachSpace({ currentUser, onLogout }) {
           })()}
         </div>)}
 
-        {tab==="crew"&&(<div style={S.page}>
+        {tab==="crew"&&(<div style={{...S.page,padding:isMobile?"16px 12px":"28px 32px"}}>
           <div style={S.ph}><div><h1 style={S.ttl}>Équipages</h1><p style={S.sub}>Composer et assigner</p></div></div>
           <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:24}}>
             <div>
@@ -1039,7 +1047,7 @@ export default function CoachSpace({ currentUser, onLogout }) {
         </div>)}
 
 
-        {tab==="boats"&&(<div style={S.page}>
+        {tab==="boats"&&(<div style={{...S.page,padding:isMobile?"16px 12px":"28px 32px"}}>
           <div style={S.ph}>
             <div><h1 style={S.ttl}>Bateaux</h1><p style={S.sub}>{boats.length} bateaux - réglages par poste</p></div>
             <button style={S.btnP} onClick={()=>setShowAddBoat(true)}>+ Nouveau bateau</button>
@@ -1252,7 +1260,7 @@ export default function CoachSpace({ currentUser, onLogout }) {
           })()}
         </div>)}
 
-        {tab==="planning"&&(<div style={S.page}>
+        {tab==="planning"&&(<div style={{...S.page,padding:isMobile?"16px 12px":"28px 32px"}}>
           <div style={S.ph}><div><h1 style={S.ttl}>Planning</h1><p style={S.sub}>Semaine en cours</p></div></div>
           <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(200px,1fr))",gap:16}}>
             {sessions.map(s=>(
@@ -1266,6 +1274,17 @@ export default function CoachSpace({ currentUser, onLogout }) {
           </div>
         </div>)}
       </div>
+      {/* Mobile bottom navigation */}
+      {isMobile&&(
+        <nav style={{position:"fixed",bottom:0,left:0,right:0,height:60,background:"#1e293b",borderTop:"1px solid #334155",display:"flex",alignItems:"stretch",zIndex:100,paddingBottom:"env(safe-area-inset-bottom)"}}>
+          {NAV.map(n=>(
+            <button key={n.id} style={{flex:1,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",gap:2,background:"none",border:"none",cursor:"pointer",color:tab===n.id?"#38bdf8":"#64748b",padding:"6px 2px",minWidth:0}} onClick={()=>setTab(n.id)}>
+              <span style={{fontSize:18}}>{n.icon}</span>
+              <span style={{fontSize:9,fontWeight:tab===n.id?700:500,letterSpacing:0.3,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",maxWidth:"100%"}}>{n.label}</span>
+            </button>
+          ))}
+        </nav>
+      )}
     </div>
   );
 }
