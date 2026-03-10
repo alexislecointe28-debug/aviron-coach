@@ -36,6 +36,12 @@ export const supabaseAuth = {
     });
     return res.ok ? await res.json() : null;
   }
+  // Responsables de section
+  getSectionManagers:   ()       => sb("section_managers?select=*"),
+  getMySections:        (userId) => sb(`section_managers?user_id=eq.${userId}&select=*`),
+  createSectionManager: (data)   => sb("section_managers", { method:"POST", body:JSON.stringify(data) }),
+  deleteSectionManager: (id)     => sb(`section_managers?id=eq.${id}`, { method:"DELETE", prefer:"" }),
+
 };
 
 // Session stored in localStorage
@@ -186,5 +192,11 @@ export const api = {
   getSessionCompletions:(athleteId) => sb(`session_completions?athlete_id=eq.${athleteId}&order=created_at.desc`),
   createCompletion:    (data)       => sb("session_completions", { method:"POST", body:JSON.stringify(data) }),
   updateCompletion:    (id, data)   => sb(`session_completions?id=eq.${id}`, { method:"PATCH", body:JSON.stringify(data) }),
+  // Responsables de section
+  getSectionManagers:   ()       => sb("section_managers?select=*"),
+  getMySections:        (userId) => sb(`section_managers?user_id=eq.${userId}&select=*`),
+  createSectionManager: (data)   => sb("section_managers", { method:"POST", body:JSON.stringify(data) }),
+  deleteSectionManager: (id)     => sb(`section_managers?id=eq.${id}`, { method:"DELETE", prefer:"" }),
+
 };
 

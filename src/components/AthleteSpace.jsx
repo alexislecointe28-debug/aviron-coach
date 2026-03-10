@@ -4,7 +4,7 @@ import { api } from "../config/supabase.js";
 import { FF, Modal, Toast, Loader, Sparkline, StatPill } from "./ui.jsx";
 import { timeToSeconds, secondsToTime, concept2WattsFast, getBestTime, getLastPerf, calcAgeFromDOB, suggestRigging, avg } from "../utils/rowing.js";
 
-export default function AthleteSpace({ currentUser, onLogout }) {
+export default function AthleteSpace({ currentUser, onLogout, managedSections=[] }) {
   const [tab,setTab]   = useState("dashboard");
   const [isMobile, setIsMobile] = useState(()=>window.innerWidth<768);
   const [athlete,setAthlete] = useState(null);
@@ -63,7 +63,7 @@ export default function AthleteSpace({ currentUser, onLogout }) {
     setNP({date:"",time:"",watts:"",spm:"",hr:"",rpe:"",distance:""}); setShowAddPerf(false);
   }
 
-  const NAV=[{id:"dashboard",label:"Mon espace",icon:"*"},{id:"stats",label:"Mes stats",icon:"*"},{id:"crew",label:"Mon équipage",icon:"~"},{id:"boats",label:"Mon bateau",icon:"~"},{id:"planning",label:"Mon planning",icon:"#"}];
+  const NAV=[{id:"dashboard",label:"Mon espace",icon:"*"},{id:"stats",label:"Mes stats",icon:"*"},{id:"crew",label:"Mon équipage",icon:"~"},{id:"boats",label:"Mon bateau",icon:"~"},{id:"planning",label:"Mon planning",icon:"#"},...(managedSections.length>0?[{id:"section",label:"Ma section",icon:"👥"}]:[])];
   if(loading) return <div style={{...S.root,alignItems:"center",justifyContent:"center"}}><Loader/></div>;
   if(!athlete) return <div style={{minHeight:"100vh",background:"#0f1923",display:"flex",alignItems:"center",justifyContent:"center",color:"#ef4444",fontFamily:"monospace"}}>Fiche athlète introuvable. Contacte ton coach.</div>;
 
@@ -241,6 +241,13 @@ export default function AthleteSpace({ currentUser, onLogout }) {
             </>);
           })()}
         </div>)}
+        {tab==="section"&&managedSections.length>0&&(
+          <SectionManagerView
+            managedSections={managedSections}
+            currentUser={currentUser}
+            isMobile={isMobile}
+          />
+        )}
         {tab==="planning"&&(<div style={{...S.page,padding:0}}>
           <AthletePlanningView athlete={athlete} currentUser={currentUser} isMobile={isMobile}/>
         </div>)}
@@ -251,7 +258,7 @@ export default function AthleteSpace({ currentUser, onLogout }) {
         <nav style={{position:"fixed",bottom:0,left:0,right:0,height:56,background:"#0f1923",borderTop:"1px solid #2d1b4e",display:"flex",zIndex:100}}>
           {NAV.map(n=>{
             const active=tab===n.id;
-            const ICONS={dashboard:"🏠",stats:"📊",crew:"👥",boats:"⛵",planning:"📅"};
+            const ICONS={dashboard:"🏠",stats:"📊",crew:"👥",boats:"⛵",planning:"📅",section:"🏅"};
             return(
               <button key={n.id} onClick={()=>setTab(n.id)}
                 style={{flex:1,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",gap:2,background:"none",border:"none",cursor:"pointer",color:active?"#a78bfa":"#4a6a8a",fontSize:10,fontWeight:active?700:500,borderTop:`2px solid ${active?"#a78bfa":"transparent"}`}}>
@@ -266,6 +273,286 @@ export default function AthleteSpace({ currentUser, onLogout }) {
             <span>Exit</span>
           </button>
         </nav>
+      )}
+    </div>
+  );
+}
+
+
+// ==========================================================================================================================================================
+// SECTION MANAGER VIEW
+// ==========================================================================================================================================================
+
+function SectionManagerView({ managedSections, currentUser, isMobile }) {
+  const [athletes, setAthletes]       = useState([]);
+  const [allPerfs, setAllPerfs]       = useState([]);
+  const [selAth, setSelAth]           = useState(null);
+  const [selSection, setSelSection]   = useState(managedSections[0]||"");
+  const [loading, setLoading]         = useState(true);
+  const [toast, setToast]             = useState(null);
+  const [showAddPerf, setShowAddPerf] = useState(false);
+  const [editPerf, setEditPerf]       = useState(null);
+  const [newPerf, setNP]              = useState({date:"",time:"",watts:"",spm:"",hr:"",rpe:"",distance:""});
+  const [plans, setPlans]             = useState([]);
+  const [weeks, setWeeks]             = useState([]);
+  const [sessions, setSessions]       = useState([]);
+  const [selWeek, setSelWeek]         = useState(null);
+  const [subTab, setSubTab]           = useState("athletes"); // athletes | planning
+
+  useEffect(() => { load(); }, []);
+
+  async function load() {
+    setLoading(true);
+    try {
+      const [aths, perfs, ps] = await Promise.all([
+        api.getAthletes(),
+        api.getPerformances(),
+        api.getSeasonPlans(),
+      ]);
+      setAthletes(aths||[]);
+      setAllPerfs(perfs||[]);
+      setPlans(ps||[]);
+    } catch(e) {}
+    setLoading(false);
+  }
+
+  const sectionAthletes = athletes.filter(a =>
+    managedSections.some(s => a.category?.toLowerCase().includes(s.toLowerCase()))
+  );
+
+  const athPerfs = selAth ? allPerfs.filter(p => p.athlete_id === selAth.id).sort((a,b) => a.date.localeCompare(b.date)) : [];
+  const best = getBestTime(athPerfs);
+  const last = getLastPerf(athPerfs);
+
+  async function savePerf() {
+    const watts = concept2WattsFast(newPerf.time) || 0;
+    try {
+      await api.createPerf({ athlete_id: selAth.id, date: newPerf.date, time: newPerf.time, watts, spm:+newPerf.spm||0, hr:+newPerf.hr||0, rpe:+newPerf.rpe||0, distance:+newPerf.distance||0 });
+      setToast({m:"Performance ajoutée ✓", t:"success"});
+      setShowAddPerf(false);
+      setNP({date:"",time:"",watts:"",spm:"",hr:"",rpe:"",distance:""});
+      const perfs = await api.getPerformances();
+      setAllPerfs(perfs||[]);
+    } catch(e) { setToast({m:"Erreur "+e.message, t:"error"}); }
+  }
+
+  async function deletePerf(id) {
+    if(!window.confirm("Supprimer cette performance ?")) return;
+    try {
+      await api.deletePerformance(id);
+      const perfs = await api.getPerformances();
+      setAllPerfs(perfs||[]);
+    } catch(e) {}
+  }
+
+  // Planning section
+  async function loadSectionPlanning(section) {
+    try {
+      const allPlans = plans.filter(p => {
+        const cats = p.category.split(",").map(s=>s.trim());
+        return cats.some(c => c.toLowerCase().includes(section.toLowerCase())) || cats.includes("Tous");
+      });
+      const allWeeks = (await Promise.all(allPlans.map(p => api.getPlanWeeks(p.id).catch(()=>[]))))
+        .flat().sort((a,b) => a.date_debut?.localeCompare(b.date_debut||"")||a.num_semaine-b.num_semaine);
+      setWeeks(allWeeks);
+      const today = new Date().toISOString().split("T")[0];
+      const cur = allWeeks.find(w => w.date_debut && w.date_debut <= today) || allWeeks[0];
+      if(cur) { setSelWeek(cur); const s = await api.getPlannedSessions(cur.id); setSessions(s||[]); }
+    } catch(e) {}
+  }
+
+  useEffect(() => { if(subTab==="planning" && plans.length>0) loadSectionPlanning(selSection); }, [subTab, selSection, plans.length]);
+
+  const CHARGE_COLORS = {"Légère":"#4ade80","Modérée":"#f59e0b","Élevée":"#f97316","Maximale":"#ef4444","Compétition":"#a78bfa"};
+  const TYPE_SEANCE_COLORS = {MUSCU:"#f97316",ERGO:"#0ea5e9",BATEAU:"#22d3ee",RECUP:"#4ade80",REPOS:"#64748b",TEST:"#a78bfa",COMPETITION:"#e879f9"};
+  const TYPE_SEANCE_LABELS = {MUSCU:"💪 Muscu",ERGO:"🚣 Ergo",BATEAU:"⛵ Bateau",RECUP:"🔄 Récup",REPOS:"😴 Repos",TEST:"📊 Test",COMPETITION:"🏆 Compét"};
+  const JOURS_S = ["Lundi","Mardi","Mercredi","Jeudi","Vendredi","Samedi","Dimanche"];
+
+  return (
+    <div style={{...S.page, padding:isMobile?"16px 12px":"28px 32px"}}>
+      {toast&&<Toast message={toast.m} type={toast.t} onDone={()=>setToast(null)}/>}
+
+      {/* Header */}
+      <div style={S.ph}>
+        <div>
+          <h1 style={S.ttl}>🏅 Ma section</h1>
+          <p style={S.sub}>{managedSections.map(s=>`Section ${s}`).join(" · ")} — {sectionAthletes.length} athlètes</p>
+        </div>
+        {managedSections.length > 1 && (
+          <div style={{display:"flex",gap:6}}>
+            {managedSections.map(s => (
+              <button key={s} onClick={()=>{setSelSection(s);setSelAth(null);}}
+                style={{...S.btnP, background:selSection===s?"#a78bfa":"transparent", color:selSection===s?"#0f1923":"#a78bfa", border:"1px solid #a78bfa"}}>
+                {s}
+              </button>
+            ))}
+          </div>
+        )}
+      </div>
+
+      {/* Sub-tabs */}
+      <div style={{display:"flex",gap:8,marginBottom:20}}>
+        {[["athletes","👤 Athlètes"],["planning","📅 Planning"]].map(([id,label])=>(
+          <button key={id} onClick={()=>setSubTab(id)}
+            style={{padding:"8px 18px",borderRadius:8,border:`1px solid ${subTab===id?"#a78bfa":"#1e293b"}`,background:subTab===id?"#a78bfa20":"transparent",color:subTab===id?"#a78bfa":"#7a95b0",fontWeight:subTab===id?700:500,cursor:"pointer",fontSize:13}}>
+            {label}
+          </button>
+        ))}
+      </div>
+
+      {loading ? <Loader/> : (
+
+        subTab==="athletes" ? (<>
+          {/* Liste athlètes */}
+          {!selAth ? (
+            <div style={{display:"flex",flexDirection:"column",gap:10}}>
+              {sectionAthletes.length===0 && <div style={{...S.card,textAlign:"center",padding:40,color:"#5a7a9a"}}>Aucun athlète dans cette section.</div>}
+              {sectionAthletes.map(a => {
+                const perfs = allPerfs.filter(p=>p.athlete_id===a.id);
+                const b = getBestTime(perfs);
+                const l = getLastPerf(perfs);
+                const wpkg = l && a.weight ? (concept2WattsFast(l.time)/a.weight).toFixed(2) : null;
+                return (
+                  <div key={a.id} onClick={()=>setSelAth(a)}
+                    style={{...S.card, display:"flex", alignItems:"center", gap:16, padding:"14px 20px", cursor:"pointer", borderColor:"#263547"}}
+                    onMouseOver={e=>e.currentTarget.style.borderColor="#a78bfa44"}
+                    onMouseOut={e=>e.currentTarget.style.borderColor="#263547"}>
+                    <div style={{...S.av, background:"#a78bfa22", border:"1px solid #a78bfa44", color:"#a78bfa"}}>{a.avatar}</div>
+                    <div style={{flex:1}}>
+                      <div style={{fontWeight:700,color:"#f1f5f9",fontSize:15}}>{a.name}</div>
+                      <div style={{color:"#7a95b0",fontSize:12}}>{a.category} — {a.age}ans — {a.weight}kg</div>
+                    </div>
+                    <div style={{display:"flex",gap:10}}>
+                      {b && <StatPill label="Best 2k" value={b.time} color="#4ade80"/>}
+                      {wpkg && <StatPill label="W/kg" value={wpkg} color="#a78bfa"/>}
+                      <StatPill label="Sessions" value={perfs.length} color="#0ea5e9"/>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          ) : (
+            /* Fiche athlète */
+            <div>
+              <button onClick={()=>setSelAth(null)} style={{...S.btnP, background:"transparent", color:"#7a95b0", border:"1px solid #1e293b", marginBottom:20, fontSize:13}}>
+                ← Retour à la liste
+              </button>
+
+              {/* Header fiche */}
+              <div style={{...S.card, marginBottom:20, borderTop:"3px solid #a78bfa"}}>
+                <div style={{display:"flex",alignItems:"center",gap:16}}>
+                  <div style={{...S.av, width:56, height:56, fontSize:20, background:"#a78bfa22", border:"2px solid #a78bfa44", color:"#a78bfa"}}>{selAth.avatar}</div>
+                  <div style={{flex:1}}>
+                    <div style={{fontSize:20,fontWeight:900,color:"#f1f5f9"}}>{selAth.name}</div>
+                    <div style={{color:"#7a95b0",fontSize:13}}>{selAth.category} — {selAth.age}ans — {selAth.weight}kg</div>
+                  </div>
+                  <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10}}>
+                    <div style={{background:"#4ade8015",border:"1px solid #4ade8030",borderRadius:10,padding:"10px 16px",textAlign:"center"}}>
+                      <div style={{color:"#7a95b0",fontSize:10,textTransform:"uppercase",letterSpacing:1}}>Best 2000m</div>
+                      <div style={{color:"#4ade80",fontWeight:900,fontSize:22}}>{best?.time??"--"}</div>
+                    </div>
+                    <div style={{background:"#a78bfa15",border:"1px solid #a78bfa30",borderRadius:10,padding:"10px 16px",textAlign:"center"}}>
+                      <div style={{color:"#7a95b0",fontSize:10,textTransform:"uppercase",letterSpacing:1}}>Sessions</div>
+                      <div style={{color:"#a78bfa",fontWeight:900,fontSize:22}}>{athPerfs.length}</div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Performances */}
+              <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:12}}>
+                <div style={S.st}>Performances</div>
+                <button style={{...S.btnP, background:"#a78bfa", color:"#0f1923", fontSize:12, padding:"6px 14px"}} onClick={()=>setShowAddPerf(true)}>+ Ajouter</button>
+              </div>
+
+              <div style={{display:"flex",flexDirection:"column",gap:8}}>
+                {[...athPerfs].reverse().map(p => {
+                  const pw = concept2WattsFast(p.time)||p.watts||0;
+                  const pwkg = pw&&selAth.weight ? (pw/selAth.weight).toFixed(2) : null;
+                  return (
+                    <div key={p.id} style={{...S.card, display:"flex", alignItems:"center", gap:12, padding:"10px 16px", flexWrap:"wrap"}}>
+                      <div style={{color:"#7a95b0",fontSize:12,minWidth:85}}>{p.date}</div>
+                      <div style={{color:"#4ade80",fontWeight:700,fontSize:15,minWidth:50}}>{p.time}</div>
+                      <div style={{color:"#0ea5e9",fontWeight:700}}>⚡ {pw}W</div>
+                      {pwkg&&<div style={{color:"#a78bfa",fontWeight:700,fontSize:13}}>{pwkg} W/kg</div>}
+                      <div style={{marginLeft:"auto",display:"flex",gap:6}}>
+                        <button onClick={()=>deletePerf(p.id)} style={{...S.actionBtn, color:"#ef4444", borderColor:"#ef444430"}}>✕</button>
+                      </div>
+                    </div>
+                  );
+                })}
+                {!athPerfs.length && <div style={{...S.card, textAlign:"center", color:"#5a7a9a", padding:28}}>Aucune performance</div>}
+              </div>
+
+              {showAddPerf && (
+                <Modal title={`+ Perf — ${selAth.name}`} onClose={()=>setShowAddPerf(false)}>
+                  <FF label="Date"><input style={S.inp} type="date" value={newPerf.date} onChange={e=>setNP(p=>({...p,date:e.target.value}))}/></FF>
+                  <FF label="Temps 2000m"><input style={S.inp} placeholder="6:45.0" value={newPerf.time} onChange={e=>setNP(p=>({...p,time:e.target.value}))}/></FF>
+                  {newPerf.time && concept2WattsFast(newPerf.time) && (
+                    <div style={{padding:"8px 12px",background:"#a78bfa10",border:"1px solid #a78bfa30",borderRadius:8,marginBottom:12,color:"#0ea5e9",fontWeight:700}}>
+                      ⚡ {concept2WattsFast(newPerf.time)} W
+                    </div>
+                  )}
+                  <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12}}>
+                    <FF label="RPE (1-10)"><input style={S.inp} type="number" min="1" max="10" value={newPerf.rpe} onChange={e=>setNP(p=>({...p,rpe:e.target.value}))}/></FF>
+                    <FF label="Distance (km)"><input style={S.inp} type="number" value={newPerf.distance} onChange={e=>setNP(p=>({...p,distance:e.target.value}))}/></FF>
+                  </div>
+                  <button style={{...S.btnP, width:"100%", marginTop:8, background:"#a78bfa", color:"#0f1923"}} onClick={savePerf}>Enregistrer</button>
+                </Modal>
+              )}
+            </div>
+          )}
+        </>) : (
+
+          /* Planning section */
+          <div>
+            {weeks.length===0 ? (
+              <div style={{...S.card, textAlign:"center", padding:40, color:"#5a7a9a"}}>Aucun planning pour cette section.</div>
+            ) : (<>
+              {/* Sélecteur semaine */}
+              <div style={{display:"flex",gap:6,overflowX:"auto",paddingBottom:8,marginBottom:16}}>
+                {weeks.map(w => {
+                  const col = CHARGE_COLORS[w.charge]||"#64748b";
+                  const active = selWeek?.id===w.id;
+                  return (
+                    <button key={w.id} onClick={async()=>{setSelWeek(w);const s=await api.getPlannedSessions(w.id);setSessions(s||[]);}}
+                      style={{flexShrink:0,padding:"6px 14px",borderRadius:8,border:`1px solid ${active?col:"#334155"}`,background:active?col+"20":"transparent",color:active?col:"#64748b",fontSize:12,fontWeight:active?700:500,cursor:"pointer",whiteSpace:"nowrap"}}>
+                      S{w.num_semaine}{w.date_debut?` · ${w.date_debut.slice(5).replace("-","/")}`:""}{w.charge?` · ${w.charge}`:""}
+                    </button>
+                  );
+                })}
+              </div>
+
+              {/* Grille */}
+              {sessions.length===0 ? (
+                <div style={{...S.card, textAlign:"center", padding:32, color:"#5a7a9a"}}>Aucune séance cette semaine.</div>
+              ) : (
+                <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(150px,1fr))",gap:10}}>
+                  {JOURS_S.map(jour => {
+                    const js = sessions.filter(s=>s.jour===jour);
+                    if(!js.length) return null;
+                    return (
+                      <div key={jour} style={{display:"flex",flexDirection:"column",gap:6}}>
+                        <div style={{fontWeight:700,color:"#94a3b8",fontSize:12}}>{jour}</div>
+                        {js.map(s => {
+                          const sc = TYPE_SEANCE_COLORS[s.type_seance]||"#64748b";
+                          const contenu = typeof s.contenu==="string"?JSON.parse(s.contenu||"{}"):s.contenu||{};
+                          return (
+                            <div key={s.id} style={{background:"#1e293b",border:`2px solid ${sc}40`,borderRadius:10,padding:"10px"}}>
+                              <span style={{fontSize:10,fontWeight:700,color:sc,background:sc+"20",padding:"2px 7px",borderRadius:4}}>{TYPE_SEANCE_LABELS[s.type_seance]||s.type_seance}</span>
+                              <div style={{fontWeight:700,color:"#f1f5f9",fontSize:12,marginTop:5}}>{s.titre}</div>
+                              {contenu.duree_min>0&&<div style={{color:"#475569",fontSize:11,marginTop:3}}>⏱ {contenu.duree_min} min</div>}
+                            </div>
+                          );
+                        })}
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </>)}
+          </div>
+        )
       )}
     </div>
   );

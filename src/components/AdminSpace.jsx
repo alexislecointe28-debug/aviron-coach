@@ -12,7 +12,9 @@ export default function AdminSpace({ currentUser, onLogout }) {
   const [filterRole,setFilterRole] = useState("all");
   const [showAdd,setShowAdd] = useState(false);
   const [editUser,setEditUser]= useState(null);
-  const [assignUser,setAssignUser] = useState(null); // user à qui assigner une fiche
+  const [assignUser,setAssignUser] = useState(null);
+  const [sectionUser,setSectionUser] = useState(null); // user à qui gérer les sections
+  const [sectionManagers,setSectionManagers] = useState([]); // toutes les lignes section_managers
   const [confirm,setConfirm] = useState(null);
   const [toast,setToast]     = useState(null);
   const [newUser,setNU]      = useState({name:"",email:"",password:"",role:"athlete"});
@@ -22,8 +24,8 @@ export default function AdminSpace({ currentUser, onLogout }) {
 
   const load = useCallback(async()=>{
     setLoading(true);
-    const [u,c,ath] = await Promise.all([api.getUsers(), api.getInviteCodes().catch(()=>[]), api.getAthletes().catch(()=>[])]);
-    setUsers(u); setCodes(c); setAthletes(ath||[]);
+    const [u,c,ath,sm] = await Promise.all([api.getUsers().catch(()=>[]), api.getInviteCodes().catch(()=>[]), api.getAthletes().catch(()=>[]), api.getSectionManagers().catch(()=>[])]);
+    setUsers(u); setCodes(c); setAthletes(ath||[]); setSectionManagers(sm||[]);
     setLoading(false);
   },[]);
   useEffect(()=>{ load(); },[]);
@@ -113,7 +115,7 @@ export default function AdminSpace({ currentUser, onLogout }) {
           <button style={{...S.btnP,width:"100%",background:"transparent",color:"#7a95b0",border:"1px solid #1e293b",fontSize:12}} onClick={onLogout}>Deconnexion</button>
         </div>
       </aside>
-      <div style={{...S.main,width:isMobile?"100%":0}}>
+      <div style={{...S.main,width:isMobile?"100%":undefined}}>
         {tab==="users"&&(
           <div style={{...S.page,padding:isMobile?"16px 12px":"28px 32px"}}>
             <div style={S.ph}>
@@ -139,7 +141,7 @@ export default function AdminSpace({ currentUser, onLogout }) {
                       <tr key={u.id} style={{borderBottom:"1px solid #1e293b",opacity:u.active?1:0.5}}>
                         <td style={S.td}>
                           <div style={{display:"flex",alignItems:"center",gap:10}}>
-                            <div style={{...S.av,width:36,height:36,fontSize:13,background:ROLE_COLORS[u.role]+"22",border:"1px solid "+(ROLE_COLORS[u.role])+"40",color:ROLE_COLORS[u.role]}}>{u.name.split(" ").map(w=>w[0]).join("").slice(0,2).toUpperCase()}</div>
+                            <div style={{...S.av,width:36,height:36,fontSize:13,background:ROLE_COLORS[u.role]+"22",border:"1px solid "+(ROLE_COLORS[u.role])+"40",color:ROLE_COLORS[u.role]}}>{(u.name||"?").split(" ").map(w=>w[0]).join("").slice(0,2).toUpperCase()}</div>
                             <div><div style={{color:"#f1f5f9",fontWeight:700,fontSize:14}}>{u.name}</div><div style={{color:"#5a7a9a",fontSize:11}}>
                               {u.role==="athlete"&&(u.athlete_id
                                 ? <span style={{color:"#a78bfa"}}>📋 {athletes.find(a=>a.id===u.athlete_id)?.name||`#${u.athlete_id}`}</span>
@@ -161,6 +163,7 @@ export default function AdminSpace({ currentUser, onLogout }) {
                           <div style={{display:"flex",gap:6}}>
                             <button style={{...S.actionBtn,color:"#0ea5e9",borderColor:"#22d3ee30"}} onClick={()=>setEditUser({...u,_newpw:""})}>Edit</button>
                             {u.role==="athlete"&&<button style={{...S.actionBtn,color:"#a78bfa",borderColor:"#a78bfa30"}} onClick={()=>setAssignUser(u)}>📋 Fiche</button>}
+                            {u.role==="athlete"&&<button style={{...S.actionBtn,color:"#f59e0b",borderColor:"#f59e0b30"}} onClick={()=>setSectionUser(u)}>🏅 Sections</button>}
                             {u.id!==currentUser.id&&<>
                               <button style={{...S.actionBtn,color:u.active?"#f59e0b":"#4ade80",borderColor:u.active?"#f59e0b30":"#4ade8030"}} onClick={()=>setConfirm({u,action:u.active?"deactivate":"activate"})}>{u.active?"||":">"}</button>
                               <button style={{...S.actionBtn,color:"#ef4444",borderColor:"#ef444430"}} onClick={()=>setConfirm({u,action:"delete"})}>X</button>
@@ -219,6 +222,55 @@ export default function AdminSpace({ currentUser, onLogout }) {
                 {athletes.length===0&&<div style={{color:"#64748b",textAlign:"center",padding:24}}>Aucune fiche athlète disponible.</div>}
               </div>
             </Modal>}
+
+            </Modal>}
+
+            {sectionUser&&(()=>{
+              const SECTIONS_DISPO = ["Master","U17","Senior","Jeune","Espoir","Poussin"];
+              const myLines = sectionManagers.filter(sm=>sm.user_id===sectionUser.id);
+              async function addSection(section) {
+                if(myLines.some(l=>l.section===section)) return;
+                try {
+                  const res = await api.createSectionManager({user_id:sectionUser.id, section});
+                  if(res&&res[0]) setSectionManagers(prev=>[...prev,res[0]]);
+                  setToast({m:`Section ${section} ajoutée`,t:"success"});
+                } catch(e) { setToast({m:"Erreur",t:"error"}); }
+              }
+              async function removeSection(id) {
+                try {
+                  await api.deleteSectionManager(id);
+                  setSectionManagers(prev=>prev.filter(x=>x.id!==id));
+                  setToast({m:"Section retirée",t:"success"});
+                } catch(e) { setToast({m:"Erreur",t:"error"}); }
+              }
+              return (
+                <Modal title={`🏅 Sections — ${sectionUser.name}`} onClose={()=>setSectionUser(null)}>
+                  <p style={{color:"#7a95b0",fontSize:13,marginBottom:16}}>Cet athlète verra un onglet "Ma section" avec accès aux fiches et au planning de chaque section assignée.</p>
+                  <div style={S.st}>Sections assignées</div>
+                  {myLines.length===0 && <div style={{color:"#5a7a9a",fontSize:13,marginBottom:12}}>Aucune section assignée.</div>}
+                  <div style={{display:"flex",flexWrap:"wrap",gap:8,marginBottom:20}}>
+                    {myLines.map(l=>(
+                      <div key={l.id} style={{display:"flex",alignItems:"center",gap:6,background:"#f59e0b20",border:"1px solid #f59e0b40",borderRadius:8,padding:"6px 12px"}}>
+                        <span style={{color:"#f59e0b",fontWeight:700,fontSize:13}}>🏅 {l.section}</span>
+                        <button onClick={()=>removeSection(l.id)} style={{background:"none",border:"none",color:"#ef4444",cursor:"pointer",fontSize:14,padding:"0 2px"}}>✕</button>
+                      </div>
+                    ))}
+                  </div>
+                  <div style={S.st}>Ajouter une section</div>
+                  <div style={{display:"flex",flexWrap:"wrap",gap:8}}>
+                    {SECTIONS_DISPO.map(s=>{
+                      const already = myLines.some(l=>l.section===s);
+                      return (
+                        <button key={s} onClick={()=>addSection(s)} disabled={already}
+                          style={{padding:"7px 16px",borderRadius:8,border:`1px solid ${already?"#1e293b":"#f59e0b50"}`,background:already?"#0f1923":"#f59e0b10",color:already?"#334155":"#f59e0b",cursor:already?"default":"pointer",fontWeight:600,fontSize:13,opacity:already?0.5:1}}>
+                          {already?"✓ ":""}{s}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </Modal>
+              );
+            })()}
 
             {confirm&&<Modal title="Confirmation" onClose={()=>setConfirm(null)}>
               <div style={{textAlign:"center",padding:"10px 0 20px"}}>
