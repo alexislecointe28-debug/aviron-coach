@@ -1,9 +1,9 @@
 // ------ SUPABASE CONFIG --------------------------------------------------------------------------------------------------------------------
-export  = "https://kiyhjgikyjduyupnubuc.supabase.co";
-export  = "sb_publishable_VzHiBH0KcoJCOoPerdK0lA_baD53pYY";
+export const SUPABASE_URL = "https://kiyhjgikyjduyupnubuc.supabase.co";
+export const SUPABASE_KEY = "sb_publishable_VzHiBH0KcoJCOoPerdK0lA_baD53pYY";
 
 // ------ SUPABASE AUTH -------------------------------------------------------
-export  = {
+export const supabaseAuth = {
   signIn: async (email, password) => {
     const res = await fetch(`${SUPABASE_URL}/auth/v1/token?grant_type=password`, {
       method: "POST",
@@ -153,4 +153,3 @@ export const api = {
   updateBoatSetting: (id, data)=> sb(`boat_settings?id=eq.${id}`, { method:"PATCH", body:JSON.stringify(data) }),
   deleteBoatSetting: (id)      => sb(`boat_settings?id=eq.${id}`, { method:"DELETE", prefer:"" }),
 };
-
