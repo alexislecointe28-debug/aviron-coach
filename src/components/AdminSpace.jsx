@@ -223,8 +223,6 @@ export default function AdminSpace({ currentUser, onLogout }) {
               </div>
             </Modal>}
 
-            </Modal>}
-
             {sectionUser&&(()=>{
               const SECTIONS_DISPO = ["Master","U17","Senior","Jeune","Espoir","Poussin"];
               const myLines = sectionManagers.filter(sm=>sm.user_id===sectionUser.id);
