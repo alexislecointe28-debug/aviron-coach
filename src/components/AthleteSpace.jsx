@@ -6,6 +6,7 @@ import { timeToSeconds, secondsToTime, concept2WattsFast, getBestTime, getLastPe
 
 export default function AthleteSpace({ currentUser, onLogout }) {
   const [tab,setTab]   = useState("dashboard");
+  const [isMobile, setIsMobile] = useState(()=>window.innerWidth<768);
   const [athlete,setAthlete] = useState(null);
   const [myPerfs,setMyPerfs] = useState([]);
   const [crews,setCrews]     = useState([]);
@@ -38,6 +39,11 @@ export default function AthleteSpace({ currentUser, onLogout }) {
     setLoading(false);
   },[currentUser.athlete_id]);
   useEffect(()=>{ load(); },[]);
+  useEffect(()=>{
+    const handler=()=>setIsMobile(window.innerWidth<768);
+    window.addEventListener('resize',handler);
+    return()=>window.removeEventListener('resize',handler);
+  },[]);
 
   const myCrew = athlete ? crews.find(c=>crewMembers.some(m=>m.crew_id===c.id&&m.athlete_id===athlete.id)) : null;
   const crewMates = myCrew ? allAthletes.filter(a=>crewMembers.some(m=>m.crew_id===myCrew.id&&m.athlete_id===a.id)&&a.id!==athlete?.id) : [];
@@ -64,7 +70,9 @@ export default function AthleteSpace({ currentUser, onLogout }) {
   return (
     <div style={S.root}>
       {toast&&<Toast message={toast.m} type={toast.t} onDone={()=>setToast(null)}/>}
-      <aside style={{...S.sidebar,borderColor:"#2d1b4e"}}>
+
+      {/* Sidebar desktop uniquement */}
+      <aside style={{...S.sidebar,borderColor:"#2d1b4e",...(isMobile?{display:"none"}:{})}}>
         <div style={{...S.logo,borderColor:"#2d1b4e"}}><span style={{fontSize:28}}>~</span><div><div style={{...S.logoT,color:"#a78bfa"}}>AvironCoach</div><div style={S.logoS}>Espace Athlète</div></div></div>
         <nav style={{flex:1,padding:"8px 12px"}}>{NAV.map(n=><button key={n.id} style={{...S.nb,...(tab===n.id?{...S.nba,color:"#a78bfa",background:"#a78bfa15",borderLeftColor:"#a78bfa"}:{})}} onClick={()=>setTab(n.id)}><span style={{fontSize:16}}>{n.icon}</span>{n.label}</button>)}</nav>
         <div style={{padding:"16px 20px",borderTop:"1px solid #2d1b4e"}}>
@@ -75,8 +83,10 @@ export default function AthleteSpace({ currentUser, onLogout }) {
           <button style={{...S.btnP,width:"100%",background:"transparent",color:"#7a95b0",border:"1px solid #1e293b",fontSize:12}} onClick={onLogout}>Deconnexion</button>
         </div>
       </aside>
-      <div style={S.main}>
-        {tab==="dashboard"&&(<div style={S.page}>
+
+      {/* Contenu principal */}
+      <div style={{...S.main,paddingBottom:isMobile?64:0,width:isMobile?"100%":undefined}}>
+        {tab==="dashboard"&&(<div style={{...S.page,padding:isMobile?"16px 12px":"28px 32px"}}>
           <div style={S.ph}><div><h1 style={S.ttl}>Bonjour, {athlete.name.split(" ")[0]} </h1><p style={S.sub}>Ton espace personnel</p></div><button style={{...S.btnP,background:"#a78bfa",color:"#0f1923"}} onClick={()=>setEditing(true)}>✏️ Ma fiche</button></div>
           <div style={{...S.card,marginBottom:24,borderColor:"#2d1b4e"}}>
             <div style={{display:"flex",alignItems:"center",gap:20}}>
@@ -191,7 +201,7 @@ export default function AthleteSpace({ currentUser, onLogout }) {
             </Modal>}
           </div>
         )}
-        {tab==="stats"&&(<div style={S.page}>
+        {tab==="stats"&&(<div style={{...S.page,padding:isMobile?"16px 12px":"28px 32px"}}>
           <div style={S.ph}><div><h1 style={S.ttl}>Mes Stats</h1><p style={S.sub}>Progression</p></div></div>
           {myPerfs.length<2?<div style={{...S.card,textAlign:"center",padding:"40px",color:"#5a7a9a"}}>Ajoute au moins 2 sessions pour voir ta progression.</div>:(<>
             <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:14,marginBottom:24}}>
@@ -202,7 +212,7 @@ export default function AthleteSpace({ currentUser, onLogout }) {
             </div>
           </>)}
         </div>)}
-        {tab==="crew"&&(<div style={S.page}>
+        {tab==="crew"&&(<div style={{...S.page,padding:isMobile?"16px 12px":"28px 32px"}}>
           <div style={S.ph}><div><h1 style={S.ttl}>Mon Équipage</h1><p style={S.sub}>Assigné par le coach</p></div></div>
           {!myCrew?<div style={{...S.card,textAlign:"center",padding:"40px",color:"#5a7a9a"}}>Aucun équipage assigné pour le moment.</div>:(<>
             <div style={{...S.card,marginBottom:20}}><div style={{fontSize:22,fontWeight:900,color:"#f1f5f9",marginBottom:4}}>{myCrew.name}</div><div style={{color:"#7a95b0",fontSize:14,marginBottom:12}}>{myCrew.boat}</div>{myCrew.notes&&<div style={{background:"#1e293b50",borderRadius:8,padding:"10px",color:"#a8bfd4",fontSize:13}}> {myCrew.notes}</div>}</div>
@@ -218,7 +228,7 @@ export default function AthleteSpace({ currentUser, onLogout }) {
             </div>
           </>)}
         </div>)}
-        {tab==="boats"&&(<div style={S.page}>
+        {tab==="boats"&&(<div style={{...S.page,padding:isMobile?"16px 12px":"28px 32px"}}>
           <div style={S.ph}><div><h1 style={S.ttl}>Mon Bateau</h1><p style={S.sub}>Réglages de ton poste</p></div></div>
           {(()=>{
             if(!myCrew) return <div style={{...S.card,textAlign:"center",padding:"40px",color:"#5a7a9a"}}>Aucun équipage assigné.</div>;
@@ -298,10 +308,32 @@ export default function AthleteSpace({ currentUser, onLogout }) {
             </>);
           })()}
         </div>)}
-        {tab==="planning"&&(<div style={S.page}>
-          <AthletePlanningView athlete={athlete} currentUser={currentUser} isMobile={false}/>
+        {tab==="planning"&&(<div style={{...S.page,padding:0}}>
+          <AthletePlanningView athlete={athlete} currentUser={currentUser} isMobile={isMobile}/>
         </div>)}
       </div>
+
+      {/* Bottom nav mobile */}
+      {isMobile&&(
+        <nav style={{position:"fixed",bottom:0,left:0,right:0,height:56,background:"#0f1923",borderTop:"1px solid #2d1b4e",display:"flex",zIndex:100}}>
+          {NAV.map(n=>{
+            const active=tab===n.id;
+            const ICONS={dashboard:"🏠",stats:"📊",crew:"👥",boats:"⛵",planning:"📅"};
+            return(
+              <button key={n.id} onClick={()=>setTab(n.id)}
+                style={{flex:1,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",gap:2,background:"none",border:"none",cursor:"pointer",color:active?"#a78bfa":"#4a6a8a",fontSize:10,fontWeight:active?700:500,borderTop:`2px solid ${active?"#a78bfa":"transparent"}`}}>
+                <span style={{fontSize:18}}>{ICONS[n.id]}</span>
+                <span>{n.label.replace("Mon ","")}</span>
+              </button>
+            );
+          })}
+          <button onClick={onLogout}
+            style={{width:44,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",gap:2,background:"none",border:"none",cursor:"pointer",color:"#4a6a8a",fontSize:9,borderTop:"2px solid transparent"}}>
+            <span style={{fontSize:16}}>🚪</span>
+            <span>Exit</span>
+          </button>
+        </nav>
+      )}
     </div>
   );
 }
