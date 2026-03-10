@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback } from "react";
 import { ROLE_COLORS, ROLE_LABELS, ZONE_COLORS, TYPE_COLORS, S } from "../styles.js";
 import { api } from "../config/supabase.js";
 import { FF, Modal, Toast, Loader } from "./ui.jsx";
-import { timeToSeconds, secondsToTime, concept2WattsFast, getBestTime, getLastPerf, calcAgeFromDOB, suggestRigging } from "../utils/rowing.js";
+import { timeToSeconds, secondsToTime, concept2WattsFast, getBestTime, getLastPerf, calcAgeFromDOB, suggestRigging, avg } from "../utils/rowing.js";
 
 export default function AthleteSpace({ currentUser, onLogout }) {
   const [tab,setTab]   = useState("dashboard");
