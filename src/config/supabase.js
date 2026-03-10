@@ -69,7 +69,7 @@ export const api = {
   // Clubs
   getClubs:        ()          => sb("clubs?select=*&order=name"),
   createClub:      (data)      => sb("clubs", { method:"POST", body:JSON.stringify(data) }),
-  updateClub:      (id, data)  => sb(`clubs?id=eq.${id}`, { method:"PATCH", body:JSON.stringify(data) }),
+  updateClub:      (id, data)  => { const {id:_,...d}=data; return sb(`clubs?id=eq.${id}`, { method:"PATCH", body:JSON.stringify(d) }); },
 
   // Invite codes
   getInviteCodes:  ()          => sb("invite_codes?select=*&order=created_at.desc"),
@@ -110,7 +110,7 @@ export const api = {
 
   // Athletes
   getAthletes:     ()          => sb("athletes?select=*&order=name"),
-  updateAthlete:   (id, data)  => sb(`athletes?id=eq.${id}`, { method:"PATCH", body:JSON.stringify(data) }),
+  updateAthlete:   (id, data)  => { const {id:_,...d}=data; return sb(`athletes?id=eq.${id}`, { method:"PATCH", body:JSON.stringify(d) }); },
   createAthlete:   (data)      => sb("athletes", { method:"POST", body:JSON.stringify(data) }),
   deleteAthlete:   (id)        => sb(`athletes?id=eq.${id}`, { method:"DELETE", prefer:"" }),
 
@@ -156,25 +156,25 @@ export const api = {
   // Planning — Season plans
   getSeasonPlans:      ()          => sb("season_plans?select=*&order=created_at.desc"),
   createSeasonPlan:    (data)      => sb("season_plans", { method:"POST", body:JSON.stringify(data) }),
-  updateSeasonPlan:    (id, data)  => sb(`season_plans?id=eq.${id}`, { method:"PATCH", body:JSON.stringify(data) }),
+  updateSeasonPlan:    (id, data)  => { const {id:_,...d}=data; return sb(`season_plans?id=eq.${id}`, { method:"PATCH", body:JSON.stringify(d) }); },
   deleteSeasonPlan:    (id)        => sb(`season_plans?id=eq.${id}`, { method:"DELETE", prefer:"" }),
 
   // Planning — Weeks
   getPlanWeeks:        (planId)    => sb(`plan_weeks?plan_id=eq.${planId}&order=num_semaine`),
   createPlanWeek:      (data)      => sb("plan_weeks", { method:"POST", body:JSON.stringify(data) }),
-  updatePlanWeek:      (id, data)  => sb(`plan_weeks?id=eq.${id}`, { method:"PATCH", body:JSON.stringify(data) }),
+  updatePlanWeek:      (id, data)  => { const {id:_,...d}=data; return sb(`plan_weeks?id=eq.${id}`, { method:"PATCH", body:JSON.stringify(d) }); },
   deletePlanWeek:      (id)        => sb(`plan_weeks?id=eq.${id}`, { method:"DELETE", prefer:"" }),
 
   // Planning — Sessions
   getPlannedSessions:  (weekId)    => sb(`planned_sessions?week_id=eq.${weekId}&order=ordre,created_at`),
   createPlannedSession:(data)      => sb("planned_sessions", { method:"POST", body:JSON.stringify(data) }),
-  updatePlannedSession:(id, data)  => sb(`planned_sessions?id=eq.${id}`, { method:"PATCH", body:JSON.stringify(data) }),
+  updatePlannedSession:(id, data)  => { const {id:_,...d}=data; return sb(`planned_sessions?id=eq.${id}`, { method:"PATCH", body:JSON.stringify(d) }); },
   deletePlannedSession:(id)        => sb(`planned_sessions?id=eq.${id}`, { method:"DELETE", prefer:"" }),
 
   // Planning — Templates
   getSessionTemplates: ()          => sb("session_templates?select=*&order=type_seance,name"),
   createSessionTemplate:(data)     => sb("session_templates", { method:"POST", body:JSON.stringify(data) }),
-  updateSessionTemplate:(id, data) => sb(`session_templates?id=eq.${id}`, { method:"PATCH", body:JSON.stringify(data) }),
+  updateSessionTemplate:(id, data) => { const {id:_,...d}=data; return sb(`session_templates?id=eq.${id}`, { method:"PATCH", body:JSON.stringify(d) }); },
   deleteSessionTemplate:(id)       => sb(`session_templates?id=eq.${id}`, { method:"DELETE", prefer:"" }),
 
   // Planning — Overrides (athlètes individuels)
