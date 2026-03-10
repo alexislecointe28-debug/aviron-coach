@@ -1,5 +1,4 @@
 import { useState } from "react";
-import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { supabaseAuth, clearSession, loadSession } from "./config/supabase.js";
 import Login from "./components/Login.jsx";
 import AdminSpace from "./components/AdminSpace.jsx";
