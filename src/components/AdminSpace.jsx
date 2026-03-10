@@ -1,13 +1,14 @@
 import { useState, useEffect, useCallback } from "react";
 import { ROLE_COLORS, ROLE_LABELS, ROLE_ICONS, S } from "../styles.js";
 import { api } from "../config/supabase.js";
-import { FF, Modal, Toast } from "./ui.jsx";
+import { FF, Modal, Toast, Loader } from "./ui.jsx";
 
 export default function AdminSpace({ currentUser, onLogout }) {
   const [users,setUsers]     = useState([]);
   const [athletes,setAthletes] = useState([]);
   const [loading,setLoading] = useState(true);
   const [tab,setTab]         = useState("users");
+  const [isMobile, setIsMobile] = useState(()=>window.innerWidth<768);
   const [filterRole,setFilterRole] = useState("all");
   const [showAdd,setShowAdd] = useState(false);
   const [editUser,setEditUser]= useState(null);
@@ -26,6 +27,11 @@ export default function AdminSpace({ currentUser, onLogout }) {
     setLoading(false);
   },[]);
   useEffect(()=>{ load(); },[]);
+  useEffect(()=>{
+    const h=()=>setIsMobile(window.innerWidth<768);
+    window.addEventListener('resize',h);
+    return()=>window.removeEventListener('resize',h);
+  },[]);
 
   async function addUser() {
     try {
@@ -92,7 +98,7 @@ export default function AdminSpace({ currentUser, onLogout }) {
   return (
     <div style={S.root}>
       {toast&&<Toast message={toast.m} type={toast.t} onDone={()=>setToast(null)}/>}
-      <aside style={{...S.sidebar,borderColor:"#3a2a0a"}}>
+      <aside style={{...S.sidebar,borderColor:"#3a2a0a",...(isMobile?{display:"none"}:{})}}>
         <div style={{...S.logo,borderColor:"#3a2a0a"}}><span style={{fontSize:28}}>~</span><div><div style={{...S.logoT,color:"#f59e0b"}}>AvironCoach</div><div style={S.logoS}>Super Admin</div></div></div>
         <nav style={{flex:1,padding:"8px 12px"}}>
           {[{id:"users",label:"Comptes",icon:"o"},{id:"codes",label:"Codes invit.",icon:"#"},{id:"stats",label:"Vue globale",icon:"*"}].map(n=>(
@@ -107,9 +113,9 @@ export default function AdminSpace({ currentUser, onLogout }) {
           <button style={{...S.btnP,width:"100%",background:"transparent",color:"#7a95b0",border:"1px solid #1e293b",fontSize:12}} onClick={onLogout}>Deconnexion</button>
         </div>
       </aside>
-      <div style={S.main}>
+      <div style={{...S.main,width:isMobile?"100%":0}}>
         {tab==="users"&&(
-          <div style={S.page}>
+          <div style={{...S.page,padding:isMobile?"16px 12px":"28px 32px"}}>
             <div style={S.ph}>
               <div><h1 style={S.ttl}>Gestion des comptes</h1><p style={S.sub}>{users.filter(u=>u.active).length}/{users.length} actifs - données en direct depuis Supabase</p></div>
               <button style={{...S.btnP,background:"#f59e0b",color:"#0f1923"}} onClick={()=>setShowAdd(true)}>+ Nouveau compte</button>
@@ -228,7 +234,7 @@ export default function AdminSpace({ currentUser, onLogout }) {
           </div>
         )}
         {tab==="codes"&&(
-          <div style={S.page}>
+          <div style={{...S.page,padding:isMobile?"16px 12px":"28px 32px"}}>
             <div style={S.ph}>
               <div><h1 style={S.ttl}>Codes d&apos;invitation</h1><p style={S.sub}>Gérer les accès à la plateforme</p></div>
               <button style={{...S.btnP,background:"#f59e0b",color:"#0f1923"}} onClick={()=>setShowAddCode(true)}>+ Nouveau code</button>
@@ -295,7 +301,7 @@ export default function AdminSpace({ currentUser, onLogout }) {
           </div>
         )}
         {tab==="stats"&&(
-          <div style={S.page}>
+          <div style={{...S.page,padding:isMobile?"16px 12px":"28px 32px"}}>
             <div style={S.ph}><div><h1 style={S.ttl}>Vue globale</h1><p style={S.sub}>Plateforme en temps réel</p></div></div>
             <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:16,marginBottom:24}}>
               {["admin","coach","athlete"].map(role=>{
