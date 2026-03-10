@@ -147,6 +147,7 @@ const api = {
   getBoatSettings: ()          => sb("boat_settings?select=*&order=date_reglage.desc"),
   getBodyMeasurements: (athleteId) => sb(`body_measurements?athlete_id=eq.${athleteId}&order=date.desc`),
   getStrengthSessions: (athleteId) => sb(`strength_sessions?athlete_id=eq.${athleteId}&order=date.desc`),
+  getAllStrengthSessions: () => sb(`strength_sessions?order=date.desc`),
   createStrengthSession: (data)    => sb("strength_sessions", { method:"POST", body:JSON.stringify(data) }),
   deleteStrengthSession: (id)      => sb(`strength_sessions?id=eq.${id}`, { method:"DELETE", prefer:"" }),
   createBodyMeasurement: (data) => sb("body_measurements", { method:"POST", body:JSON.stringify(data) }),
@@ -843,6 +844,7 @@ function CoachSpace({ currentUser, onLogout }) {
   const [showMorphoForm,setShowMorphoForm] = useState(false);
   const [newMorpho,setNewMorpho] = useState({date:new Date().toISOString().split("T")[0],poids:"",taille:"",masse_grasse:""});
   const [strengthSessions,setStrengthSessions] = useState([]);
+  const [allStrengthSessions,setAllStrengthSessions] = useState([]);
   const [showStrengthForm,setShowStrengthForm] = useState(false);
   const [strengthTab,setStrengthTab] = useState("saisie");
   const [selStrengthExo,setSelStrengthExo] = useState("Squat");
@@ -861,14 +863,16 @@ function CoachSpace({ currentUser, onLogout }) {
     setLoading(true);
     try {
       const safe = (p) => p.catch(()=>[]);
-      const [aths,perfs,cr,cm,sess,sc,bt,bc,bs] = await Promise.all([
+      const [aths,perfs,cr,cm,sess,sc,bt,bc,bs,allS] = await Promise.all([
         safe(api.getAthletes()),safe(api.getPerformances()),safe(api.getCrews()),safe(api.getCrewMembers()),
         safe(api.getSessions()),safe(api.getSessionCrews()),
-        safe(api.getBoats()),safe(api.getBoatCrews()),safe(api.getBoatSettings())
+        safe(api.getBoats()),safe(api.getBoatCrews()),safe(api.getBoatSettings()),
+        safe(api.getAllStrengthSessions())
       ]);
       setAthletes(aths||[]); setPerformances(perfs||[]); setCrews(cr||[]); setCrewMembers(cm||[]);
       setSessions(sess||[]); setSessionCrews(sc||[]);
       setBoats(bt||[]); setBoatCrews(bc||[]); setBoatSettings(bs||[]);
+      setAllStrengthSessions(allS||[]);
       if((aths||[]).length>=2) setCompareIds([aths[0].id,aths[1].id]);
     } catch(e){ console.error("Load error:", e); }
     setLoading(false);
@@ -922,6 +926,7 @@ function CoachSpace({ currentUser, onLogout }) {
       setShowStrengthForm(false);
       setNewStrength({date:new Date().toISOString().split("T")[0],exercices:[{exercice:"Squat",series:"",reps:"",charge:""}]});
       api.getStrengthSessions(selAth).then(d=>setStrengthSessions(d||[]));
+      api.getAllStrengthSessions().then(d=>setAllStrengthSessions(d||[]));
     } catch(err) {
       setToast({m:"Erreur: "+err.message,t:"error"});
     }
@@ -930,6 +935,7 @@ function CoachSpace({ currentUser, onLogout }) {
   async function deleteStrengthSession(id) {
     await api.deleteStrengthSession(id);
     api.getStrengthSessions(selAth).then(d=>setStrengthSessions(d||[]));
+    api.getAllStrengthSessions().then(d=>setAllStrengthSessions(d||[]));
   }
 
   async function deleteMorpho(id) {
@@ -1742,7 +1748,7 @@ function CoachSpace({ currentUser, onLogout }) {
             const scatterAths=athletes.map(a=>{
               const perfs=getPerfFor(a.id),best=getBestTime(perfs);
               const wpkg=best&&a.weight?(concept2WattsFast(best.time)/a.weight):null;
-              const squat=strengthSessions.filter(s=>s.athlete_id===a.id&&s.exercice==="Squat").sort((x,y)=>y.one_rm-x.one_rm)[0];
+              const squat=allStrengthSessions.filter(s=>s.athlete_id===a.id&&s.exercice==="Squat").sort((x,y)=>y.one_rm-x.one_rm)[0];
               const forceKg=squat&&a.weight?(squat.one_rm/a.weight):null;
               return wpkg&&forceKg?{name:a.name,wpkg:parseFloat(wpkg.toFixed(2)),force:parseFloat(forceKg.toFixed(2)),avatar:a.avatar}:null;
             }).filter(Boolean);
