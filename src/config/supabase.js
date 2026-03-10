@@ -192,4 +192,10 @@ export const api = {
   createSectionManager: (data)   => sb("section_managers", { method:"POST", body:JSON.stringify(data) }),
   deleteSectionManager: (id)     => sb(`section_managers?id=eq.${id}`, { method:"DELETE", prefer:"" }),
 
+  // Pelles
+  getPaddles:      ()         => sb("paddles?select=*&order=numero.asc"),
+  createPaddle:    (data)     => sb("paddles", { method:"POST", body:JSON.stringify(data) }),
+  updatePaddle:    (id, data) => sb(`paddles?id=eq.${id}`, { method:"PATCH", body:JSON.stringify(data) }),
+  deletePaddle:    (id)       => sb(`paddles?id=eq.${id}`, { method:"DELETE", prefer:"" }),
+
 };

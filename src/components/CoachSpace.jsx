@@ -55,6 +55,10 @@ export default function CoachSpace({ currentUser, onLogout }) {
   // Boats states
   const [selBoat,setSelBoat]   = useState(null);
   const [showAddBoat,setShowAddBoat] = useState(false);
+  const [paddles,setPaddles] = useState([]);
+  const [showAddPaddle,setShowAddPaddle] = useState(false);
+  const [editPaddle,setEditPaddle] = useState(null);
+  const [newPaddle,setNPaddle] = useState({numero:"",type_nage:"couple",marque:"",modele:"",plage_reglage:"",notes:""});
   const [showAddSetting,setShowAddSetting] = useState(false);
   const [editBoat,setEditBoat] = useState(null);
   const [newBoat,setNB]        = useState({name:"",type:"couple",seats:4,brand:"",model:"",avg_buoyancy:"",notes:""});
@@ -64,16 +68,16 @@ export default function CoachSpace({ currentUser, onLogout }) {
     setLoading(true);
     try {
       const safe = (p) => p.catch(()=>[]);
-      const [aths,perfs,cr,cm,sess,sc,bt,bc,bs,allS] = await Promise.all([
+      const [aths,perfs,cr,cm,sess,sc,bt,bc,bs,allS,pdls] = await Promise.all([
         safe(api.getAthletes()),safe(api.getPerformances()),safe(api.getCrews()),safe(api.getCrewMembers()),
         safe(api.getSessions()),safe(api.getSessionCrews()),
         safe(api.getBoats()),safe(api.getBoatCrews()),safe(api.getBoatSettings()),
-        safe(api.getAllStrengthSessions())
+        safe(api.getAllStrengthSessions()),safe(api.getPaddles())
       ]);
       setAthletes(aths||[]); setPerformances(perfs||[]); setCrews(cr||[]); setCrewMembers(cm||[]);
       setSessions(sess||[]); setSessionCrews(sc||[]);
       setBoats(bt||[]); setBoatCrews(bc||[]); setBoatSettings(bs||[]);
-      setAllStrengthSessions(allS||[]);
+      setAllStrengthSessions(allS||[]); setPaddles(pdls||[]);
       if((aths||[]).length>=2) setCompareIds([aths[0].id,aths[1].id]);
     } catch(e){ console.error("Load error:", e); }
     setLoading(false);
@@ -271,6 +275,7 @@ export default function CoachSpace({ currentUser, onLogout }) {
     load();
   }
   function getBoatCrewsFor(boatId) { return boatCrews.filter(bc=>bc.boat_id===boatId).map(bc=>crews.find(c=>c.id===bc.crew_id)).filter(Boolean); }
+  function getPaddlesFor(boatId) { return paddles.filter(p=>p.boat_id===boatId).sort((a,b)=>a.numero.localeCompare(b.numero)); }
   function getSettingsFor(boatId) { return boatSettings.filter(s=>s.boat_id===boatId).sort((a,b)=>b.date_reglage.localeCompare(a.date_reglage)); }
   function getLatestSettingPerPoste(boatId) {
     const settings=getSettingsFor(boatId);
@@ -1126,6 +1131,121 @@ export default function CoachSpace({ currentUser, onLogout }) {
                   })}
                 </div>
 
+                {/* Section Pelles */}
+                {(()=>{
+                  const boatPaddles = getPaddlesFor(selBoat);
+                  const MARQUES = ["Concept2","Croker","Dreher","Braca","Vespoli","Autre"];
+                  const MODELES_C2 = ["Smoothie 2","Fat 2","Fat2 Skinny","BigBlade","Macon","Bantam","Apex","Autre"];
+                  async function savePaddle() {
+                    if(!newPaddle.numero) { setToast({m:"Numéro requis",t:"error"}); return; }
+                    try {
+                      await api.createPaddle({...newPaddle, boat_id:selBoat});
+                      setToast({m:"Pelle ajoutée ✓",t:"success"});
+                      setNPaddle({numero:"",type_nage:"couple",marque:"",modele:"",plage_reglage:"",notes:""});
+                      setShowAddPaddle(false);
+                      const pdls = await api.getPaddles(); setPaddles(pdls||[]);
+                    } catch(e) { setToast({m:"Erreur: "+e.message,t:"error"}); }
+                  }
+                  async function saveEditPaddle() {
+                    try {
+                      const {id:_,...d} = editPaddle;
+                      await api.updatePaddle(editPaddle.id, d);
+                      setToast({m:"Pelle modifiée ✓",t:"success"});
+                      setEditPaddle(null);
+                      const pdls = await api.getPaddles(); setPaddles(pdls||[]);
+                    } catch(e) { setToast({m:"Erreur",t:"error"}); }
+                  }
+                  async function delPaddle(id) {
+                    if(!window.confirm("Supprimer cette pelle ?")) return;
+                    await api.deletePaddle(id);
+                    const pdls = await api.getPaddles(); setPaddles(pdls||[]);
+                  }
+                  return(
+                    <div style={{marginBottom:28}}>
+                      <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:12}}>
+                        <div style={S.st}>🚣 Pelles — {boat.name}</div>
+                        <button style={S.btnP} onClick={()=>setShowAddPaddle(true)}>+ Ajouter une pelle</button>
+                      </div>
+                      {boatPaddles.length===0 && !showAddPaddle && (
+                        <div style={{...S.card,textAlign:"center",color:"#5a7a9a",padding:24}}>Aucune pelle associée à ce bateau.</div>
+                      )}
+                      {boatPaddles.length>0 && (
+                        <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(220px,1fr))",gap:10}}>
+                          {boatPaddles.map(p=>(
+                            <div key={p.id} style={{...S.card,borderTop:`3px solid ${p.type_nage==="couple"?"#0ea5e9":"#a78bfa"}`,padding:"14px 16px"}}>
+                              <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:8}}>
+                                <div>
+                                  <div style={{fontWeight:900,color:"#f1f5f9",fontSize:16}}>N° {p.numero}</div>
+                                  <span style={{...S.badge,background:p.type_nage==="couple"?"#22d3ee20":"#a78bfa20",color:p.type_nage==="couple"?"#0ea5e9":"#a78bfa",border:`1px solid ${p.type_nage==="couple"?"#22d3ee40":"#a78bfa40"}`,marginTop:4,display:"inline-block"}}>
+                                    {p.type_nage==="couple"?"~ Couple":"~ Pointe"}
+                                  </span>
+                                </div>
+                                <div style={{display:"flex",gap:4}}>
+                                  <button style={{...S.actionBtn,color:"#0ea5e9",borderColor:"#22d3ee30"}} onClick={()=>setEditPaddle({...p})}>✏️</button>
+                                  <button style={{...S.actionBtn,color:"#ef4444",borderColor:"#ef444430"}} onClick={()=>delPaddle(p.id)}>✕</button>
+                                </div>
+                              </div>
+                              {p.marque&&<div style={{color:"#94a3b8",fontSize:13,marginBottom:2}}>🏷 {p.marque}{p.modele?` · ${p.modele}`:""}</div>}
+                              {p.plage_reglage&&<div style={{color:"#f59e0b",fontSize:13,fontWeight:700}}>📏 {p.plage_reglage} cm</div>}
+                              {p.notes&&<div style={{color:"#64748b",fontSize:11,marginTop:6,fontStyle:"italic"}}>{p.notes}</div>}
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                      {showAddPaddle&&(
+                        <div style={{...S.card,marginTop:12,borderTop:"2px solid #0ea5e9"}}>
+                          <div style={{fontWeight:700,color:"#f1f5f9",marginBottom:12}}>+ Nouvelle pelle</div>
+                          <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12}}>
+                            <FF label="Numéro"><input style={S.inp} value={newPaddle.numero} onChange={e=>setNPaddle(p=>({...p,numero:e.target.value}))} placeholder="ex: C2-01"/></FF>
+                            <FF label="Type de nage">
+                              <select style={S.inp} value={newPaddle.type_nage} onChange={e=>setNPaddle(p=>({...p,type_nage:e.target.value}))}>
+                                <option value="couple">Couple</option>
+                                <option value="pointe">Pointe</option>
+                              </select>
+                            </FF>
+                            <FF label="Marque">
+                              <select style={S.inp} value={newPaddle.marque} onChange={e=>setNPaddle(p=>({...p,marque:e.target.value}))}>
+                                <option value="">-- Choisir --</option>
+                                {["Concept2","Croker","Dreher","Braca","Vespoli","Autre"].map(m=><option key={m}>{m}</option>)}
+                              </select>
+                            </FF>
+                            <FF label="Modèle"><input style={S.inp} value={newPaddle.modele} onChange={e=>setNPaddle(p=>({...p,modele:e.target.value}))} placeholder="ex: Fat 2, Smoothie 2..."/></FF>
+                            <FF label="Plage de réglage (cm)"><input style={S.inp} value={newPaddle.plage_reglage} onChange={e=>setNPaddle(p=>({...p,plage_reglage:e.target.value}))} placeholder="ex: 284-289"/></FF>
+                            <FF label="Notes"><input style={S.inp} value={newPaddle.notes} onChange={e=>setNPaddle(p=>({...p,notes:e.target.value}))} placeholder="Optionnel"/></FF>
+                          </div>
+                          <div style={{display:"flex",gap:8,marginTop:12}}>
+                            <button style={{...S.btnP,background:"#0ea5e9",color:"#0f1923"}} onClick={savePaddle}>Enregistrer</button>
+                            <button style={{...S.btnP,background:"transparent",color:"#7a95b0",border:"1px solid #1e293b"}} onClick={()=>setShowAddPaddle(false)}>Annuler</button>
+                          </div>
+                        </div>
+                      )}
+                      {editPaddle&&editPaddle.boat_id===selBoat&&(
+                        <Modal title={`Modifier pelle N° ${editPaddle.numero}`} onClose={()=>setEditPaddle(null)}>
+                          <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12}}>
+                            <FF label="Numéro"><input style={S.inp} value={editPaddle.numero} onChange={e=>setEditPaddle(p=>({...p,numero:e.target.value}))}/></FF>
+                            <FF label="Type de nage">
+                              <select style={S.inp} value={editPaddle.type_nage} onChange={e=>setEditPaddle(p=>({...p,type_nage:e.target.value}))}>
+                                <option value="couple">Couple</option>
+                                <option value="pointe">Pointe</option>
+                              </select>
+                            </FF>
+                            <FF label="Marque">
+                              <select style={S.inp} value={editPaddle.marque||""} onChange={e=>setEditPaddle(p=>({...p,marque:e.target.value}))}>
+                                <option value="">-- Choisir --</option>
+                                {["Concept2","Croker","Dreher","Braca","Vespoli","Autre"].map(m=><option key={m}>{m}</option>)}
+                              </select>
+                            </FF>
+                            <FF label="Modèle"><input style={S.inp} value={editPaddle.modele||""} onChange={e=>setEditPaddle(p=>({...p,modele:e.target.value}))}/></FF>
+                            <FF label="Plage de réglage (cm)"><input style={S.inp} value={editPaddle.plage_reglage||""} onChange={e=>setEditPaddle(p=>({...p,plage_reglage:e.target.value}))} placeholder="ex: 284-289"/></FF>
+                            <FF label="Notes"><input style={S.inp} value={editPaddle.notes||""} onChange={e=>setEditPaddle(p=>({...p,notes:e.target.value}))}/></FF>
+                          </div>
+                          <button style={{...S.btnP,width:"100%",marginTop:12,background:"#0ea5e9",color:"#0f1923"}} onClick={saveEditPaddle}>Enregistrer</button>
+                        </Modal>
+                      )}
+                    </div>
+                  );
+                })()}
+
                 {/* Réglages par poste -- vue actuelle */}
                 <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:14}}>
                   <div style={S.st}>~ Réglages actuels -- {boat.name}</div>
@@ -1274,7 +1394,16 @@ export default function CoachSpace({ currentUser, onLogout }) {
                   <FF label="Levier intérieur (cm)"><input style={S.inp} type="number" value={newSetting.levier_interieur} onChange={e=>setNS(p=>({...p,levier_interieur:e.target.value}))}/></FF>
                   <FF label="Levier extérieur (cm)"><input style={S.inp} type="number" value={newSetting.levier_exterieur} onChange={e=>setNS(p=>({...p,levier_exterieur:e.target.value}))}/></FF>
                   <FF label="Croisement (cm)"><input style={S.inp} type="number" value={newSetting.croisement} onChange={e=>setNS(p=>({...p,croisement:e.target.value}))}/></FF>
-                  <FF label="Ndeg pelle"><input style={S.inp} value={newSetting.numero_pelle} onChange={e=>setNS(p=>({...p,numero_pelle:e.target.value}))}/></FF>
+                  <FF label="N° Pelle">
+                    <select style={S.inp} value={newSetting.numero_pelle} onChange={e=>{
+                      const sel = paddles.find(p=>p.numero===e.target.value&&p.boat_id===selBoat);
+                      setNS(p=>({...p,numero_pelle:e.target.value,type_pelle:sel?.modele||p.type_pelle}));
+                    }}>
+                      <option value="">-- Choisir ou saisir --</option>
+                      {getPaddlesFor(selBoat).map(p=><option key={p.id} value={p.numero}>N°{p.numero} — {p.marque} {p.modele} ({p.type_nage}) {p.plage_reglage?`· ${p.plage_reglage}cm`:""}</option>)}
+                    </select>
+                  </FF>
+                  {newSetting.numero_pelle&&(()=>{const sel=paddles.find(p=>p.numero===newSetting.numero_pelle&&p.boat_id===selBoat);if(!sel)return null;return(<div style={{padding:"8px 12px",background:"#0ea5e910",border:"1px solid #0ea5e930",borderRadius:8,marginBottom:8,fontSize:12,color:"#94a3b8"}}>🚣 {sel.type_nage} · {sel.marque} {sel.modele}{sel.plage_reglage?` · Plage: ${sel.plage_reglage} cm`:""}</div>);})()}
                   <FF label="Type de pelle"><select style={S.inp} value={newSetting.type_pelle} onChange={e=>setNS(p=>({...p,type_pelle:e.target.value}))}><option value="">-- Choisir --</option>{BLADE_TYPES.map(b=><option key={b} value={b}>{b}</option>)}</select></FF>
                 </div>
                 <FF label="Observations"><textarea style={{...S.inp,height:72,resize:"vertical"}} value={newSetting.observations} onChange={e=>setNS(p=>({...p,observations:e.target.value}))}/></FF>
