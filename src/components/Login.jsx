@@ -42,23 +42,38 @@ export default function Login({ onLogin }) {
       });
       if(!res.ok) throw new Error("Erreur création compte");
       const newUser = await res.json();
-      // Si athlète → créer automatiquement la fiche athlète et lier
+      // Si athlète → chercher si une fiche du même nom existe déjà (créée par le coach)
       let finalUser = newUser[0];
       if(role==="athlete" && newUser && newUser[0]) {
         try {
-          const AVATARS=["🚣","🏅","💪","⚡","🌊","🎯"];
-          const ath = await api.createAthlete({
-            name: reg.name,
-            category: "Senior",
-            weight: 0,
-            age: 0,
-            boat: "1x",
-            avatar: AVATARS[Math.floor(Math.random()*AVATARS.length)]
+          const allAthletes = await api.getAthletes().catch(()=>[]);
+          const allUsers = await api.getUsers().catch(()=>[]);
+          // Fiche déjà liée à un autre compte ?
+          const nameLower = reg.name.trim().toLowerCase();
+          const matchingAthlete = (allAthletes||[]).find(a => {
+            const alreadyLinked = (allUsers||[]).some(u => u.id!==newUser[0].id && u.athlete_id===a.id);
+            return a.name.trim().toLowerCase()===nameLower && !alreadyLinked;
           });
-          if(ath && ath[0]) {
-            await api.updateUser(newUser[0].id, {athlete_id: ath[0].id});
+
+          if(matchingAthlete) {
+            // Lier directement la fiche existante du coach
+            await api.updateUser(newUser[0].id, {athlete_id: matchingAthlete.id});
+          } else {
+            // Aucune fiche existante → créer une nouvelle
+            const AVATARS=["🚣","🏅","💪","⚡","🌊","🎯"];
+            const ath = await api.createAthlete({
+              name: reg.name,
+              category: "Senior",
+              weight: 0,
+              age: 0,
+              boat: "1x",
+              avatar: AVATARS[Math.floor(Math.random()*AVATARS.length)]
+            });
+            if(ath && ath[0]) {
+              await api.updateUser(newUser[0].id, {athlete_id: ath[0].id});
+            }
           }
-        } catch(e) { console.warn("Athlete auto-create:", e); }
+        } catch(e) { console.warn("Athlete link:", e); }
         // Relire le user frais pour avoir athlete_id à jour
         try {
           const fresh = await api.loginUser(reg.email, reg.password);

@@ -5,11 +5,13 @@ import { FF, Modal, Toast } from "./ui.jsx";
 
 export default function AdminSpace({ currentUser, onLogout }) {
   const [users,setUsers]     = useState([]);
+  const [athletes,setAthletes] = useState([]);
   const [loading,setLoading] = useState(true);
   const [tab,setTab]         = useState("users");
   const [filterRole,setFilterRole] = useState("all");
   const [showAdd,setShowAdd] = useState(false);
   const [editUser,setEditUser]= useState(null);
+  const [assignUser,setAssignUser] = useState(null); // user à qui assigner une fiche
   const [confirm,setConfirm] = useState(null);
   const [toast,setToast]     = useState(null);
   const [newUser,setNU]      = useState({name:"",email:"",password:"",role:"athlete"});
@@ -19,8 +21,8 @@ export default function AdminSpace({ currentUser, onLogout }) {
 
   const load = useCallback(async()=>{
     setLoading(true);
-    const [u,c] = await Promise.all([api.getUsers(), api.getInviteCodes().catch(()=>[])]);
-    setUsers(u); setCodes(c);
+    const [u,c,ath] = await Promise.all([api.getUsers(), api.getInviteCodes().catch(()=>[]), api.getAthletes().catch(()=>[])]);
+    setUsers(u); setCodes(c); setAthletes(ath||[]);
     setLoading(false);
   },[]);
   useEffect(()=>{ load(); },[]);
@@ -48,6 +50,19 @@ export default function AdminSpace({ currentUser, onLogout }) {
   async function deleteUser(uid) {
     await api.deleteUser(uid); load(); setConfirm(null);
     setToast({m:"Compte supprimé",t:"success"});
+  }
+  async function assignFiche(userId, athleteId) {
+    try {
+      // Supprimer l'ancienne fiche auto-créée si elle existe et n'est liée qu'à ce user
+      const u = users.find(u=>u.id===userId);
+      if(u?.athlete_id && u.athlete_id !== athleteId) {
+        const otherUsers = users.filter(x=>x.id!==userId&&x.athlete_id===u.athlete_id);
+        if(otherUsers.length===0) await api.deleteAthlete(u.athlete_id).catch(()=>{});
+      }
+      await api.updateUser(userId, {athlete_id: athleteId});
+      setToast({m:"Fiche athlète assignée ✓",t:"success"});
+      setAssignUser(null); load();
+    } catch(e) { setToast({m:"Erreur : "+e.message,t:"error"}); }
   }
 
   async function addCode() {
@@ -119,7 +134,11 @@ export default function AdminSpace({ currentUser, onLogout }) {
                         <td style={S.td}>
                           <div style={{display:"flex",alignItems:"center",gap:10}}>
                             <div style={{...S.av,width:36,height:36,fontSize:13,background:ROLE_COLORS[u.role]+"22",border:"1px solid "+(ROLE_COLORS[u.role])+"40",color:ROLE_COLORS[u.role]}}>{u.name.split(" ").map(w=>w[0]).join("").slice(0,2).toUpperCase()}</div>
-                            <div><div style={{color:"#f1f5f9",fontWeight:700,fontSize:14}}>{u.name}</div><div style={{color:"#5a7a9a",fontSize:11}}>{u.role==="athlete"&&u.athlete_id?`Athlète #${u.athlete_id}`:""}</div></div>
+                            <div><div style={{color:"#f1f5f9",fontWeight:700,fontSize:14}}>{u.name}</div><div style={{color:"#5a7a9a",fontSize:11}}>
+                              {u.role==="athlete"&&(u.athlete_id
+                                ? <span style={{color:"#a78bfa"}}>📋 {athletes.find(a=>a.id===u.athlete_id)?.name||`#${u.athlete_id}`}</span>
+                                : <span style={{color:"#ef4444"}}>⚠️ Aucune fiche</span>)}
+                            </div></div>
                           </div>
                         </td>
                         <td style={{...S.td,color:"#7a95b0"}}>{u.email}</td>
@@ -135,6 +154,7 @@ export default function AdminSpace({ currentUser, onLogout }) {
                         <td style={S.td}>
                           <div style={{display:"flex",gap:6}}>
                             <button style={{...S.actionBtn,color:"#0ea5e9",borderColor:"#22d3ee30"}} onClick={()=>setEditUser({...u,_newpw:""})}>Edit</button>
+                            {u.role==="athlete"&&<button style={{...S.actionBtn,color:"#a78bfa",borderColor:"#a78bfa30"}} onClick={()=>setAssignUser(u)}>📋 Fiche</button>}
                             {u.id!==currentUser.id&&<>
                               <button style={{...S.actionBtn,color:u.active?"#f59e0b":"#4ade80",borderColor:u.active?"#f59e0b30":"#4ade8030"}} onClick={()=>setConfirm({u,action:u.active?"deactivate":"activate"})}>{u.active?"||":">"}</button>
                               <button style={{...S.actionBtn,color:"#ef4444",borderColor:"#ef444430"}} onClick={()=>setConfirm({u,action:"delete"})}>X</button>
@@ -171,6 +191,27 @@ export default function AdminSpace({ currentUser, onLogout }) {
                 <option value="admin">~ Super Admin</option><option value="coach">~ Coach</option><option value="athlete">~ Athlète</option>
               </select></FF>
               <button style={{...S.btnP,width:"100%",marginTop:8,background:"#f59e0b",color:"#0f1923"}} onClick={saveEdit}>Enregistrer</button>
+            </Modal>}
+
+            {assignUser&&<Modal title={`Assigner une fiche — ${assignUser.name}`} onClose={()=>setAssignUser(null)}>
+              <p style={{color:"#7a95b0",fontSize:13,marginBottom:16}}>Sélectionne la fiche athlète à lier à ce compte. La fiche auto-créée sera supprimée si elle n'est pas utilisée ailleurs.</p>
+              <div style={{display:"flex",flexDirection:"column",gap:6,maxHeight:320,overflowY:"auto"}}>
+                {athletes.filter(a=>!users.some(u=>u.id!==assignUser.id&&u.athlete_id===a.id)).map(a=>{
+                  const isCurrent = assignUser.athlete_id===a.id;
+                  return(
+                    <button key={a.id} onClick={()=>assignFiche(assignUser.id,a.id)}
+                      style={{display:"flex",alignItems:"center",gap:12,padding:"10px 14px",borderRadius:8,border:`1px solid ${isCurrent?"#a78bfa60":"#334155"}`,background:isCurrent?"#a78bfa15":"#0f172a",cursor:"pointer",textAlign:"left"}}>
+                      <div style={{width:36,height:36,borderRadius:8,background:"#a78bfa22",border:"1px solid #a78bfa40",display:"flex",alignItems:"center",justifyContent:"center",fontSize:18,flexShrink:0}}>{a.avatar||"🚣"}</div>
+                      <div style={{flex:1}}>
+                        <div style={{color:"#f1f5f9",fontWeight:700,fontSize:14}}>{a.name}</div>
+                        <div style={{color:"#64748b",fontSize:12}}>{a.category} · {a.boat||"—"}{a.age?` · ${a.age} ans`:""}</div>
+                      </div>
+                      {isCurrent&&<span style={{color:"#a78bfa",fontSize:12,fontWeight:700}}>✓ Actuel</span>}
+                    </button>
+                  );
+                })}
+                {athletes.length===0&&<div style={{color:"#64748b",textAlign:"center",padding:24}}>Aucune fiche athlète disponible.</div>}
+              </div>
             </Modal>}
 
             {confirm&&<Modal title="Confirmation" onClose={()=>setConfirm(null)}>
