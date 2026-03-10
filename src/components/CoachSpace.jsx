@@ -1254,7 +1254,7 @@ export default function CoachSpace({ currentUser, onLogout }) {
                 <div style={{overflowX:"auto",borderRadius:12,border:"1px solid #1e293b",marginBottom:28}}>
                   <table style={{width:"100%",borderCollapse:"collapse",background:"#182030"}}>
                     <thead>
-                      <tr>{["Poste","Rameur","Date","Réglé par","Entraxe","Long. Pelle","Levier int.","Ndeg pelle","Type pelle","Observations"].map(h=><th key={h} style={S.th}>{h}</th>)}</tr>
+                      <tr>{["Poste","Rameur","Date","Réglé par","Entraxe","Long. Pelle","Levier int.","Pelle","Observations"].map(h=><th key={h} style={S.th}>{h}</th>)}</tr>
                     </thead>
                     <tbody>
                       {postes.map(s=>{
@@ -1274,8 +1274,7 @@ export default function CoachSpace({ currentUser, onLogout }) {
                                 <td style={{...S.td,color:"#0ea5e9",fontWeight:700}}>{s.entraxe?`${s.entraxe} cm`:"--"}</td>
                                 <td style={{...S.td,color:"#a78bfa"}}>{s.longueur_pedale?`${s.longueur_pedale} cm`:"--"}</td>
                                 <td style={{...S.td,color:"#f59e0b"}}>{s.levier_interieur?`${s.levier_interieur} cm`:"--"}</td>
-                                <td style={S.td}>{s.numero_pelle||"--"}</td>
-                                <td style={S.td}>{s.type_pelle||"--"}</td>
+                                <td style={S.td}>{s.numero_pelle?`N°${s.numero_pelle}${s.type_pelle?" · "+s.type_pelle:""}`:s.type_pelle||"--"}</td>
                                 <td style={{...S.td,color:"#a8bfd4",maxWidth:200}}>{s.observations||"--"}</td>
                               </>
                             )}
@@ -1291,7 +1290,7 @@ export default function CoachSpace({ currentUser, onLogout }) {
                   <div style={S.st}>~ Historique complet des réglages</div>
                   <div style={{overflowX:"auto",borderRadius:12,border:"1px solid #1e293b"}}>
                     <table style={{width:"100%",borderCollapse:"collapse",background:"#182030"}}>
-                      <thead><tr>{["Poste","Date","Réglé par","Entraxe","Long. Pelle","Levier int.","Ndeg pelle","Type pelle","Observations",""].map(h=><th key={h} style={S.th}>{h}</th>)}</tr></thead>
+                      <thead><tr>{["Poste","Date","Réglé par","Entraxe","Long. Pelle","Levier int.","Pelle","Observations",""].map(h=><th key={h} style={S.th}>{h}</th>)}</tr></thead>
                       <tbody>
                         {allSettings.map(s=>(
                           <tr key={s.id} style={{borderBottom:"1px solid #1e293b"}}>
@@ -1301,8 +1300,7 @@ export default function CoachSpace({ currentUser, onLogout }) {
                             <td style={{...S.td,color:"#0ea5e9"}}>{s.entraxe?`${s.entraxe} cm`:"--"}</td>
                             <td style={{...S.td,color:"#a78bfa"}}>{s.longueur_pedale?`${s.longueur_pedale} cm`:"--"}</td>
                             <td style={{...S.td,color:"#f59e0b"}}>{s.levier_interieur?`${s.levier_interieur} cm`:"--"}</td>
-                            <td style={S.td}>{s.numero_pelle||"--"}</td>
-                            <td style={S.td}>{s.type_pelle||"--"}</td>
+                            <td style={S.td}>{s.numero_pelle?`N°${s.numero_pelle}${s.type_pelle?" · "+s.type_pelle:""}`:s.type_pelle||"--"}</td>
                             <td style={{...S.td,color:"#a8bfd4"}}>{s.observations||"--"}</td>
                             <td style={S.td}><button style={{...S.actionBtn,color:"#ef4444",borderColor:"#ef444430"}} onClick={async()=>{await api.deleteBoatSetting(s.id);load();setToast({m:"Réglage supprimé",t:"success"});}}>X</button></td>
                           </tr>
@@ -1327,7 +1325,7 @@ export default function CoachSpace({ currentUser, onLogout }) {
             </div>
             <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12}}>
               <FF label="N° Bateau"><input style={S.inp} value={newBoat.numero_bateau||""} onChange={e=>setNB(p=>({...p,numero_bateau:e.target.value}))} placeholder="ex: B-04"/></FF>
-              <FF label="N° Pelles"><input style={S.inp} value={newBoat.numero_pelles||""} onChange={e=>setNB(p=>({...p,numero_pelles:e.target.value}))} placeholder="ex: P-12"/></FF>
+              
             </div>
             <FF label="Notes générales"><textarea style={{...S.inp,height:72,resize:"vertical"}} value={newBoat.notes} onChange={e=>setNB(p=>({...p,notes:e.target.value}))}/></FF>
             <button style={{...S.btnP,width:"100%",marginTop:8}} onClick={addBoat}>Créer le bateau</button>
@@ -1345,7 +1343,7 @@ export default function CoachSpace({ currentUser, onLogout }) {
             </div>
             <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12}}>
               <FF label="N° Bateau"><input style={S.inp} value={editBoat.numero_bateau||""} onChange={e=>setEditBoat(p=>({...p,numero_bateau:e.target.value}))}/></FF>
-              <FF label="N° Pelles"><input style={S.inp} value={editBoat.numero_pelles||""} onChange={e=>setEditBoat(p=>({...p,numero_pelles:e.target.value}))}/></FF>
+              
             </div>
             <FF label="Notes"><textarea style={{...S.inp,height:72,resize:"vertical"}} value={editBoat.notes||""} onChange={e=>setEditBoat(p=>({...p,notes:e.target.value}))}/></FF>
             <button style={{...S.btnP,width:"100%",marginTop:8}} onClick={saveEditBoat}>Enregistrer</button>
