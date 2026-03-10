@@ -2,22 +2,27 @@
 
 export function timeToSeconds(t) { if(!t||!t.includes(":"))return 9999; const[m,s]=t.split(":").map(Number); return m*60+s; }
 export function secondsToTime(s) { const m=Math.floor(s/60),sec=Math.round(s%60); return `${m}:${String(sec).padStart(2,"0")}`; }
-export function concept2Watts(timeStr) {
-  // Concept2 formula: P = 2.80 / (pace_500m_seconds)^3 * 270.8
-  if(!timeStr || !timeStr.includes(":")) return null;
-  const [m,s] = timeStr.split(":").map(Number);
-  const total = m*60 + s; // total seconds for 2000m
-  const pace = total / 4;  // pace per 500m in seconds
-  if(!pace || pace <= 0) return null;
-  return Math.round(2.80 / Math.pow(pace/500, 3)); // returns watts
+// Diviseur selon distance : 500m→/1, 1000m→/2, 2000m→/4
+function paceDiv(distanceType) {
+  if(distanceType==="500m")  return 1;
+  if(distanceType==="1000m") return 2;
+  return 4; // 2000m par défaut
 }
-export function concept2WattsFast(timeStr) {
-  // Formule Concept2 officielle: P = 2.80 / (pace_500m / 500)^3
-  // pace_500m = temps total 2000m / 4 (secondes par 500m)
+export function concept2Watts(timeStr, distanceType="2000m") {
+  // Concept2 formula: P = 2.80 / (pace_500m / 500)^3
   if(!timeStr || !timeStr.includes(":")) return null;
   const [m,s] = timeStr.split(":").map(Number);
-  const t2k = m*60 + s;
-  const pace = t2k / 4; // secondes par 500m
+  const total = m*60 + s;
+  const pace = total / paceDiv(distanceType);
+  if(!pace || pace <= 0) return null;
+  return Math.round(2.80 / Math.pow(pace/500, 3));
+}
+export function concept2WattsFast(timeStr, distanceType="2000m") {
+  // Formule Concept2 officielle: P = 2.80 / (pace_500m / 500)^3
+  if(!timeStr || !timeStr.includes(":")) return null;
+  const [m,s] = timeStr.split(":").map(Number);
+  const total = m*60 + s;
+  const pace = total / paceDiv(distanceType);
   if(!pace || pace <= 0) return null;
   return Math.round(2.80 / Math.pow(pace / 500, 3));
 }

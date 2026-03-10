@@ -51,7 +51,7 @@ export default function AthleteSpace({ currentUser, onLogout, managedSections=[]
   const mySessions = sessions.filter(s=>myCrew&&sessionCrews.some(sc=>sc.session_id===s.id&&sc.crew_id===myCrew.id));
   const filteredPerfs=myPerfs.filter(p=>(p.distance_type||"2000m")===perfTypeFilter);
   const best=getBestTime(filteredPerfs), last=getLastPerf(filteredPerfs);
-  const lastWatts = last ? (concept2WattsFast(last.time)||last.watts||0) : null;
+  const lastWatts = last ? (concept2WattsFast(last.time, last.distance_type||"2000m")||last.watts||0) : null;
   const wpkg = lastWatts&&athlete?.weight ? (lastWatts/athlete.weight).toFixed(2) : null;
 
   async function saveEdit() {
@@ -59,7 +59,7 @@ export default function AthleteSpace({ currentUser, onLogout, managedSections=[]
     setToast({m:"Fiche mise à jour v",t:"success"}); load(); setEditing(false);
   }
   async function addPerf() {
-    const watts = concept2WattsFast(newPerf.time) || 0;
+    const watts = concept2WattsFast(newPerf.time, newPerf.distance_type||"2000m") || 0;
     await api.createPerf({athlete_id:currentUser.athlete_id,date:newPerf.date,time:newPerf.time,watts,spm:+newPerf.spm,hr:+newPerf.hr,rpe:+newPerf.rpe,distance:+newPerf.distance,distance_type:newPerf.distance_type||"2000m"});
     setToast({m:"Performance enregistrée v",t:"success"}); load();
     setNP({date:"",time:"",watts:"",spm:"",hr:"",rpe:"",distance:"",distance_type:"2000m"}); setShowAddPerf(false);
@@ -105,7 +105,7 @@ export default function AthleteSpace({ currentUser, onLogout, managedSections=[]
           </div>
           <div style={S.st}>Dernières performances</div>
           <div style={{display:"flex",flexDirection:"column",gap:8,marginBottom:20}}>
-            {[...myPerfs].reverse().slice(0,4).map(p=>{const pw=concept2WattsFast(p.time)||p.watts||0;const pwkg=pw&&athlete?.weight?(pw/athlete.weight).toFixed(2):null;return(<div key={p.id} style={{...S.card,display:"flex",alignItems:"center",gap:12,padding:"12px 18px",flexWrap:"wrap"}}><div style={{color:"#7a95b0",fontSize:12,minWidth:85}}>{p.date}</div><div style={{color:"#4ade80",fontWeight:700,fontSize:16,minWidth:55}}>{p.time}</div><div style={{color:"#0ea5e9",fontWeight:700}}>⚡ {pw}W</div>{pwkg&&<div style={{color:"#a78bfa",fontWeight:700,fontSize:13}}>{pwkg} W/kg</div>}<div style={{marginLeft:"auto",color:"#f97316",fontSize:12}}>{p.distance}km</div><div style={{...S.badge,background:`hsl(${(10-p.rpe)*12},80%,40%)`,color:"#fff"}}>{p.rpe}/10</div></div>);})}
+            {[...myPerfs].reverse().slice(0,4).map(p=>{const pw=concept2WattsFast(p.time, p.distance_type||"2000m")||p.watts||0;const pwkg=pw&&athlete?.weight?(pw/athlete.weight).toFixed(2):null;return(<div key={p.id} style={{...S.card,display:"flex",alignItems:"center",gap:12,padding:"12px 18px",flexWrap:"wrap"}}><div style={{color:"#7a95b0",fontSize:12,minWidth:85}}>{p.date}</div><div style={{color:"#4ade80",fontWeight:700,fontSize:16,minWidth:55}}>{p.time}</div><div style={{color:"#0ea5e9",fontWeight:700}}>⚡ {pw}W</div>{pwkg&&<div style={{color:"#a78bfa",fontWeight:700,fontSize:13}}>{pwkg} W/kg</div>}<div style={{marginLeft:"auto",color:"#f97316",fontSize:12}}>{p.distance}km</div><div style={{...S.badge,background:`hsl(${(10-p.rpe)*12},80%,40%)`,color:"#fff"}}>{p.rpe}/10</div></div>);})}
             {!myPerfs.length&&<div style={{...S.card,textAlign:"center",color:"#5a7a9a",padding:"28px"}}>Aucune performance</div>}
           </div>
           <button style={{...S.btnP,background:"#a78bfa",color:"#0f1923"}} onClick={()=>setShowAddPerf(true)}>+ Ajouter une performance</button>
@@ -121,7 +121,7 @@ export default function AthleteSpace({ currentUser, onLogout, managedSections=[]
             <FF label="Date"><input style={S.inp} type="date" value={newPerf.date} onChange={e=>setNP(p=>({...p,date:e.target.value}))}/></FF>
             <FF label="Distance"><select style={S.inp} value={newPerf.distance_type} onChange={e=>setNP(p=>({...p,distance_type:e.target.value}))}><option>500m</option><option>1000m</option><option>2000m</option></select></FF>
             <FF label={`Temps ${newPerf.distance_type||"2000m"}`}><input style={S.inp} placeholder="6:45.0" value={newPerf.time} onChange={e=>setNP(p=>({...p,time:e.target.value}))}/></FF>
-            {newPerf.time&&concept2WattsFast(newPerf.time)&&(()=>{const w=concept2WattsFast(newPerf.time);const wpkgVal=athlete?.weight?(w/athlete.weight).toFixed(2):null;return(
+            {newPerf.time&&concept2WattsFast(newPerf.time, newPerf.distance_type||"2000m")&&(()=>{const w=concept2WattsFast(newPerf.time, newPerf.distance_type||"2000m");const wpkgVal=athlete?.weight?(w/athlete.weight).toFixed(2):null;return(
               <div style={{padding:"10px 14px",background:"#a78bfa10",border:"1px solid #a78bfa30",borderRadius:8,marginBottom:12,display:"flex",gap:16,alignItems:"center"}}>
                 <span style={{color:"#0ea5e9",fontWeight:700,fontSize:15}}>⚡ {w} W</span>
                 {wpkgVal&&<span style={{color:"#a78bfa",fontWeight:700,fontSize:15}}>= {wpkgVal} W/kg</span>}
@@ -143,10 +143,10 @@ export default function AthleteSpace({ currentUser, onLogout, managedSections=[]
             <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:14,marginBottom:24}}>
               {/* Filtre type perf */}
               <div style={{display:"flex",gap:6,marginBottom:12}}>{"500m 1000m 2000m".split(" ").map(t=><button key={t} onClick={()=>setPerfTypeFilter(t)} style={{padding:"4px 12px",borderRadius:6,border:`1px solid ${perfTypeFilter===t?"#a78bfa":"#1e293b"}`,background:perfTypeFilter===t?"#a78bfa20":"transparent",color:perfTypeFilter===t?"#a78bfa":"#5a7a9a",fontSize:12,cursor:"pointer",fontWeight:perfTypeFilter===t?700:400}}>{t}</button>)}</div>
-              {[{l:`Best ${perfTypeFilter}`,v:best?.time??"--",c:"#4ade80",ic:"~"},{l:"Record watts",v:`${Math.max(...myPerfs.map(p=>concept2WattsFast(p.time)||p.watts||0))}W`,c:"#0ea5e9",ic:"~"},{l:"W/kg actuel",v:wpkg??"--",c:"#a78bfa",ic:"~"},{l:"Km totaux",v:`${filteredPerfs.reduce((s,p)=>s+(p.distance||0),0)}km`,c:"#f97316",ic:"~"}].map((k,i)=><div key={i} style={S.kpi}><div style={{color:k.c,fontSize:20,marginBottom:8}}>{k.ic}</div><div style={{color:k.c,fontSize:22,fontWeight:900}}>{k.v}</div><div style={{color:"#7a95b0",fontSize:11,textTransform:"uppercase",letterSpacing:1,marginTop:4}}>{k.l}</div></div>)}
+              {[{l:`Best ${perfTypeFilter}`,v:best?.time??"--",c:"#4ade80",ic:"~"},{l:"Record watts",v:`${Math.max(...myPerfs.map(p=>concept2WattsFast(p.time, p.distance_type||"2000m")||p.watts||0))}W`,c:"#0ea5e9",ic:"~"},{l:"W/kg actuel",v:wpkg??"--",c:"#a78bfa",ic:"~"},{l:"Km totaux",v:`${filteredPerfs.reduce((s,p)=>s+(p.distance||0),0)}km`,c:"#f97316",ic:"~"}].map((k,i)=><div key={i} style={S.kpi}><div style={{color:k.c,fontSize:20,marginBottom:8}}>{k.ic}</div><div style={{color:k.c,fontSize:22,fontWeight:900}}>{k.v}</div><div style={{color:"#7a95b0",fontSize:11,textTransform:"uppercase",letterSpacing:1,marginTop:4}}>{k.l}</div></div>)}
             </div>
             <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:14}}>
-              {[{l:"Puissance",vals:myPerfs.map(p=>concept2WattsFast(p.time)||p.watts||0),c:"#0ea5e9",hi:true},{l:"Temps 2k (s)",vals:myPerfs.map(p=>timeToSeconds(p.time)),c:"#4ade80",hi:false,disp:v=>secondsToTime(v)},{l:"W/kg",vals:myPerfs.map(p=>+((concept2WattsFast(p.time)||p.watts||0)/(athlete.weight||1)).toFixed(2)),c:"#a78bfa",hi:true},{l:"Distance",vals:myPerfs.map(p=>p.distance||0),c:"#f97316",hi:true}].map(m=>{const lv=m.vals[m.vals.length-1],pv=m.vals[m.vals.length-2],diff=lv-pv,up=m.hi?diff>0:diff<0;return(<div key={m.l} style={S.mc}><div style={{color:"#7a95b0",fontSize:12,marginBottom:6}}>{m.l}</div><div style={{color:m.c,fontSize:22,fontWeight:900}}>{m.disp?m.disp(lv):lv}</div><div style={{color:up?"#4ade80":"#ef4444",fontSize:12,marginBottom:8}}>{up?"^":"v"} {Math.abs(diff)}</div><Sparkline data={m.vals} color={m.c} invert={!m.hi}/></div>);})}
+              {[{l:"Puissance",vals:myPerfs.map(p=>concept2WattsFast(p.time, p.distance_type||"2000m")||p.watts||0),c:"#0ea5e9",hi:true},{l:"Temps 2k (s)",vals:myPerfs.map(p=>timeToSeconds(p.time)),c:"#4ade80",hi:false,disp:v=>secondsToTime(v)},{l:"W/kg",vals:myPerfs.map(p=>+((concept2WattsFast(p.time, p.distance_type||"2000m")||p.watts||0)/(athlete.weight||1)).toFixed(2)),c:"#a78bfa",hi:true},{l:"Distance",vals:myPerfs.map(p=>p.distance||0),c:"#f97316",hi:true}].map(m=>{const lv=m.vals[m.vals.length-1],pv=m.vals[m.vals.length-2],diff=lv-pv,up=m.hi?diff>0:diff<0;return(<div key={m.l} style={S.mc}><div style={{color:"#7a95b0",fontSize:12,marginBottom:6}}>{m.l}</div><div style={{color:m.c,fontSize:22,fontWeight:900}}>{m.disp?m.disp(lv):lv}</div><div style={{color:up?"#4ade80":"#ef4444",fontSize:12,marginBottom:8}}>{up?"^":"v"} {Math.abs(diff)}</div><Sparkline data={m.vals} color={m.c} invert={!m.hi}/></div>);})}
             </div>
           </>)}
         </div>)}
@@ -330,7 +330,7 @@ function SectionManagerView({ managedSections, currentUser, isMobile }) {
   const last = getLastPerf(athPerfs);
 
   async function savePerf() {
-    const watts = concept2WattsFast(newPerf.time) || 0;
+    const watts = concept2WattsFast(newPerf.time, newPerf.distance_type||"2000m") || 0;
     try {
       await api.createPerf({ athlete_id: selAth.id, date: newPerf.date, time: newPerf.time, watts, spm:+newPerf.spm||0, hr:+newPerf.hr||0, rpe:+newPerf.rpe||0, distance:+newPerf.distance||0, distance_type:newPerf.distance_type||"2000m" });
       setToast({m:"Performance ajoutée ✓", t:"success"});
@@ -416,7 +416,7 @@ function SectionManagerView({ managedSections, currentUser, isMobile }) {
                 const perfs = allPerfs.filter(p=>p.athlete_id===a.id);
                 const b = getBestTime(perfs);
                 const l = getLastPerf(perfs);
-                const wpkg = l && a.weight ? (concept2WattsFast(l.time)/a.weight).toFixed(2) : null;
+                const wpkg = l && a.weight ? (concept2WattsFast(l.time, l.distance_type||"2000m")/a.weight).toFixed(2) : null;
                 return (
                   <div key={a.id} onClick={()=>setSelAth(a)}
                     style={{...S.card, display:"flex", alignItems:"center", gap:16, padding:"14px 20px", cursor:"pointer", borderColor:"#263547"}}
@@ -472,7 +472,7 @@ function SectionManagerView({ managedSections, currentUser, isMobile }) {
 
               <div style={{display:"flex",flexDirection:"column",gap:8}}>
                 {[...athPerfs].reverse().map(p => {
-                  const pw = concept2WattsFast(p.time)||p.watts||0;
+                  const pw = concept2WattsFast(p.time, p.distance_type||"2000m")||p.watts||0;
                   const pwkg = pw&&selAth.weight ? (pw/selAth.weight).toFixed(2) : null;
                   return (
                     <div key={p.id} style={{...S.card, display:"flex", alignItems:"center", gap:12, padding:"10px 16px", flexWrap:"wrap"}}>
@@ -494,9 +494,9 @@ function SectionManagerView({ managedSections, currentUser, isMobile }) {
                   <FF label="Date"><input style={S.inp} type="date" value={newPerf.date} onChange={e=>setNP(p=>({...p,date:e.target.value}))}/></FF>
                   <FF label="Distance"><select style={S.inp} value={newPerf.distance_type} onChange={e=>setNP(p=>({...p,distance_type:e.target.value}))}><option>500m</option><option>1000m</option><option>2000m</option></select></FF>
                   <FF label={`Temps ${newPerf.distance_type||"2000m"}`}><input style={S.inp} placeholder="6:45.0" value={newPerf.time} onChange={e=>setNP(p=>({...p,time:e.target.value}))}/></FF>
-                  {newPerf.time && concept2WattsFast(newPerf.time) && (
+                  {newPerf.time && concept2WattsFast(newPerf.time, newPerf.distance_type||"2000m") && (
                     <div style={{padding:"8px 12px",background:"#a78bfa10",border:"1px solid #a78bfa30",borderRadius:8,marginBottom:12,color:"#0ea5e9",fontWeight:700}}>
-                      ⚡ {concept2WattsFast(newPerf.time)} W
+                      ⚡ {concept2WattsFast(newPerf.time, newPerf.distance_type||"2000m")} W
                     </div>
                   )}
                   <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12}}>
