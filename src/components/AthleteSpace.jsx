@@ -85,7 +85,7 @@ export default function AthleteSpace({ currentUser, onLogout }) {
       </aside>
 
       {/* Contenu principal */}
-      <div style={{...S.main,paddingBottom:isMobile?64:0,width:isMobile?"100%":undefined}}>
+      <div style={{...S.main,paddingBottom:isMobile?64:0,width:isMobile?"100%":"auto",flex:1}}>
         {tab==="dashboard"&&(<div style={{...S.page,padding:isMobile?"16px 12px":"28px 32px"}}>
           <div style={S.ph}><div><h1 style={S.ttl}>Bonjour, {athlete.name.split(" ")[0]} </h1><p style={S.sub}>Ton espace personnel</p></div><button style={{...S.btnP,background:"#a78bfa",color:"#0f1923"}} onClick={()=>setEditing(true)}>✏️ Ma fiche</button></div>
           <div style={{...S.card,marginBottom:24,borderColor:"#2d1b4e"}}>
