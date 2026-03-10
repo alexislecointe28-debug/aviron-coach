@@ -1270,7 +1270,6 @@ function CoachSpace({ currentUser, onLogout }) {
         </div>)}
 
         {tab==="athlete_detail"&&selAth&&(()=>{
-          try {
           const a=athletes.find(x=>x.id===selAth);
           if(!a) return null;
           const perfs=getPerfFor(selAth);
@@ -1605,7 +1604,6 @@ function CoachSpace({ currentUser, onLogout }) {
             })()}
             </div>
           );
-          } catch(err) { return <div style={{padding:20,background:"#ef444420",border:"1px solid #ef4444",borderRadius:8,margin:20,color:"#f87171",fontFamily:"monospace",fontSize:13}}><b>Erreur render:</b><br/>{err.toString()}<br/><pre>{err.stack}</pre></div>; }
         })()}
         {tab==="performances"&&(<div style={S.page}>
           <div style={S.ph}><div><h1 style={S.ttl}>Performances</h1><p style={S.sub}>Vue globale</p></div><button style={S.btnP} onClick={()=>{setNP(p=>({...p,athleteId:selAth||""}));setShowAddPerf(true);}}>+ Ajouter</button></div>          <div style={{display:"flex",gap:8,marginBottom:20,flexWrap:"wrap"}}>
