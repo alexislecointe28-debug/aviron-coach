@@ -299,23 +299,302 @@ export default function AthleteSpace({ currentUser, onLogout }) {
           })()}
         </div>)}
         {tab==="planning"&&(<div style={S.page}>
-          <div style={S.ph}><div><h1 style={S.ttl}>Mon Planning</h1><p style={S.sub}>Seances assignees par le coach</p></div></div>
-          {!myCrew?<div style={{...S.card,textAlign:"center",padding:"40px",color:"#5a7a9a"}}>Aucun equipage assigne.</div>:(
-            <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(200px,1fr))",gap:14}}>
-              {sessions.map(s=>{
-                const assigned=sessionCrews.some(sc=>sc.session_id===s.id&&sc.crew_id===myCrew.id);
-                const tColor=TYPE_COLORS[s.type] ? TYPE_COLORS[s.type] : "#374151";
-                const zColor=ZONE_COLORS[s.zone] ? ZONE_COLORS[s.zone] : "#374151";
-                return(<div key={s.id} style={{...S.card,borderTop:"3px solid "+(assigned?tColor:"#263547"),opacity:assigned?1:0.3}}>
-                  <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:10}}><div><div style={{fontWeight:800,fontSize:16,color:"#f1f5f9"}}>{s.day}</div><div style={{color:"#7a95b0",fontSize:12}}>{s.date}</div></div><div style={{...S.badge,background:zColor+"22",color:zColor}}>{s.zone}</div></div>
-                  <div style={{...S.badge,marginBottom:8,background:tColor+"22",color:tColor}}>{s.type}</div>
-                  {assigned&&<>{s.duration&&<div style={{color:"#a8bfd4",fontSize:13,marginBottom:8}}>{s.duration}</div>}{s.notes&&<div style={{background:"#1e293b50",borderRadius:6,padding:"8px 10px",fontSize:12,color:"#a8bfd4",lineHeight:1.5}}>{s.notes}</div>}</>}
-                </div>);
-              })}
-            </div>
-          )}
+          <AthletePlanningView athlete={athlete} currentUser={currentUser} isMobile={false}/>
         </div>)}
       </div>
+    </div>
+  );
+}
+
+// ==========================================================================================================================================================
+// ATHLETE PLANNING VIEW
+// ==========================================================================================================================================================
+
+const JOURS = ["Lundi","Mardi","Mercredi","Jeudi","Vendredi","Samedi","Dimanche"];
+const TYPE_SEANCE_COLORS = { MUSCU:"#f97316",ERGO:"#0ea5e9",BATEAU:"#22d3ee",RECUP:"#4ade80",REPOS:"#64748b",TEST:"#a78bfa",COMPETITION:"#e879f9" };
+const TYPE_SEANCE_LABELS = { MUSCU:"💪 Muscu",ERGO:"🚣 Ergo",BATEAU:"⛵ Bateau",RECUP:"🔄 Récup",REPOS:"😴 Repos",TEST:"📊 Test",COMPETITION:"🏆 Compét" };
+
+function AthletePlanningView({ athlete, currentUser }) {
+  const [weeks, setWeeks]           = useState([]);
+  const [selWeek, setSelWeek]       = useState(null);
+  const [sessions, setSessions]     = useState([]);
+  const [completions, setCompletions] = useState([]);
+  const [loading, setLoading]       = useState(true);
+  const [toast, setToast]           = useState(null);
+  const [showModal, setShowModal]   = useState(false);
+  const [selSession, setSelSession] = useState(null);
+  const [noteForm, setNoteForm]     = useState({ note:"", commentaire:"" });
+
+  useEffect(() => { if(athlete) loadPlanning(); }, [athlete]);
+
+  async function loadPlanning() {
+    if(!athlete) return;
+    setLoading(true);
+    try {
+      // Load all plans matching athlete's category
+      const allPlans = await api.getSeasonPlans();
+      const myPlans = (allPlans||[]).filter(p => {
+        const cats = p.category.split(",").map(s=>s.trim());
+        return cats.includes(athlete.category) || cats.includes("Tous");
+      });
+
+      // Load overrides to check if athlete is included/excluded
+      let planIds = myPlans.map(p=>p.id);
+
+      // Also load plans where athlete is individually included
+      const allOverrides = await Promise.all(myPlans.map(p=>api.getPlanOverrides(p.id).catch(()=>[])));
+      const flatOverrides = allOverrides.flat();
+      const excluded = flatOverrides.filter(o=>o.type==="exclude"&&o.athlete_id===athlete.id).map(o=>o.plan_id);
+      planIds = planIds.filter(id=>!excluded.includes(id));
+
+      // Also add plans where athlete is individually added
+      const allPlans2 = await api.getSeasonPlans();
+      const includeOverrides = (await Promise.all((allPlans2||[]).map(p=>api.getPlanOverrides(p.id).catch(()=>[]))))
+        .flat()
+        .filter(o=>o.type==="include"&&o.athlete_id===athlete.id);
+      includeOverrides.forEach(o=>{ if(!planIds.includes(o.plan_id)) planIds.push(o.plan_id); });
+
+      if(planIds.length===0) { setLoading(false); return; }
+
+      // Load all weeks from all plans
+      const allWeeks = (await Promise.all(planIds.map(id=>api.getPlanWeeks(id).catch(()=>[]))))
+        .flat()
+        .sort((a,b)=>a.date_debut?.localeCompare(b.date_debut||"")||a.num_semaine-b.num_semaine);
+
+      setWeeks(allWeeks);
+
+      // Find current week by date
+      const today = new Date().toISOString().split("T")[0];
+      const current = allWeeks.find(w=>w.date_debut&&w.date_debut<=today) || allWeeks[0];
+      if(current) {
+        setSelWeek(current);
+        await loadWeekSessions(current.id);
+      }
+
+      // Load completions for this athlete
+      const comps = await api.getSessionCompletions(athlete.id).catch(()=>[]);
+      setCompletions(comps||[]);
+    } catch(e) { console.error(e); }
+    setLoading(false);
+  }
+
+  async function loadWeekSessions(weekId) {
+    try {
+      const s = await api.getPlannedSessions(weekId);
+      setSessions(s||[]);
+    } catch(e) {}
+  }
+
+  async function changeWeek(week) {
+    setSelWeek(week);
+    await loadWeekSessions(week.id);
+  }
+
+  function getCompletion(sessionId) {
+    return completions.find(c=>c.session_id===sessionId&&c.athlete_id===athlete.id);
+  }
+
+  function openNote(session) {
+    const existing = getCompletion(session.id);
+    setSelSession(session);
+    setNoteForm({ note: existing?.note||"", commentaire: existing?.commentaire||"" });
+    setShowModal(true);
+  }
+
+  async function saveCompletion() {
+    if(!selSession||!athlete) return;
+    const existing = getCompletion(selSession.id);
+    try {
+      let res;
+      if(existing) {
+        res = await api.updateCompletion(existing.id, { note:+noteForm.note||null, commentaire:noteForm.commentaire });
+        setCompletions(c=>c.map(x=>x.id===existing.id?{...x,...res?.[0]}:x));
+      } else {
+        res = await api.createCompletion({ session_id:selSession.id, athlete_id:athlete.id, note:+noteForm.note||null, commentaire:noteForm.commentaire });
+        if(res&&res[0]) setCompletions(c=>[...c,res[0]]);
+      }
+      setToast("Séance validée ✓");
+      setTimeout(()=>setToast(null),2500);
+      setShowModal(false);
+    } catch(e) { setToast("Erreur"); setTimeout(()=>setToast(null),2500); }
+  }
+
+  async function removeCompletion(sessionId) {
+    const existing = getCompletion(sessionId);
+    if(!existing) return;
+    try {
+      await api.updateCompletion(existing.id, { note:null, commentaire:"" });
+      setCompletions(c=>c.filter(x=>x.id!==existing.id));
+    } catch(e) {}
+  }
+
+  const CHARGE_COLORS = { "Légère":"#4ade80","Modérée":"#f59e0b","Élevée":"#f97316","Maximale":"#ef4444","Compétition":"#a78bfa" };
+
+  if(loading) return <div style={{padding:48,textAlign:"center",color:"#64748b"}}>Chargement du planning...</div>;
+
+  if(weeks.length===0) return (
+    <div style={{padding:"28px 32px"}}>
+      <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:24}}>
+        <div><h1 style={{color:"#f1f5f9",fontSize:24,fontWeight:800,margin:0}}>📅 Mon Planning</h1><p style={{color:"#64748b",fontSize:14,marginTop:4}}>Séances assignées par le coach</p></div>
+      </div>
+      <div style={{background:"#1e293b",border:"1px solid #334155",borderRadius:12,padding:48,textAlign:"center"}}>
+        <div style={{fontSize:48,marginBottom:16}}>📅</div>
+        <div style={{color:"#f1f5f9",fontWeight:700,marginBottom:8}}>Aucun planning disponible</div>
+        <div style={{color:"#64748b",fontSize:13}}>Ton coach n'a pas encore créé de plan pour ton groupe.</div>
+      </div>
+    </div>
+  );
+
+  // Group sessions by day for current week
+  const byDay = {};
+  JOURS.forEach(j=>{ byDay[j]=[]; });
+  sessions.forEach(s=>{ if(byDay[s.jour]) byDay[s.jour].push(s); });
+  const totalSessions = sessions.filter(s=>s.type_seance!=="REPOS").length;
+  const doneSessions  = sessions.filter(s=>s.type_seance!=="REPOS"&&getCompletion(s.id)).length;
+  const pct = totalSessions>0 ? Math.round(doneSessions/totalSessions*100) : 0;
+
+  return (
+    <div style={{padding:"28px 32px"}}>
+      {toast&&<div style={{position:"fixed",bottom:24,right:24,background:"#4ade8020",border:"1px solid #4ade80",color:"#4ade80",padding:"12px 20px",borderRadius:10,fontSize:14,fontWeight:700,zIndex:200}}>{toast}</div>}
+
+      {/* Header */}
+      <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:20,flexWrap:"wrap",gap:12}}>
+        <div>
+          <h1 style={{color:"#f1f5f9",fontSize:24,fontWeight:800,margin:0}}>📅 Mon Planning</h1>
+          <p style={{color:"#64748b",fontSize:14,marginTop:4}}>Séances assignées par le coach</p>
+        </div>
+        {/* Progression semaine */}
+        {totalSessions>0&&(
+          <div style={{background:"#1e293b",border:"1px solid #334155",borderRadius:10,padding:"10px 16px",minWidth:160}}>
+            <div style={{display:"flex",justifyContent:"space-between",color:"#94a3b8",fontSize:12,marginBottom:6}}>
+              <span>Cette semaine</span><span style={{color:"#f1f5f9",fontWeight:700}}>{doneSessions}/{totalSessions}</span>
+            </div>
+            <div style={{height:6,background:"#334155",borderRadius:3,overflow:"hidden"}}>
+              <div style={{height:"100%",width:`${pct}%`,background:pct===100?"#4ade80":"#0ea5e9",borderRadius:3,transition:"width 0.3s"}}/>
+            </div>
+            <div style={{color:pct===100?"#4ade80":"#64748b",fontSize:11,marginTop:4,fontWeight:pct===100?700:400}}>{pct===100?"Semaine complète ✓":`${pct}% complété`}</div>
+          </div>
+        )}
+      </div>
+
+      {/* Sélecteur de semaine */}
+      <div style={{display:"flex",gap:6,overflowX:"auto",paddingBottom:8,marginBottom:20}}>
+        {weeks.map(w=>{
+          const col = CHARGE_COLORS[w.charge]||"#64748b";
+          const active = selWeek?.id===w.id;
+          return (
+            <button key={w.id} onClick={()=>changeWeek(w)}
+              style={{flexShrink:0,padding:"6px 14px",borderRadius:8,border:`1px solid ${active?col:"#334155"}`,background:active?col+"20":"transparent",color:active?col:"#64748b",fontSize:12,fontWeight:active?700:500,cursor:"pointer",whiteSpace:"nowrap"}}>
+              S{w.num_semaine} {w.date_debut?`· ${w.date_debut.slice(5).replace("-","/")}`:""} {w.charge?`· ${w.charge}`:""}
+            </button>
+          );
+        })}
+      </div>
+
+      {/* Infos semaine sélectionnée */}
+      {selWeek&&(
+        <div style={{background:"#1e293b",border:`1px solid #334155`,borderRadius:10,padding:"12px 16px",marginBottom:20,display:"flex",gap:12,alignItems:"center",flexWrap:"wrap"}}>
+          <span style={{color:"#94a3b8",fontSize:13}}>Semaine {selWeek.num_semaine}</span>
+          {selWeek.type_semaine&&<span style={{fontSize:12,fontWeight:700,color:"#0ea5e9"}}>{selWeek.type_semaine}</span>}
+          {selWeek.objectif&&<span style={{color:"#94a3b8",fontSize:13}}>— {selWeek.objectif}</span>}
+          {selWeek.notes&&<span style={{color:"#64748b",fontSize:12,fontStyle:"italic"}}>{selWeek.notes}</span>}
+        </div>
+      )}
+
+      {/* Grille jours */}
+      {sessions.length===0?(
+        <div style={{background:"#1e293b",border:"1px solid #334155",borderRadius:12,padding:40,textAlign:"center",color:"#64748b"}}>Aucune séance cette semaine.</div>
+      ):(
+        <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(160px,1fr))",gap:12}}>
+          {JOURS.map(jour=>{
+            const joursessions = byDay[jour]||[];
+            if(joursessions.length===0) return (
+              <div key={jour} style={{background:"#0f172a",border:"1px solid #1e293b",borderRadius:10,padding:"12px 10px",minHeight:80,opacity:0.4}}>
+                <div style={{fontWeight:700,color:"#334155",fontSize:12,marginBottom:6}}>{jour.slice(0,3)}</div>
+                <div style={{color:"#1e293b",fontSize:11}}>Repos</div>
+              </div>
+            );
+            return (
+              <div key={jour} style={{display:"flex",flexDirection:"column",gap:8}}>
+                <div style={{fontWeight:700,color:"#94a3b8",fontSize:12,padding:"0 2px"}}>{jour}</div>
+                {joursessions.map(s=>{
+                  const sc = TYPE_SEANCE_COLORS[s.type_seance]||"#64748b";
+                  const done = getCompletion(s.id);
+                  const contenu = typeof s.contenu==="string"?JSON.parse(s.contenu||"{}"):s.contenu||{};
+                  return (
+                    <div key={s.id} style={{background:done?"#4ade8010":"#1e293b",border:`2px solid ${done?"#4ade8040":sc+"40"}`,borderRadius:10,padding:"12px"}}>
+                      {/* Type + titre */}
+                      <div style={{display:"flex",alignItems:"center",gap:6,marginBottom:6}}>
+                        <span style={{fontSize:10,fontWeight:700,color:sc,background:sc+"20",padding:"2px 8px",borderRadius:4}}>{TYPE_SEANCE_LABELS[s.type_seance]||s.type_seance}</span>
+                        {done&&<span style={{fontSize:10,color:"#4ade80",fontWeight:700}}>✓</span>}
+                      </div>
+                      <div style={{fontWeight:700,color:"#f1f5f9",fontSize:13,marginBottom:6}}>{s.titre}</div>
+                      {/* Blocs contenu */}
+                      {contenu.blocs?.slice(0,2).map((b,i)=>(
+                        <div key={i} style={{fontSize:11,color:"#64748b",marginBottom:2}}>
+                          <span style={{color:"#475569"}}>• </span><b style={{color:"#94a3b8"}}>{b.titre}</b> {b.detail&&`— ${b.detail}`}
+                        </div>
+                      ))}
+                      {contenu.blocs?.length>2&&<div style={{color:"#475569",fontSize:11}}>+{contenu.blocs.length-2} blocs</div>}
+                      {contenu.duree_min>0&&<div style={{color:"#475569",fontSize:11,marginTop:4}}>⏱ {contenu.duree_min} min</div>}
+                      {/* Note si fait */}
+                      {done&&done.note&&<div style={{marginTop:6,fontSize:11,color:"#4ade80"}}>Note : {done.note}/10{done.commentaire?` — "${done.commentaire}"`:""}</div>}
+                      {/* Bouton */}
+                      {s.type_seance!=="REPOS"&&(
+                        <button onClick={()=>openNote(s)}
+                          style={{marginTop:10,width:"100%",padding:"7px",borderRadius:7,border:`1px solid ${done?"#4ade8040":"#334155"}`,background:done?"#4ade8015":"#0f172a",color:done?"#4ade80":"#64748b",fontSize:11,fontWeight:700,cursor:"pointer"}}>
+                          {done?"✓ Modifier":"Marquer comme fait"}
+                        </button>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            );
+          })}
+        </div>
+      )}
+
+      {/* Modal validation */}
+      {showModal&&selSession&&(
+        <div style={{position:"fixed",inset:0,background:"#00000080",display:"flex",alignItems:"center",justifyContent:"center",zIndex:100}} onClick={e=>e.target===e.currentTarget&&setShowModal(false)}>
+          <div style={{background:"#1a2744",border:"1px solid #2a3f5f",borderRadius:16,padding:28,width:420,maxWidth:"95vw"}}>
+            <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:20}}>
+              <h2 style={{color:"#f1f5f9",fontSize:18,fontWeight:800,margin:0}}>Séance effectuée ✓</h2>
+              <button style={{background:"none",border:"none",color:"#7a95b0",cursor:"pointer",fontSize:20}} onClick={()=>setShowModal(false)}>×</button>
+            </div>
+            <div style={{background:"#0f172a",borderRadius:8,padding:"10px 14px",marginBottom:20}}>
+              <div style={{color:"#94a3b8",fontSize:12,fontWeight:700}}>{TYPE_SEANCE_LABELS[selSession.type_seance]}</div>
+              <div style={{color:"#f1f5f9",fontWeight:700,marginTop:2}}>{selSession.titre}</div>
+            </div>
+            {/* Note /10 */}
+            <div style={{marginBottom:16}}>
+              <label style={{display:"block",color:"#7a95b0",fontSize:11,textTransform:"uppercase",letterSpacing:1,marginBottom:8}}>Ressenti / 10</label>
+              <div style={{display:"flex",gap:6,flexWrap:"wrap"}}>
+                {[1,2,3,4,5,6,7,8,9,10].map(n=>{
+                  const active = +noteForm.note===n;
+                  const col = n<=3?"#ef4444":n<=6?"#f59e0b":n<=8?"#0ea5e9":"#4ade80";
+                  return <button key={n} onClick={()=>setNoteForm(f=>({...f,note:n}))}
+                    style={{width:36,height:36,borderRadius:8,border:`2px solid ${active?col:"#334155"}`,background:active?col+"30":"transparent",color:active?col:"#64748b",fontWeight:active?800:500,fontSize:14,cursor:"pointer"}}>
+                    {n}
+                  </button>;
+                })}
+              </div>
+            </div>
+            {/* Commentaire */}
+            <div style={{marginBottom:20}}>
+              <label style={{display:"block",color:"#7a95b0",fontSize:11,textTransform:"uppercase",letterSpacing:1,marginBottom:6}}>Commentaire (optionnel)</label>
+              <textarea style={{width:"100%",background:"#0f172a",border:"1px solid #334155",borderRadius:8,color:"#f1f5f9",padding:"10px 12px",fontSize:13,resize:"vertical",minHeight:70,boxSizing:"border-box"}}
+                value={noteForm.commentaire} onChange={e=>setNoteForm(f=>({...f,commentaire:e.target.value}))}
+                placeholder="Comment s'est passée la séance ?"/>
+            </div>
+            <div style={{display:"flex",gap:10,justifyContent:"flex-end"}}>
+              <button style={{padding:"9px 18px",borderRadius:8,border:"1px solid #334155",background:"transparent",color:"#64748b",cursor:"pointer"}} onClick={()=>setShowModal(false)}>Annuler</button>
+              <button style={{padding:"9px 18px",borderRadius:8,border:"none",background:"#0ea5e9",color:"#fff",fontWeight:700,cursor:"pointer"}} onClick={saveCompletion}>Valider</button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
