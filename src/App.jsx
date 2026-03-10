@@ -1270,6 +1270,7 @@ function CoachSpace({ currentUser, onLogout }) {
         </div>)}
 
         {tab==="athlete_detail"&&selAth&&(()=>{
+          try {
           const a=athletes.find(x=>x.id===selAth);
           if(!a) return null;
           const perfs=getPerfFor(selAth);
@@ -1492,7 +1493,7 @@ function CoachSpace({ currentUser, onLogout }) {
               },{});
               // Chart data for selected exercise
               const exoSessions=athStrength.filter(s=>s.exercice===selStrengthExo).sort((a,b)=>a.date.localeCompare(b.date));
-              const chartData=exoSessions.map(s=>({date:s.date,'1RM':s.one_rm,Volume:Math.round(s.volume)}));
+              const chartData=exoSessions.map(s=>({date:s.date,oneRM:s.one_rm,Volume:Math.round(s.volume)}));
               // Last 5 sessions grouped by date
               const recentDates=[...new Set(athStrength.map(s=>s.date))].sort((a,b)=>b.localeCompare(a)).slice(0,5);
               return(
@@ -1565,7 +1566,7 @@ function CoachSpace({ currentUser, onLogout }) {
                               <YAxis tick={{fill:"#5a7a9a",fontSize:10}}/>
                               <Tooltip contentStyle={{background:"#182030",border:"1px solid #1e293b",borderRadius:8}} labelStyle={{color:"#f97316"}} itemStyle={{color:"#f1f5f9"}}/>
                               <Legend wrapperStyle={{fontSize:11}}/>
-                              <Line type="monotone" dataKey="1RM" stroke="#f97316" strokeWidth={2} dot={{fill:"#f97316",r:3}}/>
+                              <Line type="monotone" dataKey="oneRM" stroke="#f97316" strokeWidth={2} dot={{fill:"#f97316",r:3}}/>
                             </LineChart>
                           </ResponsiveContainer>
                         </div>
@@ -1604,6 +1605,7 @@ function CoachSpace({ currentUser, onLogout }) {
             })()}
             </div>
           );
+          } catch(err) { return <div style={{padding:20,background:"#ef444420",border:"1px solid #ef4444",borderRadius:8,margin:20,color:"#f87171",fontFamily:"monospace",fontSize:13}}><b>Erreur render:</b><br/>{err.toString()}<br/><pre>{err.stack}</pre></div>; }
         })()}
         {tab==="performances"&&(<div style={S.page}>
           <div style={S.ph}><div><h1 style={S.ttl}>Performances</h1><p style={S.sub}>Vue globale</p></div><button style={S.btnP} onClick={()=>{setNP(p=>({...p,athleteId:selAth||""}));setShowAddPerf(true);}}>+ Ajouter</button></div>          <div style={{display:"flex",gap:8,marginBottom:20,flexWrap:"wrap"}}>
