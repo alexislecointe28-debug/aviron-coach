@@ -59,6 +59,7 @@ export default function AthleteSpace({ currentUser, onLogout, managedSections=[]
     setToast({m:"Fiche mise à jour v",t:"success"}); load(); setEditing(false);
   }
   async function addPerf() {
+    if(!newPerf.date) { setToast({m:"Date invalide ou manquante",t:"error"}); return; }
     const watts = concept2WattsFast(newPerf.time, newPerf.distance_type||"2000m") || 0;
     await api.createPerf({athlete_id:currentUser.athlete_id,date:newPerf.date,time:newPerf.time,watts,spm:+newPerf.spm,hr:+newPerf.hr,rpe:+newPerf.rpe,distance:+newPerf.distance,distance_type:newPerf.distance_type||"2000m"});
     setToast({m:"Performance enregistrée v",t:"success"}); load();
@@ -330,6 +331,7 @@ function SectionManagerView({ managedSections, currentUser, isMobile }) {
   const last = getLastPerf(athPerfs);
 
   async function savePerf() {
+    if(!newPerf.date) { setToast({m:"Date invalide ou manquante",t:"error"}); return; }
     const watts = concept2WattsFast(newPerf.time, newPerf.distance_type||"2000m") || 0;
     try {
       await api.createPerf({ athlete_id: selAth.id, date: newPerf.date, time: newPerf.time, watts, spm:+newPerf.spm||0, hr:+newPerf.hr||0, rpe:+newPerf.rpe||0, distance:+newPerf.distance||0, distance_type:newPerf.distance_type||"2000m" });
@@ -453,7 +455,7 @@ function SectionManagerView({ managedSections, currentUser, isMobile }) {
                   </div>
                   <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10}}>
                     <div style={{background:"#4ade8015",border:"1px solid #4ade8030",borderRadius:10,padding:"10px 16px",textAlign:"center"}}>
-                      <div style={{color:"#7a95b0",fontSize:10,textTransform:"uppercase",letterSpacing:1}}>Best 2000m</div>
+                      <div style={{color:"#7a95b0",fontSize:10,textTransform:"uppercase",letterSpacing:1}}>Best {best?.distance_type||"2000m"}</div>
                       <div style={{color:"#4ade80",fontWeight:900,fontSize:22}}>{best?.time??"--"}</div>
                     </div>
                     <div style={{background:"#a78bfa15",border:"1px solid #a78bfa30",borderRadius:10,padding:"10px 16px",textAlign:"center"}}>
