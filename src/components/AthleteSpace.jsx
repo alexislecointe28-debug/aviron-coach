@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { S } from "../styles.js";
+import { ROLE_COLORS, ROLE_LABELS, ZONE_COLORS, TYPE_COLORS, S } from "../styles.js";
 import { api } from "../config/supabase.js";
 import { FF, Modal, Toast, Loader } from "./ui.jsx";
 import { timeToSeconds, secondsToTime, concept2WattsFast, getBestTime, getLastPerf, calcAgeFromDOB, suggestRigging } from "../utils/rowing.js";

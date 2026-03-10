@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from "react";
 import { LineChart, Line, XAxis, YAxis, Tooltip, Legend, ResponsiveContainer } from "recharts";
-import { S, CMP_COLORS } from "../styles.js";
+import { TYPE_COLORS, CMP_COLORS, AGE_CAT_COLORS, AGE_CAT_GROUPS, BLADE_TYPES, CREW_SLOTS, S } from "../styles.js";
 import { api } from "../config/supabase.js";
 import { FF, Modal, Toast, Loader, Sparkline, StatPill } from "./ui.jsx";
 import {
