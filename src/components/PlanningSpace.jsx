@@ -74,14 +74,16 @@ export default function PlanningSpace({ athletes, isMobile, currentUser }) {
   const [toast, setToast]         = useState(null);
 
   // Modals
-  const [showPlanModal,    setShowPlanModal]    = useState(false);
-  const [showWeekModal,    setShowWeekModal]    = useState(false);
-  const [showSessionModal, setShowSessionModal] = useState(false);
-  const [showTplModal,     setShowTplModal]     = useState(false);
-  const [editPlan,         setEditPlan]         = useState(null);
-  const [editWeek,         setEditWeek]         = useState(null);
-  const [editSession,      setEditSession]      = useState(null);
-  const [editTpl,          setEditTpl]          = useState(null);
+  const [showPlanModal,      setShowPlanModal]      = useState(false);
+  const [showWeekModal,      setShowWeekModal]      = useState(false);
+  const [showSessionModal,   setShowSessionModal]   = useState(false);
+  const [showTplModal,       setShowTplModal]       = useState(false);
+  const [showAthletesModal,  setShowAthletesModal]  = useState(false);
+  const [editPlan,           setEditPlan]           = useState(null);
+  const [editWeek,           setEditWeek]           = useState(null);
+  const [editSession,        setEditSession]        = useState(null);
+  const [editTpl,            setEditTpl]            = useState(null);
+  const [overrides,          setOverrides]          = useState([]);
 
   const CATEGORIES = [...new Set(athletes.map(a=>a.category).filter(Boolean))].sort();
 
@@ -114,6 +116,13 @@ export default function PlanningSpace({ athletes, isMobile, currentUser }) {
     try {
       const s = await api.getPlannedSessions(weekId);
       setSessions(s||[]);
+    } catch(e) {}
+  }
+
+  async function loadOverrides(planId) {
+    try {
+      const o = await api.getPlanOverrides(planId);
+      setOverrides(o||[]);
     } catch(e) {}
   }
 
@@ -223,6 +232,7 @@ export default function PlanningSpace({ athletes, isMobile, currentUser }) {
   function openPlan(plan) {
     setSelPlan(plan);
     loadWeeks(plan.id);
+    loadOverrides(plan.id);
     setView("timeline");
   }
 
@@ -294,12 +304,28 @@ export default function PlanningSpace({ athletes, isMobile, currentUser }) {
             <h1 style={{...S.ttl,fontSize:isMobile?18:24,margin:0}}>{selPlan.name}</h1>
             <p style={{...S.sub,marginTop:2}}>{selPlan.category} · {totalWeeks} semaine{totalWeeks!==1?"s":""}</p>
           </div>
+          <button style={{...S.btnP,background:"#1e293b",border:"1px solid #334155",color:"#94a3b8",fontSize:12}} onClick={()=>setShowAthletesModal(true)}>👥 Athlètes</button>
           <button style={S.btnP} onClick={()=>{
             const nextNum = weeks.length>0?Math.max(...weeks.map(w=>w.num_semaine))+1:1;
             setEditWeek({num_semaine:nextNum,date_debut:"",type_semaine:"CONSTRUCTION",charge:"Modérée",objectif:"",notes:""});
             setShowWeekModal(true);
           }}>+ Semaine</button>
         </div>
+
+        {/* Résumé athlètes */}
+        {(()=>{
+          const includes = overrides.filter(o=>o.type==="include");
+          const excludes = overrides.filter(o=>o.type==="exclude");
+          const catAthletes = athletes.filter(a=>a.category===selPlan.category);
+          const total = catAthletes.length + includes.length - excludes.length;
+          return (
+            <div style={{...S.card,marginBottom:16,padding:"12px 16px",display:"flex",alignItems:"center",gap:12,flexWrap:"wrap"}}>
+              <span style={{color:"#94a3b8",fontSize:13}}>👥 <b style={{color:"#f1f5f9"}}>{total} athlète{total!==1?"s":""}</b> dans ce plan</span>
+              <span style={{color:"#64748b",fontSize:12}}>{catAthletes.length} {selPlan.category}{includes.length>0?` + ${includes.length} ajouté${includes.length>1?"s":""}`:""}{excludes.length>0?` − ${excludes.length} exclu${excludes.length>1?"s":""}`:""}</span>
+              <button style={{...S.actionBtn,borderColor:"#334155",color:"#64748b",fontSize:11,marginLeft:"auto"}} onClick={()=>setShowAthletesModal(true)}>Modifier →</button>
+            </div>
+          );
+        })()}
 
         {weeks.length===0?(
           <div style={{...S.card,textAlign:"center",padding:40}}>
@@ -635,6 +661,130 @@ export default function PlanningSpace({ athletes, isMobile, currentUser }) {
     );
   }
 
+  // ---- Modal gestion athlètes du plan ----
+  function ModalAthletes() {
+    if(!selPlan) return null;
+    const includes = overrides.filter(o=>o.type==="include");
+    const excludes = overrides.filter(o=>o.type==="exclude");
+
+    // Athlètes de la catégorie du plan (base)
+    const catAthletes = athletes.filter(a=>a.category===selPlan.category);
+    // Athlètes hors catégorie (pour pouvoir en ajouter)
+    const otherAthletes = athletes.filter(a=>a.category!==selPlan.category);
+
+    const isIncluded  = (id) => includes.some(o=>o.athlete_id===id);
+    const isExcluded  = (id) => excludes.some(o=>o.athlete_id===id);
+
+    async function toggleInclude(athlete) {
+      if(isIncluded(athlete.id)) {
+        // Remove include override
+        const o = includes.find(x=>x.athlete_id===athlete.id);
+        try {
+          await api.deletePlanOverride(o.id);
+          setOverrides(prev=>prev.filter(x=>x.id!==o.id));
+          showToast(`${athlete.name} retiré`);
+        } catch(e) { showToast("Erreur","error"); }
+      } else {
+        // Add include override
+        try {
+          const res = await api.createPlanOverride({plan_id:selPlan.id,athlete_id:athlete.id,type:"include"});
+          if(res&&res[0]) setOverrides(prev=>[...prev,res[0]]);
+          showToast(`${athlete.name} ajouté`);
+        } catch(e) { showToast("Erreur","error"); }
+      }
+    }
+
+    async function toggleExclude(athlete) {
+      if(isExcluded(athlete.id)) {
+        // Remove exclude override (re-include)
+        const o = excludes.find(x=>x.athlete_id===athlete.id);
+        try {
+          await api.deletePlanOverride(o.id);
+          setOverrides(prev=>prev.filter(x=>x.id!==o.id));
+          showToast(`${athlete.name} réintégré`);
+        } catch(e) { showToast("Erreur","error"); }
+      } else {
+        // Add exclude override
+        try {
+          const res = await api.createPlanOverride({plan_id:selPlan.id,athlete_id:athlete.id,type:"exclude"});
+          if(res&&res[0]) setOverrides(prev=>[...prev,res[0]]);
+          showToast(`${athlete.name} exclu`);
+        } catch(e) { showToast("Erreur","error"); }
+      }
+    }
+
+    const total = catAthletes.length + includes.length - excludes.length;
+
+    return (
+      <Modal title={`👥 Athlètes — ${selPlan.name}`} onClose={()=>setShowAthletesModal(false)} wide>
+        <div style={{marginBottom:16,padding:"10px 14px",background:"#0ea5e910",border:"1px solid #0ea5e930",borderRadius:8,color:"#94a3b8",fontSize:13}}>
+          <b style={{color:"#f1f5f9"}}>{total} athlète{total!==1?"s":""}</b> affecté{total!==1?"s":""} à ce plan
+        </div>
+
+        {/* Athlètes de la catégorie */}
+        <div style={{marginBottom:20}}>
+          <div style={{color:"#7a95b0",fontSize:11,textTransform:"uppercase",letterSpacing:1,marginBottom:10}}>
+            Groupe {selPlan.category} ({catAthletes.length})
+          </div>
+          {catAthletes.length===0&&<div style={{color:"#475569",fontSize:13,fontStyle:"italic"}}>Aucun athlète dans cette catégorie</div>}
+          <div style={{display:"flex",flexDirection:"column",gap:6}}>
+            {catAthletes.map(a=>{
+              const excluded = isExcluded(a.id);
+              return (
+                <div key={a.id} style={{display:"flex",alignItems:"center",gap:10,padding:"8px 12px",background:excluded?"#ef444408":"#1e293b",border:`1px solid ${excluded?"#ef444430":"#334155"}`,borderRadius:8,opacity:excluded?0.7:1}}>
+                  <div style={{width:32,height:32,borderRadius:"50%",background:"#0ea5e920",border:"1px solid #0ea5e940",display:"flex",alignItems:"center",justifyContent:"center",color:"#0ea5e9",fontWeight:800,fontSize:12,flexShrink:0}}>
+                    {a.name.split(" ").map(w=>w[0]).join("").slice(0,2).toUpperCase()}
+                  </div>
+                  <div style={{flex:1}}>
+                    <div style={{color: excluded?"#64748b":"#f1f5f9",fontSize:13,fontWeight:600,textDecoration:excluded?"line-through":"none"}}>{a.name}</div>
+                    <div style={{color:"#64748b",fontSize:11}}>{a.category}</div>
+                  </div>
+                  {excluded
+                    ? <button style={{...S.actionBtn,borderColor:"#4ade8030",color:"#4ade80",fontSize:11,padding:"4px 12px"}} onClick={()=>toggleExclude(a)}>Réintégrer</button>
+                    : <button style={{...S.actionBtn,borderColor:"#ef444430",color:"#ef4444",fontSize:11,padding:"4px 12px"}} onClick={()=>toggleExclude(a)}>Exclure</button>
+                  }
+                </div>
+              );
+            })}
+          </div>
+        </div>
+
+        {/* Athlètes hors catégorie (ajout individuel) */}
+        {otherAthletes.length>0&&(
+          <div>
+            <div style={{color:"#7a95b0",fontSize:11,textTransform:"uppercase",letterSpacing:1,marginBottom:10}}>
+              Autres athlètes — ajout individuel
+            </div>
+            <div style={{display:"flex",flexDirection:"column",gap:6,maxHeight:240,overflowY:"auto"}}>
+              {otherAthletes.map(a=>{
+                const included = isIncluded(a.id);
+                return (
+                  <div key={a.id} style={{display:"flex",alignItems:"center",gap:10,padding:"8px 12px",background:included?"#4ade8008":"#0f172a",border:`1px solid ${included?"#4ade8030":"#1e293b"}`,borderRadius:8}}>
+                    <div style={{width:32,height:32,borderRadius:"50%",background:"#33415520",border:"1px solid #33415540",display:"flex",alignItems:"center",justifyContent:"center",color:"#64748b",fontWeight:800,fontSize:12,flexShrink:0}}>
+                      {a.name.split(" ").map(w=>w[0]).join("").slice(0,2).toUpperCase()}
+                    </div>
+                    <div style={{flex:1}}>
+                      <div style={{color:"#f1f5f9",fontSize:13,fontWeight:600}}>{a.name}</div>
+                      <div style={{color:"#64748b",fontSize:11}}>{a.category||"—"}</div>
+                    </div>
+                    {included
+                      ? <button style={{...S.actionBtn,borderColor:"#ef444430",color:"#ef4444",fontSize:11,padding:"4px 12px"}} onClick={()=>toggleInclude(a)}>Retirer</button>
+                      : <button style={{...S.actionBtn,borderColor:"#4ade8030",color:"#4ade80",fontSize:11,padding:"4px 12px"}} onClick={()=>toggleInclude(a)}>+ Ajouter</button>
+                    }
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        )}
+
+        <div style={{display:"flex",justifyContent:"flex-end",marginTop:20}}>
+          <button style={S.btnP} onClick={()=>setShowAthletesModal(false)}>Fermer</button>
+        </div>
+      </Modal>
+    );
+  }
+
   // ==================== RENDER ====================
   if(loading) return <div style={{padding:48,textAlign:"center",color:"#64748b"}}>Chargement du planning...</div>;
 
@@ -651,6 +801,7 @@ export default function PlanningSpace({ athletes, isMobile, currentUser }) {
       {showWeekModal    && <ModalWeek/>}
       {showSessionModal && <ModalSession/>}
       {showTplModal     && <ModalTemplate/>}
+      {showAthletesModal&& <ModalAthletes/>}
     </div>
   );
 }

@@ -177,6 +177,11 @@ export const api = {
   updateSessionTemplate:(id, data) => sb(`session_templates?id=eq.${id}`, { method:"PATCH", body:JSON.stringify(data) }),
   deleteSessionTemplate:(id)       => sb(`session_templates?id=eq.${id}`, { method:"DELETE", prefer:"" }),
 
+  // Planning — Overrides (athlètes individuels)
+  getPlanOverrides:    (planId)    => sb(`plan_overrides?plan_id=eq.${planId}&select=*`),
+  createPlanOverride:  (data)      => sb("plan_overrides", { method:"POST", body:JSON.stringify(data) }),
+  deletePlanOverride:  (id)        => sb(`plan_overrides?id=eq.${id}`, { method:"DELETE", prefer:"" }),
+
   // Planning — Completions
   getSessionCompletions:(athleteId) => sb(`session_completions?athlete_id=eq.${athleteId}&order=created_at.desc`),
   createCompletion:    (data)       => sb("session_completions", { method:"POST", body:JSON.stringify(data) }),
