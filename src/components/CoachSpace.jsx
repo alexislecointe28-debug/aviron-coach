@@ -332,7 +332,7 @@ export default function CoachSpace({ currentUser, onLogout }) {
           <button style={{...S.btnP,width:"100%",background:"transparent",color:"#64748b",border:"1px solid #1e293b",fontSize:12,padding:"8px"}} onClick={onLogout}>← Déconnexion</button>
         </div>
       </aside>
-      <div style={{...S.main,paddingBottom:isMobile?64:0}}>
+      <div style={{...S.main,paddingBottom:isMobile?64:0,width:isMobile?"100%":0}}>
 
         {tab==="dashboard"&&(<div style={{...S.page,padding:isMobile?"16px 12px":"28px 32px"}}>
           <div style={{...S.ph,marginBottom:isMobile?16:32}}><div><h1 style={{...S.ttl,fontSize:isMobile?22:28}}>Dashboard</h1><p style={S.sub}>{athletes.length} athlètes - données en direct</p></div></div>
