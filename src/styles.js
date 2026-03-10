@@ -1,0 +1,33 @@
+// Styles partagés
+export const CMP_COLORS = ["#0ea5e9","#f97316","#a78bfa","#4ade80"];
+
+export const S={
+  root:      {display:"flex",minHeight:"100vh",width:"100%",background:"#111827",fontFamily:"-apple-system,BlinkMacSystemFont,'Segoe UI','Inter',Helvetica,sans-serif",color:"#e2e8f0",boxSizing:"border-box",overflowX:"hidden"},
+  sidebar:   {width:240,minWidth:240,background:"#1e293b",borderRight:"1px solid #334155",display:"flex",flexDirection:"column",padding:"20px 0 0",position:"sticky",top:0,height:"100vh",flexShrink:0},
+  logo:      {display:"flex",alignItems:"center",gap:12,padding:"0 16px 20px",borderBottom:"1px solid #334155",marginBottom:12},
+  logoT:     {fontSize:15,fontWeight:800,color:"#38bdf8",letterSpacing:0.5},
+  logoS:     {fontSize:10,color:"#64748b",letterSpacing:2,textTransform:"uppercase"},
+  nb:        {display:"flex",alignItems:"center",gap:10,width:"100%",padding:"10px 12px",borderRadius:9,border:"none",background:"transparent",color:"#64748b",cursor:"pointer",fontSize:13,fontWeight:500,textAlign:"left",marginBottom:3,fontFamily:"inherit",transition:"all 0.15s"},
+  nba:       {background:"#38bdf818",color:"#38bdf8",fontWeight:700},
+  main:      {flex:1,minHeight:"100vh",overflowY:"auto",background:"#111827",minWidth:0,width:0},
+  page:      {padding:"28px 32px",width:"100%",boxSizing:"border-box"},
+  ph:        {display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:32},
+  ttl:       {fontSize:28,fontWeight:800,color:"#f8fafc",margin:0},
+  sub:       {color:"#64748b",fontSize:14,marginTop:4},
+  btnP:      {background:"#0ea5e9",color:"#fff",border:"none",padding:"10px 20px",borderRadius:8,fontWeight:600,fontSize:13,cursor:"pointer",fontFamily:"inherit"},
+  kpi:       {background:"#1e293b",border:"1px solid #334155",borderRadius:12,padding:"20px 16px",textAlign:"center"},
+  st:        {fontSize:11,fontWeight:700,color:"#64748b",textTransform:"uppercase",letterSpacing:1.5,marginBottom:14},
+  topCard:   {background:"#1e293b",border:"1px solid #334155",borderRadius:10,padding:"14px 18px",display:"flex",alignItems:"center",gap:14,cursor:"pointer"},
+  card:      {background:"#1e293b",border:"1px solid #334155",borderRadius:12,padding:"20px"},
+  av:        {width:44,height:44,borderRadius:"50%",background:"#0ea5e915",border:"1px solid #0ea5e930",display:"flex",alignItems:"center",justifyContent:"center",fontWeight:700,color:"#0ea5e9",fontSize:15,flexShrink:0},
+  badge:     {fontSize:11,borderRadius:6,padding:"3px 10px",fontWeight:600,display:"inline-block"},
+  fb:        {background:"#1e293b",border:"1px solid #334155",color:"#64748b",padding:"7px 16px",borderRadius:20,cursor:"pointer",fontSize:12,fontFamily:"inherit",fontWeight:500},
+  fbon:      {background:"#0ea5e915",border:"1px solid #0ea5e944",color:"#0ea5e9"},
+  mc:        {background:"#1e293b",border:"1px solid #334155",borderRadius:10,padding:"16px 14px"},
+  th:        {padding:"12px 16px",color:"#64748b",fontSize:11,textTransform:"uppercase",letterSpacing:1,textAlign:"left",borderBottom:"1px solid #334155",fontWeight:600,background:"#172033"},
+  td:        {padding:"13px 16px",fontSize:14,color:"#cbd5e1"},
+  overlay:   {position:"fixed",inset:0,background:"#00000099",display:"flex",alignItems:"center",justifyContent:"center",zIndex:100,backdropFilter:"blur(4px)"},
+  modal:     {background:"#1e293b",border:"1px solid #334155",borderRadius:16,padding:"32px",maxHeight:"90vh",overflowY:"auto",boxShadow:"0 20px 60px #00000060"},
+  inp:       {width:"100%",background:"#111827",border:"1px solid #334155",borderRadius:8,padding:"9px 12px",color:"#f1f5f9",fontSize:14,fontFamily:"inherit",boxSizing:"border-box"},
+  actionBtn: {background:"transparent",border:"1px solid",padding:"5px 12px",borderRadius:6,cursor:"pointer",fontSize:12,fontFamily:"inherit",fontWeight:600,whiteSpace:"nowrap"},
+};
