@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { supabaseAuth, clearSession, loadSession } from "./config/supabase.js";
+import { supabaseAuth, clearSession, loadSession, saveSession } from "./config/supabase.js";
 import Login from "./components/Login.jsx";
 import AdminSpace from "./components/AdminSpace.jsx";
 import CoachSpace from "./components/CoachSpace.jsx";
@@ -12,6 +12,7 @@ export default function App() {
   });
 
   async function handleLogin(p) {
+    saveSession({ profile: p });
     setProfile(p);
   }
 
