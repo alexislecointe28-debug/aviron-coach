@@ -53,8 +53,7 @@ export default function Login({ onLogin }) {
             weight: 0,
             age: 0,
             boat: "1x",
-            avatar: AVATARS[Math.floor(Math.random()*AVATARS.length)],
-            active: true
+            avatar: AVATARS[Math.floor(Math.random()*AVATARS.length)]
           });
           if(ath && ath[0]) {
             await api.updateUser(newUser[0].id, {athlete_id: ath[0].id});
