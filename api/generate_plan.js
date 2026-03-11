@@ -1,4 +1,4 @@
-export const config = { runtime: "edge" };
+export const config = { runtime: "nodejs", maxDuration: 60 };
 
 const SYSTEM_PROMPT = `Tu es un expert en entraînement d'aviron avec 20 ans d'expérience en périodisation sportive.
 Tu génères des plans d'entraînement structurés selon les principes de la périodisation (Matveyev, Tudor Bompa) adaptés à l'aviron.
@@ -94,7 +94,7 @@ Sois précis dans les contenus : donne des distances, des temps de travail/récu
       },
       body: JSON.stringify({
         model: "claude-sonnet-4-20250514",
-        max_tokens: 8000,
+        max_tokens: 4000,
         system: SYSTEM_PROMPT,
         messages: [{ role: "user", content: userPrompt }],
       }),
