@@ -8,6 +8,7 @@ RÈGLES STRICTES :
 - Toutes les valeurs numériques sont en centimètres sauf indication
 - Sois précis : donne des valeurs chiffrées, pas des fourchettes vagues
 - Explique ton raisonnement en français, de façon concise et pédagogique
+- IMPORTANT: "longueur_pedale" dans ce contexte = longueur TOTALE de la pelle (manche + pale), typiquement entre 270 et 300 cm (ex: 284, 286, 288, 290cm). Ce n'est PAS la hauteur des cale-pieds.
 
 PRINCIPES BIOMÉCHANIQUES À APPLIQUER :
 
@@ -42,6 +43,7 @@ FORMAT JSON DE SORTIE (un seul poste) :
     "levier_exterieur": number,
     "croisement": number
   },
+  "_note": "longueur_pedale = longueur TOTALE de la pelle en cm (typiquement 270-300cm, ex: 286cm). PAS la position des cale-pieds.",
   "raisonnement": {
     "morpho": "string - analyse morpho et impact sur les réglages",
     "puissance": "string - analyse du profil de puissance",
