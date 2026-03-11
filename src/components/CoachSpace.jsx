@@ -60,6 +60,10 @@ export default function CoachSpace({ currentUser, onLogout }) {
   const [editPaddle,setEditPaddle] = useState(null);
   const [newPaddle,setNPaddle] = useState({numero:"",type_nage:"couple",marque:"",modele:"",plage_reglage:"",notes:""});
   const [showAddSetting,setShowAddSetting] = useState(false);
+  const [aiRigging,setAIRigging]         = useState(null);   // suggestion IA poste unique
+  const [aiRiggingAll,setAIRiggingAll]   = useState(null);   // suggestion IA tous postes
+  const [aiRiggingLoading,setAIRiggingLoading] = useState(false);
+  const [aiRiggingAllLoading,setAIRiggingAllLoading] = useState(false);
   const [editBoat,setEditBoat] = useState(null);
   const [newBoat,setNB]        = useState({name:"",type:"couple",seats:4,brand:"",model:"",avg_buoyancy:"",notes:""});
   const [newSetting,setNS]     = useState({poste:1,date_reglage:"",regle_par:"",entraxe:"",longueur_pedale:"",levier_interieur:"",levier_exterieur:"",croisement:"",numero_pelle:"",type_pelle:"",observations:""});
@@ -1249,8 +1253,64 @@ export default function CoachSpace({ currentUser, onLogout }) {
                 {/* Réglages par poste -- vue actuelle */}
                 <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:14}}>
                   <div style={S.st}>~ Réglages actuels -- {boat.name}</div>
-                  <button style={S.btnP} onClick={()=>setShowAddSetting(true)}>+ Nouveau réglage</button>
+                  <div style={{display:"flex",gap:8}}>
+                    <button
+                      style={{...S.btnP,background:"linear-gradient(135deg,#7c3aed,#a855f7)",border:"none",color:"#fff",fontWeight:800,fontSize:12,opacity:aiRiggingAllLoading?0.6:1}}
+                      onClick={async()=>{
+                        setAIRiggingAll(null);
+                        setAIRiggingAllLoading(true);
+                        try {
+                          const postes = Array.from({length:boat.seats},(_,i)=>i+1).map(p=>({
+                            poste:p,
+                            athlete:(()=>{const a=getAthleteAtPoste(selBoat,p);if(!a)return null;const st=aStats(a,"2000m");return {...a,wpkg:st.wpkg,watts:st.watts,best_time:st.best?.time};})(),
+                            paddle:(()=>{const s=getLatestSettingPerPoste(selBoat).find(s=>s.poste===p);return s&&!s.empty?paddles.find(pd=>pd.numero===s.numero_pelle&&pd.boat_id===selBoat)||null:null;})()
+                          }));
+                          const resp = await fetch("/api/suggest_rigging",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({mode:"all",bateau:boat,postes})});
+                          const data = await resp.json();
+                          if(data.error) throw new Error(data.error);
+                          setAIRiggingAll(data);
+                        } catch(e){setToast({m:"Erreur IA : "+e.message,t:"error"});}
+                        finally{setAIRiggingAllLoading(false);}
+                      }}
+                      disabled={aiRiggingAllLoading}>
+                      {aiRiggingAllLoading?"⏳ Analyse...":"✨ Réglages IA tous postes"}
+                    </button>
+                    <button style={S.btnP} onClick={()=>{setAIRigging(null);setShowAddSetting(true);}}>+ Nouveau réglage</button>
+                  </div>
                 </div>
+                {aiRiggingAll&&(
+                  <div style={{background:"#7c3aed10",border:"1px solid #a855f730",borderRadius:12,padding:"16px 18px",marginBottom:20}}>
+                    <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:12}}>
+                      <div style={{color:"#c084fc",fontWeight:800,fontSize:14}}>✨ Suggestion IA — {aiRiggingAll.bateau}</div>
+                      <button style={{background:"none",border:"none",color:"#64748b",cursor:"pointer",fontSize:18}} onClick={()=>setAIRiggingAll(null)}>×</button>
+                    </div>
+                    {aiRiggingAll.synthese&&<div style={{color:"#94a3b8",fontSize:12,marginBottom:14,fontStyle:"italic",borderLeft:"2px solid #a855f740",paddingLeft:10}}>{aiRiggingAll.synthese}</div>}
+                    <div style={{display:"flex",flexDirection:"column",gap:10}}>
+                      {(aiRiggingAll.postes||[]).map((p,i)=>(
+                        <div key={i} style={{background:"#0f192360",borderRadius:8,padding:"10px 14px"}}>
+                          <div style={{color:"#f1f5f9",fontWeight:700,fontSize:13,marginBottom:8}}>
+                            Poste #{p.poste} {p.athlete&&<span style={{color:"#7a95b0",fontWeight:400}}>— {p.athlete}</span>}
+                          </div>
+                          <div style={{display:"flex",gap:8,flexWrap:"wrap",marginBottom:6}}>
+                            {[
+                              {label:"Entraxe",val:p.reglages?.entraxe,col:"#0ea5e9"},
+                              {label:"Long. Pelle",val:p.reglages?.longueur_pedale,col:"#4ade80"},
+                              {label:"Levier int.",val:p.reglages?.levier_interieur,col:"#a78bfa"},
+                              {label:"Levier ext.",val:p.reglages?.levier_exterieur,col:"#f59e0b"},
+                              {label:"Croisement",val:p.reglages?.croisement,col:"#f97316"},
+                            ].filter(x=>x.val).map(x=>(
+                              <div key={x.label} style={{background:"#182030",borderRadius:6,padding:"6px 10px",textAlign:"center"}}>
+                                <div style={{color:"#64748b",fontSize:9}}>{x.label}</div>
+                                <div style={{color:x.col,fontWeight:900,fontSize:15}}>{x.val} <span style={{fontSize:9,color:"#334155"}}>cm</span></div>
+                              </div>
+                            ))}
+                          </div>
+                          {p.notes&&<div style={{color:"#64748b",fontSize:11,fontStyle:"italic"}}>💡 {p.notes}</div>}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
                 <div style={{overflowX:"auto",borderRadius:12,border:"1px solid #1e293b",marginBottom:28}}>
                   <table style={{width:"100%",borderCollapse:"collapse",background:"#182030"}}>
                     <thead>
@@ -1356,26 +1416,66 @@ export default function CoachSpace({ currentUser, onLogout }) {
               <Modal title={`Nouveau réglage -- ${boat?.name}`} onClose={()=>setShowAddSetting(false)} wide>
                 {(()=>{
                   const posteAth = getAthleteAtPoste(selBoat, newSetting.poste);
-                  const rigging = posteAth ? suggestRigging(posteAth, newSetting.type_pelle||"Smoothie 2", boat?.type||"couple") : null;
-                  return rigging ? (
-                    <div style={{marginBottom:16,padding:"14px 16px",background:"#0ea5e908",border:"1px solid #0ea5e930",borderRadius:10}}>
-                      <div style={{color:"#0ea5e9",fontSize:12,fontWeight:700,marginBottom:10,display:"flex",alignItems:"center",gap:8}}>
-                        Suggestions pour {posteAth.name}
-                        <span style={{fontSize:10,background:"#0ea5e920",padding:"2px 8px",borderRadius:10}}>morpho disponible</span>
+                  async function fetchAISingle() {
+                    if (!posteAth) return;
+                    setAIRigging(null); setAIRiggingLoading(true);
+                    const st = aStats(posteAth,"2000m");
+                    const paddle = paddles.find(p=>p.numero===newSetting.numero_pelle&&p.boat_id===selBoat)||null;
+                    try {
+                      const resp = await fetch("/api/suggest_rigging",{method:"POST",headers:{"Content-Type":"application/json"},
+                        body:JSON.stringify({mode:"single",bateau:boat,poste:newSetting.poste,paddle,
+                          athlete:{...posteAth,wpkg:st.wpkg,watts:st.watts,best_time:st.best?.time}})});
+                      const data = await resp.json();
+                      if(data.error) throw new Error(data.error);
+                      setAIRigging(data);
+                    } catch(e){setToast({m:"Erreur IA : "+e.message,t:"error"});}
+                    finally{setAIRiggingLoading(false);}
+                  }
+                  return posteAth ? (
+                    <div style={{marginBottom:12}}>
+                      <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:8,padding:"8px 12px",background:"#111827",borderRadius:8}}>
+                        <span style={{color:"#7a95b0",fontSize:12,flex:1}}>
+                          <strong style={{color:"#f1f5f9"}}>{posteAth.name}</strong>
+                          {posteAth.taille?` · ${posteAth.taille} cm`:""}
+                          {posteAth.envergure?` · env. ${posteAth.envergure} cm`:""}
+                          {posteAth.longueur_bras?` · bras ${posteAth.longueur_bras} cm`:""}
+                        </span>
+                        <button style={{...S.btnP,fontSize:11,padding:"5px 12px",background:"linear-gradient(135deg,#7c3aed,#a855f7)",border:"none",color:"#fff",fontWeight:800,opacity:aiRiggingLoading?0.6:1}}
+                          onClick={fetchAISingle} disabled={aiRiggingLoading}>
+                          {aiRiggingLoading?"⏳ Analyse...":"✨ Suggérer avec IA"}
+                        </button>
                       </div>
-                      <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(130px,1fr))",gap:8,marginBottom:10}}>
-                        {rigging.suggestions.entraxe&&<div style={{background:"#182030",borderRadius:8,padding:"8px 10px",textAlign:"center"}}><div style={{color:"#64748b",fontSize:10,marginBottom:2}}>Entraxe</div><div style={{color:"#0ea5e9",fontWeight:700,fontSize:16}}>{rigging.suggestions.entraxe} cm</div></div>}
-                        {rigging.suggestions.levier_interieur&&<div style={{background:"#182030",borderRadius:8,padding:"8px 10px",textAlign:"center"}}><div style={{color:"#64748b",fontSize:10,marginBottom:2}}>Levier int.</div><div style={{color:"#a78bfa",fontWeight:700,fontSize:16}}>{rigging.suggestions.levier_interieur} cm</div></div>}
-                        {rigging.suggestions.levier_exterieur&&<div style={{background:"#182030",borderRadius:8,padding:"8px 10px",textAlign:"center"}}><div style={{color:"#64748b",fontSize:10,marginBottom:2}}>Levier ext.</div><div style={{color:"#f59e0b",fontWeight:700,fontSize:16}}>{rigging.suggestions.levier_exterieur} cm</div></div>}
-                        {rigging.suggestions.longueur_pedale&&<div style={{background:"#182030",borderRadius:8,padding:"8px 10px",textAlign:"center"}}><div style={{color:"#64748b",fontSize:10,marginBottom:2}}>Long. pédale</div><div style={{color:"#4ade80",fontWeight:700,fontSize:16}}>{rigging.suggestions.longueur_pedale} cm</div></div>}
-                        {rigging.suggestions.croisement&&<div style={{background:"#182030",borderRadius:8,padding:"8px 10px",textAlign:"center"}}><div style={{color:"#64748b",fontSize:10,marginBottom:2}}>Croisement</div><div style={{color:"#f97316",fontWeight:700,fontSize:16}}>{rigging.suggestions.croisement} cm</div></div>}
-                      </div>
-                      <button style={{...S.btnP,fontSize:11,padding:"6px 14px",background:"#0ea5e920",color:"#0ea5e9",border:"1px solid #0ea5e940"}} onClick={()=>{const sg=rigging.suggestions;setNS(p=>({...p,...(sg.entraxe?{entraxe:sg.entraxe}:{}),...(sg.levier_interieur?{levier_interieur:sg.levier_interieur}:{}),...(sg.levier_exterieur?{levier_exterieur:sg.levier_exterieur}:{}),...(sg.longueur_pedale?{longueur_pedale:sg.longueur_pedale}:{}),...(sg.croisement?{croisement:sg.croisement}:{})}));}}>Appliquer ces valeurs</button>
-                      <div style={{marginTop:8}}>{rigging.notes.map((n,i)=><div key={i} style={{color:"#64748b",fontSize:11}}>• {n}</div>)}</div>
-                    </div>
-                  ) : posteAth ? (
-                    <div style={{marginBottom:16,padding:"10px 14px",background:"#111827",border:"1px solid #334155",borderRadius:8,color:"#64748b",fontSize:12}}>
-                      Athlète: <strong style={{color:"#f1f5f9"}}>{posteAth.name}</strong> — Ajoute ses données morpho dans sa fiche pour obtenir des suggestions de réglage.
+                      {aiRigging&&aiRigging.reglages&&(
+                        <div style={{background:"#7c3aed0d",border:"1px solid #a855f730",borderRadius:10,padding:"12px 14px",marginBottom:8}}>
+                          <div style={{color:"#c084fc",fontWeight:700,fontSize:12,marginBottom:8}}>✨ Suggestion IA — {aiRigging.athlete}</div>
+                          <div style={{display:"flex",gap:8,flexWrap:"wrap",marginBottom:10}}>
+                            {[{l:"Entraxe",v:aiRigging.reglages.entraxe,c:"#0ea5e9",k:"entraxe"},
+                              {l:"Long. Pelle",v:aiRigging.reglages.longueur_pedale,c:"#4ade80",k:"longueur_pedale"},
+                              {l:"Levier int.",v:aiRigging.reglages.levier_interieur,c:"#a78bfa",k:"levier_interieur"},
+                              {l:"Levier ext.",v:aiRigging.reglages.levier_exterieur,c:"#f59e0b",k:"levier_exterieur"},
+                              {l:"Croisement",v:aiRigging.reglages.croisement,c:"#f97316",k:"croisement"},
+                            ].filter(x=>x.v).map(x=>(
+                              <div key={x.k} style={{background:"#182030",borderRadius:8,padding:"8px 12px",textAlign:"center",minWidth:80}}>
+                                <div style={{color:"#64748b",fontSize:10,marginBottom:2}}>{x.l}</div>
+                                <div style={{color:x.c,fontWeight:900,fontSize:17}}>{x.v}</div>
+                                <div style={{color:"#334155",fontSize:9}}>cm</div>
+                              </div>
+                            ))}
+                          </div>
+                          {aiRigging.raisonnement&&(
+                            <div style={{fontSize:11,color:"#94a3b8",marginBottom:8,display:"flex",flexDirection:"column",gap:3}}>
+                              {aiRigging.raisonnement.morpho&&<div>📐 {aiRigging.raisonnement.morpho}</div>}
+                              {aiRigging.raisonnement.puissance&&<div>⚡ {aiRigging.raisonnement.puissance}</div>}
+                              {aiRigging.raisonnement.pelle&&<div>🚣 {aiRigging.raisonnement.pelle}</div>}
+                              {(aiRigging.raisonnement.points_attention||[]).map((pt,i)=><div key={i} style={{color:"#f59e0b"}}>⚠️ {pt}</div>)}
+                            </div>
+                          )}
+                          <button style={{...S.btnP,fontSize:11,padding:"5px 12px",background:"#7c3aed20",color:"#c084fc",border:"1px solid #a855f740"}}
+                            onClick={()=>{const r=aiRigging.reglages;setNS(p=>({...p,...(r.entraxe?{entraxe:r.entraxe}:{}),...(r.longueur_pedale?{longueur_pedale:r.longueur_pedale}:{}),...(r.levier_interieur?{levier_interieur:r.levier_interieur}:{}),...(r.levier_exterieur?{levier_exterieur:r.levier_exterieur}:{}),...(r.croisement?{croisement:r.croisement}:{})}));}}>
+                            ⬇ Appliquer ces valeurs
+                          </button>
+                        </div>
+                      )}
                     </div>
                   ) : null;
                 })()}
