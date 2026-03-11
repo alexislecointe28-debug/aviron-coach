@@ -145,7 +145,7 @@ BATEAU :
 ÉQUIPAGE :
 ${postes_str}
 
-Pour chaque poste, fournis des réglages personnalisés. Fournis aussi une synthèse de la stratégie de réglage pour l'équipage.`;
+Pour chaque poste, fournis TOUS les réglages (entraxe, longueur_pedale, levier_interieur, levier_exterieur, croisement) — même si l'entraxe est identique pour tous les postes, répète-le pour chacun. Fournis aussi une synthèse de la stratégie de réglage pour l'équipage.`;
   }
 
   try {
