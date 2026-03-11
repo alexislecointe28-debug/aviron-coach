@@ -839,7 +839,7 @@ export default function PlanningSpace({ athletes, isMobile, currentUser }) {
                 </div>
               ))}
           </div>
-        )}
+        }
       </div>
     );
   }
