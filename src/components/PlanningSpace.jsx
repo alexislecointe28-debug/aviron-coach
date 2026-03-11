@@ -582,7 +582,6 @@ export default function PlanningSpace({ athletes, isMobile, currentUser }) {
           </div>
           <div style={{display:"flex",gap:8}}>
             <button style={{...S.btnP,background:"#1e293b",border:"1px solid #334155",color:"#94a3b8",fontSize:12}} onClick={()=>setView("templates")}>📋 Templates</button>
-            <button style={{...S.btnP,background:"linear-gradient(135deg,#7c3aed,#a855f7)",border:"1px solid #a855f760",color:"#fff",fontWeight:800}} onClick={()=>setShowAIModal(true)}>✨ Générer avec IA</button>
             <button style={S.btnP} onClick={()=>{setEditPlan({name:"",category:"",date_debut:"",date_fin:"",description:""});setShowPlanModal(true);}}>+ Nouveau plan</button>
           </div>
         </div>
@@ -1136,76 +1135,6 @@ export default function PlanningSpace({ athletes, isMobile, currentUser }) {
   // ==================== RENDER ====================
   if(loading) return <div style={{padding:48,textAlign:"center",color:"#64748b"}}>Chargement du planning...</div>;
 
-  async function generateWithAI() {
-    setAILoading(true);
-    try {
-      const resp = await fetch("/api/generate_plan", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(aiForm)
-      });
-      const data = await resp.json();
-      if (!resp.ok || data.error) throw new Error(data.error || "Erreur inconnue");
-      setAIResult(data);
-      setShowAIModal(false);
-      setShowAIPreview(true);
-    } catch(e) {
-      setToast({ m: "Erreur IA : " + e.message, t: "error" });
-    } finally {
-      setAILoading(false);
-    }
-  }
-
-  async function importAIPlan() {
-    if (!aiResult) return;
-    setAIImporting(true);
-    try {
-      // 1. Créer le plan
-      const [newPlan] = await api.createPlan({
-        name: aiResult.plan_name,
-        category: aiForm.categorie,
-        date_debut: aiForm.date_debut,
-        date_fin: aiForm.date_regate,
-        description: aiResult.description,
-      });
-      if (!newPlan?.id) throw new Error("Echec création plan");
-
-      // 2. Créer les semaines + séances
-      for (const sem of aiResult.semaines) {
-        const [newWeek] = await api.createWeek({
-          plan_id: newPlan.id,
-          num_semaine: sem.num_semaine,
-          date_debut: sem.date_debut || aiForm.date_debut,
-          type_semaine: sem.type_semaine,
-          charge: sem.charge,
-          objectif: sem.objectif,
-          notes: sem.notes,
-        });
-        if (!newWeek?.id) continue;
-        for (const s of (sem.seances || [])) {
-          await api.createSession({
-            week_id: newWeek.id,
-            plan_id: newPlan.id,
-            jour: s.jour,
-            type_seance: s.type_seance,
-            titre: s.titre,
-            duree_min: s.duree_min || 60,
-            charge: s.charge,
-            contenu: s.contenu || {},
-          });
-        }
-      }
-
-      setToast({ m: `Plan "${aiResult.plan_name}" importé avec succès ! ✓`, t: "success" });
-      setShowAIPreview(false);
-      setAIResult(null);
-      const p = await api.getPlans(); setPlans(p||[]);
-    } catch(e) {
-      setToast({ m: "Erreur import : " + e.message, t: "error" });
-    } finally {
-      setAIImporting(false);
-    }
-  }
 
   return (
     <div style={{position:"relative"}}>
