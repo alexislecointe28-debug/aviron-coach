@@ -1,4 +1,4 @@
-export const config = { runtime: "nodejs", maxDuration: 60 };
+export const config = { runtime: "edge" };
 
 const SYSTEM_PROMPT = `Tu es un expert en entraînement d'aviron avec 20 ans d'expérience en périodisation sportive.
 Tu génères des plans d'entraînement structurés selon les principes de la périodisation (Matveyev, Tudor Bompa) adaptés à l'aviron.
@@ -41,9 +41,9 @@ FORMAT JSON DE SORTIE :
           "contenu": {
             "objectif": "string",
             "echauffement": "string",
-            "partie_principale": "string détaillé avec distances/temps/intensités/zones",
+            "partie_principale": "string concis (ex: 5x4min Z4 r:2min)",
             "retour_calme": "string",
-            "notes_coach": "string"
+            "notes_coach": "string court"
           }
         }
       ]
@@ -82,7 +82,7 @@ export default async function handler(req) {
 Génère exactement ${nb_semaines} semaines avec des séances UNIQUEMENT les jours : ${jours.join(", ")}.
 Applique une périodisation intelligente en tenant compte de la date de régate.
 Pour la distance ${distance}, adapte les types de séances (pour 500m : plus de travail en Z6-Z7 ; pour 1000m : équilibre Z4-Z6 ; pour 2000m : base aérobie Z3-Z4 dominante).
-Sois précis dans les contenus : donne des distances, des temps de travail/récup, des cadences (allures/500m ou SPM).`;
+Sois concis : format compact pour chaque séance (ex: '4x10min Z3 r:3min, allure 2:05/500m').`;
 
   try {
     const resp = await fetch("https://api.anthropic.com/v1/messages", {
@@ -94,7 +94,7 @@ Sois précis dans les contenus : donne des distances, des temps de travail/récu
       },
       body: JSON.stringify({
         model: "claude-haiku-4-5-20251001",
-        max_tokens: 4000,
+        max_tokens: 2000,
         system: SYSTEM_PROMPT,
         messages: [{ role: "user", content: userPrompt }],
       }),
