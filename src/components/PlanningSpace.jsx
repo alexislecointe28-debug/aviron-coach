@@ -763,8 +763,16 @@ export default function PlanningSpace({ athletes, isMobile, currentUser }) {
 
   // ---- Vue templates ----
   function ViewTemplates() {
+    const [filterPhase, setFilterPhase] = React.useState(null);
+    const PHASES = [
+      {key:"phase_accumulation",  label:"Accumulation",   color:"#3b82f6"},
+      {key:"phase_transformation",label:"Transformation", color:"#f59e0b"},
+      {key:"phase_realisation",   label:"Réalisation",    color:"#10b981"},
+      {key:"phase_transition",    label:"Transition",     color:"#8b5cf6"},
+    ];
+    const filtered = filterPhase ? templates.filter(t=>t[filterPhase]) : templates;
     const byType = {};
-    templates.forEach(t=>{
+    filtered.forEach(t=>{
       if(!byType[t.type_seance]) byType[t.type_seance]=[];
       byType[t.type_seance].push(t);
     });
@@ -777,6 +785,13 @@ export default function PlanningSpace({ athletes, isMobile, currentUser }) {
             <p style={{...S.sub,marginTop:2}}>{templates.length} modèles disponibles</p>
           </div>
           <button style={S.btnP} onClick={()=>{setEditTpl({name:"",type_seance:"ERGO",contenu:{blocs:[],duree_min:60}});setShowTplModal(true);}}>+ Template</button>
+        {PHASES.map(p=>(
+          <button key={p.key}
+            style={{...S.btnP,background:filterPhase===p.key?p.color:"transparent",border:`1px solid ${p.color}60`,color:filterPhase===p.key?"#fff":p.color,fontSize:11,padding:"4px 10px"}}
+            onClick={()=>setFilterPhase(filterPhase===p.key?null:p.key)}>
+            {p.label}
+          </button>
+        ))}
         </div>
         {Object.entries(byType).map(([type,tpls])=>(
           <div key={type} style={{marginBottom:24}}>
@@ -998,6 +1013,23 @@ export default function PlanningSpace({ athletes, isMobile, currentUser }) {
           </div>
         </div>
         <FF label="Durée (min)"><input style={{...S.inp,width:100}} type="number" min="0" value={form.contenu?.duree_min||0} onChange={e=>setContenu("duree_min",parseInt(e.target.value))}/></FF>
+        <div style={{marginBottom:12}}>
+          <label style={{display:"block",color:"#7a95b0",fontSize:11,marginBottom:8,textTransform:"uppercase",letterSpacing:1}}>Phases d'utilisation</label>
+          <div style={{display:"flex",gap:8,flexWrap:"wrap"}}>
+            {[
+              {key:"phase_accumulation",  label:"Accumulation",   color:"#3b82f6"},
+              {key:"phase_transformation",label:"Transformation", color:"#f59e0b"},
+              {key:"phase_realisation",   label:"Réalisation",    color:"#10b981"},
+              {key:"phase_transition",    label:"Transition",     color:"#8b5cf6"},
+            ].map(p=>(
+              <button key={p.key}
+                style={{background:form[p.key]?p.color:"transparent",border:`1px solid ${p.color}60`,color:form[p.key]?"#fff":p.color,borderRadius:6,padding:"5px 12px",fontSize:12,fontWeight:700,cursor:"pointer"}}
+                onClick={()=>set(p.key,!form[p.key])}>
+                {form[p.key]?"✓ ":""}{p.label}
+              </button>
+            ))}
+          </div>
+        </div>
         <div style={{display:"flex",gap:10,justifyContent:"flex-end",marginTop:8}}>
           <button style={{...S.btnP,background:"transparent",color:"#64748b",border:"1px solid #334155"}} onClick={()=>setShowTplModal(false)}>Annuler</button>
           <button style={S.btnP} onClick={()=>saveTpl(form)} disabled={!form.name}>Enregistrer</button>
