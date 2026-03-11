@@ -327,6 +327,40 @@ export default function CoachSpace({ currentUser, onLogout }) {
 
   const NAV=[{id:"dashboard",label:"Dashboard",icon:"📊"},{id:"athletes",label:"Athlètes",icon:"👤"},{id:"performances",label:"Performances",icon:"⚡"},{id:"compare",label:"Comparer",icon:"⚖️"},{id:"crew",label:"Équipages",icon:"🚣"},{id:"boats",label:"Bateaux",icon:"🛶"},{id:"planning",label:"Planning",icon:"📅"}];
 
+
+  async function applyAllRigging() {
+    if (!aiRiggingAll?.postes?.length) return;
+    setAIRiggingAllImporting(true);
+    const today = new Date().toISOString().split("T")[0];
+    const coach = currentUser?.name || currentUser?.email || "IA";
+    let count = 0;
+    try {
+      for (const p of aiRiggingAll.postes) {
+        const r = p.reglages || {};
+        await api.createBoatSetting({
+          boat_id: selBoat,
+          poste: p.poste,
+          date_reglage: today,
+          regle_par: coach + " (IA)",
+          entraxe: r.entraxe || null,
+          longueur_pedale: r.longueur_pedale || null,
+          levier_interieur: r.levier_interieur || null,
+          levier_exterieur: r.levier_exterieur || null,
+          croisement: r.croisement || null,
+          observations: p.notes || "",
+        });
+        count++;
+      }
+      setToast({ m: `${count} réglages IA appliqués ✓`, t: "success" });
+      setAIRiggingAll(null);
+      const s = await api.getBoatSettings(selBoat); setBoatSettings(s||[]);
+    } catch(e) {
+      setToast({ m: "Erreur application : " + e.message, t: "error" });
+    } finally {
+      setAIRiggingAllImporting(false);
+    }
+  }
+
   if(loading) return <div style={{...S.root,alignItems:"center",justifyContent:"center"}}><Loader text="Chargement depuis Supabase..."/></div>;
 
   return (
