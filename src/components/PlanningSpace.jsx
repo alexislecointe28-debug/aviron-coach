@@ -794,9 +794,31 @@ export default function PlanningSpace({ athletes, isMobile, currentUser }) {
         ))}
         </div>
         {Object.entries(byType).map(([type,tpls])=>(
-          <div key={type} style={{marginBottom:24}}>
-            <div style={{...S.st,marginBottom:10,color:TYPE_SEANCE_COLORS[type]||"#64748b"}}>{TYPE_SEANCE_LABELS[type]||type}</div>
-            <div style={{display:"grid",gridTemplateColumns:isMobile?"1fr":"repeat(auto-fill,minmax(280px,1fr))",gap:10}}>
+          <TplGroup key={type} type={type} tpls={tpls} isMobile={isMobile} />
+        ))}
+      </div>
+    );
+  }
+
+  function TplGroup({type, tpls, isMobile}) {
+    const [open, setOpen] = useState(true);
+    const color = TYPE_SEANCE_COLORS[type]||"#64748b";
+    const PHASES_BADGE = [
+      {key:"phase_accumulation",  label:"A", color:"#3b82f6"},
+      {key:"phase_transformation",label:"T", color:"#f59e0b"},
+      {key:"phase_realisation",   label:"R", color:"#10b981"},
+      {key:"phase_transition",    label:"Tr",color:"#8b5cf6"},
+    ];
+    return (
+      <div style={{marginBottom:16,border:`1px solid ${color}30`,borderRadius:12,overflow:"hidden"}}>
+        <button
+          onClick={()=>setOpen(o=>!o)}
+          style={{width:"100%",display:"flex",alignItems:"center",gap:10,padding:"12px 16px",background:`${color}12`,border:"none",cursor:"pointer",textAlign:"left"}}>
+          <span style={{color,fontWeight:800,fontSize:14}}>{TYPE_SEANCE_LABELS[type]||type}</span>
+          <span style={{background:`${color}25`,color,borderRadius:10,fontSize:11,fontWeight:700,padding:"1px 8px"}}>{tpls.length}</span>
+          <span style={{marginLeft:"auto",color,fontSize:16}}>{open?"▲":"▼"}</span>
+        </button>
+        {open&&<div style={{display:"grid",gridTemplateColumns:isMobile?"1fr":"repeat(auto-fill,minmax(280px,1fr))",gap:10,padding:"12px 14px"}}>
               {tpls.map(t=>(
                 <div key={t.id} style={{...S.card,padding:"14px 16px"}}>
                   <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:8}}>
@@ -816,12 +838,13 @@ export default function PlanningSpace({ athletes, isMobile, currentUser }) {
                   {t.is_default&&<div style={{marginTop:8,fontSize:10,color:"#475569",fontStyle:"italic"}}>Template système</div>}
                 </div>
               ))}
-            </div>
           </div>
-        ))}
+        )}
       </div>
     );
   }
+
+
 
   // ==================== MODALS ====================
 
