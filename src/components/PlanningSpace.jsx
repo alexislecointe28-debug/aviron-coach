@@ -911,7 +911,16 @@ export default function PlanningSpace({ athletes, isMobile, currentUser }) {
       setForm(f=>({...f,type_seance:tpl.type_seance,titre:tpl.name,contenu:{...c}}));
     }
 
-    const myTemplates = templates.filter(t=>!form.type_seance||t.type_seance===form.type_seance);
+    const PHASES_TPL = [
+      {key:"phase_accumulation",  label:"Accumulation",   color:"#3b82f6"},
+      {key:"phase_transformation",label:"Transformation", color:"#f59e0b"},
+      {key:"phase_realisation",   label:"Réalisation",    color:"#10b981"},
+      {key:"phase_transition",    label:"Transition",     color:"#8b5cf6"},
+    ];
+    const [tplPhaseFilter, setTplPhaseFilter] = useState(null);
+    const myTemplates = templates
+      .filter(t=>!form.type_seance||t.type_seance===form.type_seance)
+      .filter(t=>!tplPhaseFilter||t[tplPhaseFilter]);
 
     return (
       <Modal title={form.id?"Modifier la séance":"Nouvelle séance"} onClose={()=>setShowSessionModal(false)} wide>
@@ -930,11 +939,25 @@ export default function PlanningSpace({ athletes, isMobile, currentUser }) {
         <FF label="Titre"><input style={{...S.inp}} value={form.titre||""} onChange={e=>set("titre",e.target.value)} placeholder="Ex: Ergo B1 45' continu"/></FF>
 
         {/* Templates rapides */}
-        {myTemplates.length>0&&(
+        {templates.filter(t=>!form.type_seance||t.type_seance===form.type_seance).length>0&&(
           <FF label="Utiliser un template">
+            <div style={{display:"flex",gap:4,flexWrap:"wrap",marginBottom:8}}>
+              {PHASES_TPL.map(p=>(
+                <button key={p.key}
+                  style={{background:tplPhaseFilter===p.key?p.color:"transparent",border:`1px solid ${p.color}60`,color:tplPhaseFilter===p.key?"#fff":p.color,borderRadius:6,padding:"3px 10px",fontSize:10,fontWeight:700,cursor:"pointer"}}
+                  onClick={()=>setTplPhaseFilter(tplPhaseFilter===p.key?null:p.key)}>
+                  {p.label}
+                </button>
+              ))}
+            </div>
             <div style={{display:"flex",gap:6,flexWrap:"wrap"}}>
               {myTemplates.map(t=>(
-                <button key={t.id} style={{...S.fb,fontSize:11}} onClick={()=>applyTemplate(t)}>{t.name}</button>
+                <button key={t.id} style={{...S.fb,fontSize:11}} onClick={()=>applyTemplate(t)}>
+                  {t.name}
+                  {PHASES_TPL.filter(p=>t[p.key]).map(p=>(
+                    <span key={p.key} style={{marginLeft:4,background:p.color+"30",color:p.color,borderRadius:3,fontSize:8,padding:"0 4px",verticalAlign:"middle"}}>{p.label[0]}</span>
+                  ))}
+                </button>
               ))}
             </div>
           </FF>
