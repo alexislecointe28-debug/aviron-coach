@@ -763,7 +763,7 @@ export default function PlanningSpace({ athletes, isMobile, currentUser }) {
 
   // ---- Vue templates ----
   function ViewTemplates() {
-    const [filterPhase, setFilterPhase] = React.useState(null);
+    const [filterPhase, setFilterPhase] = useState(null);
     const PHASES = [
       {key:"phase_accumulation",  label:"Accumulation",   color:"#3b82f6"},
       {key:"phase_transformation",label:"Transformation", color:"#f59e0b"},
