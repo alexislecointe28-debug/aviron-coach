@@ -64,6 +64,7 @@ export default function CoachSpace({ currentUser, onLogout }) {
   const [aiRiggingAll,setAIRiggingAll]   = useState(null);   // suggestion IA tous postes
   const [aiRiggingLoading,setAIRiggingLoading] = useState(false);
   const [aiRiggingAllLoading,setAIRiggingAllLoading] = useState(false);
+  const [aiRiggingAllImporting,setAIRiggingAllImporting] = useState(false);
   const [editBoat,setEditBoat] = useState(null);
   const [newBoat,setNB]        = useState({name:"",type:"couple",seats:4,brand:"",model:"",avg_buoyancy:"",notes:""});
   const [newSetting,setNS]     = useState({poste:1,date_reglage:"",regle_par:"",entraxe:"",longueur_pedale:"",levier_interieur:"",levier_exterieur:"",croisement:"",numero_pelle:"",type_pelle:"",observations:""});
@@ -1308,6 +1309,14 @@ export default function CoachSpace({ currentUser, onLogout }) {
                           {p.notes&&<div style={{color:"#64748b",fontSize:11,fontStyle:"italic"}}>💡 {p.notes}</div>}
                         </div>
                       ))}
+                    </div>
+                    <div style={{marginTop:14,display:"flex",justifyContent:"flex-end"}}>
+                      <button
+                        style={{...S.btnP,background:"linear-gradient(135deg,#0ea5e9,#38bdf8)",border:"none",color:"#fff",fontWeight:800,fontSize:12,opacity:aiRiggingAllImporting?0.6:1}}
+                        disabled={aiRiggingAllImporting}
+                        onClick={applyAllRigging}>
+                        {aiRiggingAllImporting ? "⏳ Application..." : "⬇ Appliquer à l'équipage"}
+                      </button>
                     </div>
                   </div>
                 )}
