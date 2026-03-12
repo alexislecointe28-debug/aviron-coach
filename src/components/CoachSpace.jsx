@@ -66,7 +66,7 @@ export default function CoachSpace({ currentUser, onLogout }) {
   const [aiRiggingAllLoading,setAIRiggingAllLoading] = useState(false);
   const [aiRiggingAllImporting,setAIRiggingAllImporting] = useState(false);
   const [editBoat,setEditBoat] = useState(null);
-  const [newBoat,setNB]        = useState({name:"",type:"couple",seats:4,brand:"",model:"",avg_buoyancy:"",notes:""});
+  const [newBoat,setNB]        = useState({name:"",type:"couple",seats:4,categorie:"",brand:"",model:"",avg_buoyancy:"",notes:""});
   const [newSetting,setNS]     = useState({poste:1,date_reglage:"",regle_par:"",entraxe:"",longueur_pedale:"",levier_interieur:"",levier_exterieur:"",croisement:"",numero_pelle:"",type_pelle:"",observations:""});
 
   const load = useCallback(async()=>{
@@ -257,7 +257,7 @@ export default function CoachSpace({ currentUser, onLogout }) {
     try {
       await api.createBoat({...newBoat,seats:+newBoat.seats,avg_buoyancy:newBoat.avg_buoyancy?+newBoat.avg_buoyancy:null});
       setToast({m:"Bateau ajouté v",t:"success"}); load();
-      setNB({name:"",type:"couple",seats:4,brand:"",model:"",avg_buoyancy:"",notes:""}); setShowAddBoat(false);
+      setNB({name:"",type:"couple",seats:4,categorie:"",brand:"",model:"",avg_buoyancy:"",notes:""}); setShowAddBoat(false);
     } catch(e){setToast({m:"Erreur",t:"error"});}
   }
   async function saveEditBoat() {
@@ -298,6 +298,15 @@ export default function CoachSpace({ currentUser, onLogout }) {
     return members[poste-1]||null;
   }
 
+  const BOAT_CATS = ["1x","2x","2-","4x","4-","4+","8+"];
+  function getCat(b) {
+    if(b.categorie) return b.categorie;
+    if(b.seats===1) return "1x";
+    if(b.seats===2) return b.type==="couple"?"2x":"2-";
+    if(b.seats===4) return b.type==="couple"?"4x":"4-";
+    if(b.seats===8) return "8+";
+    return null;
+  }
   function getBoatStats(boatId) {
     const linkedCrews = getBoatCrewsFor(boatId);
     const members = linkedCrews.flatMap(cr => crewMembers.filter(m=>m.crew_id===cr.id).map(m=>athletes.find(a=>a.id===m.athlete_id)).filter(Boolean));
@@ -1121,28 +1130,49 @@ export default function CoachSpace({ currentUser, onLogout }) {
             <button style={S.btnP} onClick={()=>setShowAddBoat(true)}>+ Nouveau bateau</button>
           </div>
 
+          {/* Filtres par catégorie */}
+          <div style={{display:"flex",gap:6,flexWrap:"wrap",marginBottom:16}}>
+            <button style={{...S.actionBtn,background:boatFilter===null?"#22d3ee20":"transparent",color:boatFilter===null?"#0ea5e9":"#64748b",borderColor:boatFilter===null?"#22d3ee60":"#334155",fontWeight:700,fontSize:12,padding:"4px 12px"}} onClick={()=>setBoatFilter(null)}>Tous</button>
+            {BOAT_CATS.map(cat=>{
+              const count=boats.filter(b=>getCat(b)===cat).length;
+              if(!count) return null;
+              return(<button key={cat} style={{...S.actionBtn,background:boatFilter===cat?"#0ea5e920":"transparent",color:boatFilter===cat?"#0ea5e9":"#94a3b8",borderColor:boatFilter===cat?"#0ea5e960":"#334155",fontWeight:700,fontSize:12,padding:"4px 12px"}} onClick={()=>setBoatFilter(boatFilter===cat?null:cat)}>{cat} <span style={{opacity:0.6,fontWeight:400}}>({count})</span></button>);
+            })}
+          </div>
+
           {/* Liste bateaux */}
           <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(280px,1fr))",gap:14,marginBottom:28}}>
-            {boats.map(b=>{
+            {boats.filter(b=>!boatFilter||getCat(b)===boatFilter).map(b=>{
               const linked=getBoatCrewsFor(b.id);
               const lastSetting=getSettingsFor(b.id)[0];
+              const isOpen=boatOpen[b.id]!==false;
+              const cat=getCat(b);
               return(
-                <div key={b.id} style={{...S.card,cursor:"pointer",borderTop:`3px solid ${selBoat===b.id?"#0ea5e9":"#263547"}`,background:selBoat===b.id?"#22d3ee08":"#182030"}} onClick={()=>setSelBoat(selBoat===b.id?null:b.id)}>
-                  <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:10}}>
-                    <div>
-                      <div style={{fontWeight:900,color:"#f1f5f9",fontSize:17}}>{b.name}</div>
-                      <div style={{color:"#7a95b0",fontSize:12,marginTop:2}}>{b.brand} {b.model} - {b.seats} postes</div>
+                <div key={b.id} style={{...S.card,borderTop:`3px solid ${selBoat===b.id?"#0ea5e9":"#263547"}`,background:selBoat===b.id?"#22d3ee08":"#182030",padding:0,overflow:"hidden"}}>
+                  {/* En-tête toujours visible */}
+                  <div style={{display:"flex",alignItems:"center",gap:8,padding:"12px 14px",cursor:"pointer"}} onClick={()=>setBoatOpen(p=>({...p,[b.id]:!isOpen}))}>
+                    <span style={{color:"#94a3b8",fontSize:13,marginRight:2}}>{isOpen?"▼":"▶"}</span>
+                    <div style={{flex:1,minWidth:0}}>
+                      <div style={{fontWeight:900,color:"#f1f5f9",fontSize:15,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{b.name}</div>
+                      {!isOpen&&<div style={{color:"#5a7a9a",fontSize:11,marginTop:1}}>{b.brand} {b.model}</div>}
                     </div>
-                    <div style={{display:"flex",gap:6,alignItems:"center"}}>
-                      <span style={{...S.badge,background:b.type==="couple"?"#22d3ee20":"#a78bfa20",color:b.type==="couple"?"#0ea5e9":"#a78bfa",border:`1px solid ${b.type==="couple"?"#22d3ee40":"#a78bfa40"}`}}>{b.type==="couple"?"~ Couple":"~ Pointe"}</span>
-                      <div style={{display:"flex",gap:4}} onClick={e=>e.stopPropagation()}><button style={{...S.actionBtn,color:"#0ea5e9",borderColor:"#22d3ee30"}} onClick={e=>{e.stopPropagation();setEditBoat({...b});}}>✏️</button><button style={{...S.actionBtn,color:"#ef4444",borderColor:"#ef444430"}} onClick={e=>{e.stopPropagation();deleteBoat(b.id);}}>🗑️</button></div>
+                    {cat&&<span style={{...S.badge,background:"#22d3ee15",color:"#0ea5e9",border:"1px solid #22d3ee30",flexShrink:0}}>{cat}</span>}
+                    <span style={{...S.badge,background:b.type==="couple"?"#22d3ee15":"#a78bfa15",color:b.type==="couple"?"#0ea5e9":"#a78bfa",border:`1px solid ${b.type==="couple"?"#22d3ee30":"#a78bfa30"}`,flexShrink:0,display:isOpen?"inline":"none"}}>{b.type==="couple"?"Couple":"Pointe"}</span>
+                    <div style={{display:"flex",gap:4,flexShrink:0}} onClick={e=>e.stopPropagation()}>
+                      <button style={{...S.actionBtn,color:"#0ea5e9",borderColor:"#22d3ee30"}} onClick={e=>{e.stopPropagation();setEditBoat({...b});}}>✏️</button>
+                      <button style={{...S.actionBtn,color:"#ef4444",borderColor:"#ef444430"}} onClick={e=>{e.stopPropagation();deleteBoat(b.id);}}>🗑️</button>
                     </div>
                   </div>
-                  {b.avg_buoyancy&&<div style={{color:"#f59e0b",fontSize:13,marginBottom:8}}>~ Portance moy. : {b.avg_buoyancy} kg</div>}
-                  {linked.length>0&&<div style={{marginBottom:8}}>{linked.map(cr=><div key={cr.id} style={{color:"#0ea5e9",fontSize:12}}>~ {cr.name}</div>)}</div>}
-                  {lastSetting&&<div style={{color:"#5a7a9a",fontSize:11}}>Dernier réglage : {lastSetting.date_reglage} - {lastSetting.regle_par}</div>}
-                  {b.notes&&<div style={{background:"#1e293b50",borderRadius:6,padding:"6px 10px",fontSize:12,color:"#a8bfd4",marginTop:8}}>{b.notes}</div>}
-                  {(()=>{const st=getBoatStats(b.id);if(!st)return null;return(<div style={{display:"flex",gap:8,marginTop:8,flexWrap:"wrap"}}>{st.avgWatts&&<span style={{...S.badge,background:"#22d3ee15",color:"#0ea5e9",border:"1px solid #22d3ee30"}}>{st.avgWatts}W moy.</span>}{st.avgWeight&&<span style={{...S.badge,background:"#a78bfa15",color:"#a78bfa",border:"1px solid #a78bfa30"}}>{st.avgWeight}kg moy.</span>}{st.avgTime&&<span style={{...S.badge,background:"#4ade8015",color:"#4ade80",border:"1px solid #4ade8030"}}>{st.avgTime} moy. 2k</span>}</div>);})()}
+                  {/* Corps repliable */}
+                  {isOpen&&<div style={{padding:"0 14px 14px"}}>
+                    <div style={{color:"#7a95b0",fontSize:12,marginBottom:8}}>{b.brand} {b.model} — {b.seats} postes</div>
+                    {b.avg_buoyancy&&<div style={{color:"#f59e0b",fontSize:13,marginBottom:8}}>~ Portance moy. : {b.avg_buoyancy} kg</div>}
+                    {linked.length>0&&<div style={{marginBottom:8}}>{linked.map(cr=><div key={cr.id} style={{color:"#0ea5e9",fontSize:12}}>~ {cr.name}</div>)}</div>}
+                    {lastSetting&&<div style={{color:"#5a7a9a",fontSize:11,marginBottom:8}}>Dernier réglage : {lastSetting.date_reglage} - {lastSetting.regle_par}</div>}
+                    {b.notes&&<div style={{background:"#1e293b50",borderRadius:6,padding:"6px 10px",fontSize:12,color:"#a8bfd4",marginBottom:8}}>{b.notes}</div>}
+                    {(()=>{const st=getBoatStats(b.id);if(!st)return null;return(<div style={{display:"flex",gap:8,flexWrap:"wrap",marginBottom:8}}>{st.avgWatts&&<span style={{...S.badge,background:"#22d3ee15",color:"#0ea5e9",border:"1px solid #22d3ee30"}}>{st.avgWatts}W moy.</span>}{st.avgWeight&&<span style={{...S.badge,background:"#a78bfa15",color:"#a78bfa",border:"1px solid #a78bfa30"}}>{st.avgWeight}kg moy.</span>}{st.avgTime&&<span style={{...S.badge,background:"#4ade8015",color:"#4ade80",border:"1px solid #4ade8030"}}>{st.avgTime} moy. 2k</span>}</div>);})()}
+                    <button style={{...S.btnP,width:"100%",fontSize:12,padding:"6px"}} onClick={()=>setSelBoat(selBoat===b.id?null:b.id)}>{selBoat===b.id?"▲ Masquer réglages":"▼ Voir réglages & pelles"}</button>
+                  </div>}
                 </div>
               );
             })}
@@ -1421,6 +1451,7 @@ export default function CoachSpace({ currentUser, onLogout }) {
             <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12}}>
               <FF label="Nom du bateau"><input style={S.inp} value={newBoat.name} onChange={e=>setNB(p=>({...p,name:e.target.value}))} placeholder="ex: Dragon Rouge"/></FF>
               <FF label="Nombre de postes"><input style={S.inp} type="number" min="1" max="8" value={newBoat.seats} onChange={e=>setNB(p=>({...p,seats:e.target.value}))}/></FF>
+              <FF label="Catégorie"><select style={S.inp} value={newBoat.categorie||""} onChange={e=>setNB(p=>({...p,categorie:e.target.value}))}><option value="">Auto (depuis postes + type)</option>{["1x","2x","2-","4x","4-","4+","8+"].map(c=><option key={c} value={c}>{c}</option>)}</select></FF>
               <FF label="Type"><select style={S.inp} value={newBoat.type} onChange={e=>setNB(p=>({...p,type:e.target.value}))}><option value="couple">~ Couple</option><option value="pointe">~ Pointe</option></select></FF>
               <FF label="Portance moyenne (kg)"><input style={S.inp} type="number" value={newBoat.avg_buoyancy} onChange={e=>setNB(p=>({...p,avg_buoyancy:e.target.value}))} placeholder="ex: 82"/></FF>
               <FF label="Marque"><input style={S.inp} value={newBoat.brand} onChange={e=>setNB(p=>({...p,brand:e.target.value}))} placeholder="ex: Filippi"/></FF>
@@ -1440,6 +1471,7 @@ export default function CoachSpace({ currentUser, onLogout }) {
               <FF label="Nom"><input style={S.inp} value={editBoat.name} onChange={e=>setEditBoat(p=>({...p,name:e.target.value}))}/></FF>
               <FF label="Postes"><input style={S.inp} type="number" min="1" max="8" value={editBoat.seats} onChange={e=>setEditBoat(p=>({...p,seats:e.target.value}))}/></FF>
               <FF label="Type"><select style={S.inp} value={editBoat.type} onChange={e=>setEditBoat(p=>({...p,type:e.target.value}))}><option value="couple">~ Couple</option><option value="pointe">~ Pointe</option></select></FF>
+              <FF label="Catégorie"><select style={S.inp} value={editBoat.categorie||""} onChange={e=>setEditBoat(p=>({...p,categorie:e.target.value}))}><option value="">Auto (depuis postes + type)</option>{["1x","2x","2-","4x","4-","4+","8+"].map(c=><option key={c} value={c}>{c}</option>)}</select></FF>
               <FF label="Portance (kg)"><input style={S.inp} type="number" value={editBoat.avg_buoyancy||""} onChange={e=>setEditBoat(p=>({...p,avg_buoyancy:e.target.value}))}/></FF>
               <FF label="Marque"><input style={S.inp} value={editBoat.brand||""} onChange={e=>setEditBoat(p=>({...p,brand:e.target.value}))}/></FF>
               <FF label="Modèle"><input style={S.inp} value={editBoat.model||""} onChange={e=>setEditBoat(p=>({...p,model:e.target.value}))}/></FF>
