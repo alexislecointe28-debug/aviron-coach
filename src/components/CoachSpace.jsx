@@ -54,6 +54,8 @@ export default function CoachSpace({ currentUser, onLogout }) {
   const [selBoatDetail,setSelBoatDetail] = useState(null);
   // Boats states
   const [selBoat,setSelBoat]   = useState(null);
+  const [boatFilter,setBoatFilter] = useState(null);
+  const [boatOpen,setBoatOpen]   = useState({});
   const [showAddBoat,setShowAddBoat] = useState(false);
   const [paddles,setPaddles] = useState([]);
   const [showAddPaddle,setShowAddPaddle] = useState(false);
