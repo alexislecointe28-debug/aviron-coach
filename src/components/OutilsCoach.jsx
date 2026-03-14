@@ -182,6 +182,7 @@ function ChronoHandicap({ crewsConfig, setCrewsConfig, running, setRunning, star
 
   const [setupMode, setSetupMode] = useState(!running && crewsConfig.length === 0);
   const [newCrewId, setNewCrewId] = useState("");
+  const [newCrewName, setNewCrewName] = useState("");
   const [newDelay, setNewDelay] = useState(0);
 
   function fmt(ms) {
@@ -193,15 +194,20 @@ function ChronoHandicap({ crewsConfig, setCrewsConfig, running, setRunning, star
   }
 
   function addCrew() {
-    if (!newCrewId) return;
-    const crew = allCrews.find(c => c.id === newCrewId);
-    if (!crew) return;
-    if (crewsConfig.find(c => c.id === newCrewId)) return;
-    setCrewsConfig(prev => [...prev, {
-      id: newCrewId, name: crew.name,
-      delay: +newDelay || 0,
-    }]);
-    setNewCrewId(""); setNewDelay(0);
+    // Cas 1 : équipage sélectionné dans la liste
+    if (newCrewId) {
+      const crew = allCrews.find(c => c.id === newCrewId);
+      if (!crew) return;
+      if (crewsConfig.find(c => c.id === newCrewId)) return;
+      setCrewsConfig(prev => [...prev, { id: newCrewId, name: crew.name, delay: +newDelay || 0 }]);
+      setNewCrewId(""); setNewCrewName(""); setNewDelay(0);
+      return;
+    }
+    // Cas 2 : nom saisi librement
+    if (!newCrewName.trim()) return;
+    const id = "free_" + Date.now();
+    setCrewsConfig(prev => [...prev, { id, name: newCrewName.trim(), delay: +newDelay || 0 }]);
+    setNewCrewName(""); setNewDelay(0);
   }
 
   function startChrono() {
@@ -251,28 +257,39 @@ function ChronoHandicap({ crewsConfig, setCrewsConfig, running, setRunning, star
       {/* Ajouter un équipage */}
       <div style={{ background: "#182030", borderRadius: 12, padding: 16, marginBottom: 16 }}>
         <div style={{ color: "#94a3b8", fontSize: 12, fontWeight: 700, textTransform: "uppercase", letterSpacing: 1, marginBottom: 12 }}>Ajouter un équipage</div>
-        <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+        <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 8 }}>
           <select
-            style={{ ...S.inp, flex: 2, minWidth: 140 }}
+            style={{ ...S.inp, flex: 2, minWidth: 120 }}
             value={newCrewId}
-            onChange={e => setNewCrewId(e.target.value)}
+            onChange={e => { setNewCrewId(e.target.value); if(e.target.value) setNewCrewName(""); }}
           >
-            <option value="">— Équipage —</option>
+            <option value="">— Choisir dans la liste —</option>
             {allCrews.filter(c => !crewsConfig.find(x => x.id === c.id)).map(c => (
               <option key={c.id} value={c.id}>{c.name}</option>
             ))}
           </select>
-          <div style={{ display: "flex", alignItems: "center", gap: 6, flex: 1, minWidth: 120 }}>
-            <input
-              type="number" min="0" placeholder="Délai (s)"
-              style={{ ...S.inp, flex: 1 }}
+          <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+            <input type="number" min="0" placeholder="Délai (s)"
+              style={{ ...S.inp, width: 80 }}
               value={newDelay || ""}
               onChange={e => setNewDelay(+e.target.value)}
             />
             <span style={{ color: "#64748b", fontSize: 12 }}>sec</span>
           </div>
-          <button style={{ ...S.btnP, flexShrink: 0 }} onClick={addCrew}>Ajouter</button>
         </div>
+        <div style={{ display: "flex", gap: 8, alignItems: "center", marginBottom: 8 }}>
+          <span style={{ color: "#475569", fontSize: 12, flexShrink: 0 }}>Ou nom libre :</span>
+          <input placeholder="ex: 4x U17, Véolia, Club Mâcon..."
+            style={{ ...S.inp, flex: 1 }}
+            value={newCrewName}
+            onChange={e => { setNewCrewName(e.target.value); if(e.target.value) setNewCrewId(""); }}
+            onKeyDown={e => e.key === "Enter" && addCrew()}
+          />
+        </div>
+        <button style={{ ...S.btnP, width: "100%" }} onClick={addCrew}
+          disabled={!newCrewId && !newCrewName.trim()}>
+          + Ajouter
+        </button>
       </div>
 
       {/* Liste équipages */}
