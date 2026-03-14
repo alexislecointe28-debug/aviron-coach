@@ -78,6 +78,7 @@ export default function PlanningSpace({ athletes, isMobile, currentUser }) {
   const [showWeekModal,      setShowWeekModal]      = useState(false);
   const [showSessionModal,   setShowSessionModal]   = useState(false);
   const [showTplModal,       setShowTplModal]       = useState(false);
+  const [exercises,          setExercises]          = useState([]);
   const [showAthletesModal,  setShowAthletesModal]  = useState(false);
   const [editPlan,           setEditPlan]           = useState(null);
   const [editWeek,           setEditWeek]           = useState(null);
@@ -98,6 +99,7 @@ export default function PlanningSpace({ athletes, isMobile, currentUser }) {
       const [pl, tpl] = await Promise.all([
         api.getSeasonPlans(),
         api.getSessionTemplates(),
+        api.getExercises().catch(()=>[]),
       ]);
       setPlans(pl||[]);
       setTemplates(tpl||[]);
@@ -1008,30 +1010,72 @@ export default function PlanningSpace({ athletes, isMobile, currentUser }) {
 
         {/* Blocs de contenu */}
         <div style={{marginBottom:12}}>
-          <label style={{display:"block",color:"#7a95b0",fontSize:11,marginBottom:8,textTransform:"uppercase",letterSpacing:1}}>Contenu (blocs)</label>
-          {(form.contenu?.blocs||[]).map((b,i)=>(
-            <div key={i} style={{display:"flex",gap:8,marginBottom:6,alignItems:"center"}}>
-              <input style={{...S.inp,fontSize:12,fontWeight:700,width:110,flexShrink:0,borderColor:"#0ea5e940",color:"#0ea5e9"}}
-                value={b.titre}
-                onChange={e=>setContenu("blocs",form.contenu.blocs.map((x,j)=>j===i?{...x,titre:e.target.value}:x))}
-                placeholder="Exercice"/>
-              <input style={{...S.inp,flex:1,fontSize:12}}
-                value={b.detail}
-                onChange={e=>setContenu("blocs",form.contenu.blocs.map((x,j)=>j===i?{...x,detail:e.target.value}:x))}
-                placeholder="Détail"/>
-              <button style={{...S.actionBtn,borderColor:"#ef444430",color:"#ef4444",padding:"6px 10px"}} onClick={()=>setContenu("blocs",form.contenu.blocs.filter((_,j)=>j!==i))}>×</button>
-            </div>
-          ))}
-          {/* Ajouter un bloc */}
-          <div style={{display:"flex",gap:8,marginTop:8}}>
-            <input style={{...S.inp,width:110,fontSize:12}} placeholder="Titre (ex: Muscu)" value={newBloc.titre} onChange={e=>setNewBloc(b=>({...b,titre:e.target.value}))}/>
-            <input style={{...S.inp,flex:1,fontSize:12}} placeholder="Détail (ex: 4×10-12 · 60%)" value={newBloc.detail} onChange={e=>setNewBloc(b=>({...b,detail:e.target.value}))}/>
-            <button style={S.btnP} onClick={()=>{
-              if(!newBloc.titre) return;
-              setContenu("blocs",[...(form.contenu?.blocs||[]),{...newBloc}]);
-              setNewBloc({titre:"",detail:""});
-            }}>+</button>
-          </div>
+          <label style={{display:"block",color:"#7a95b0",fontSize:11,marginBottom:8,textTransform:"uppercase",letterSpacing:1}}>Contenu (blocs) — glisser pour réordonner</label>
+          {(()=>{
+            const [dragIdx, setDragIdx] = React.useState(null);
+            const blocs = form.contenu?.blocs||[];
+            const typeExos = exercises.filter(e=>!form.type_seance||e.type_seance===form.type_seance);
+
+            function onDragStart(i) { setDragIdx(i); }
+            function onDragOver(e,i) { e.preventDefault(); if(dragIdx===null||dragIdx===i) return;
+              const nb=[...blocs]; const [item]=nb.splice(dragIdx,1); nb.splice(i,0,item);
+              setContenu("blocs",nb); setDragIdx(i);
+            }
+            function onDragEnd() { setDragIdx(null); }
+
+            return(<>
+              {blocs.map((b,i)=>(
+                <div key={i}
+                  draggable
+                  onDragStart={()=>onDragStart(i)}
+                  onDragOver={e=>onDragOver(e,i)}
+                  onDragEnd={onDragEnd}
+                  style={{display:"flex",gap:8,marginBottom:6,alignItems:"center",opacity:dragIdx===i?0.5:1,cursor:"grab",background:dragIdx===i?"#0ea5e910":"transparent",borderRadius:6,padding:"2px 0"}}>
+                  <span style={{color:"#334155",fontSize:16,cursor:"grab",flexShrink:0,paddingLeft:2}}>⠿</span>
+                  <div style={{position:"relative",width:140,flexShrink:0}}>
+                    <input
+                      list={`exos-list-${i}`}
+                      style={{...S.inp,fontSize:12,fontWeight:700,width:"100%",borderColor:"#0ea5e940",color:"#0ea5e9"}}
+                      value={b.titre}
+                      onChange={e=>{
+                        const val=e.target.value;
+                        const match=exercises.find(x=>x.titre===val);
+                        const newBlocs=blocs.map((x,j)=>j===i?{...x,titre:val,detail:match?match.detail_defaut:x.detail}:x);
+                        setContenu("blocs",newBlocs);
+                      }}
+                      placeholder="Exercice"/>
+                    <datalist id={`exos-list-${i}`}>
+                      {typeExos.map(e=><option key={e.id} value={e.titre}>{e.detail_defaut}</option>)}
+                    </datalist>
+                  </div>
+                  <input style={{...S.inp,flex:1,fontSize:12}}
+                    value={b.detail}
+                    onChange={e=>setContenu("blocs",blocs.map((x,j)=>j===i?{...x,detail:e.target.value}:x))}
+                    placeholder="Détail"/>
+                  <button style={{...S.actionBtn,borderColor:"#ef444430",color:"#ef4444",padding:"6px 10px"}} onClick={()=>setContenu("blocs",blocs.filter((_,j)=>j!==i))}>×</button>
+                </div>
+              ))}
+              {/* Ajouter un bloc */}
+              <div style={{display:"flex",gap:8,marginTop:8}}>
+                <div style={{position:"relative",width:140,flexShrink:0}}>
+                  <input list="exos-new" style={{...S.inp,width:"100%",fontSize:12}} placeholder="Exercice"
+                    value={newBloc.titre}
+                    onChange={e=>{
+                      const val=e.target.value;
+                      const match=exercises.find(x=>x.titre===val);
+                      setNewBloc(b=>({...b,titre:val,detail:match?match.detail_defaut:b.detail}));
+                    }}/>
+                  <datalist id="exos-new">{typeExos.map(e=><option key={e.id} value={e.titre}/>)}</datalist>
+                </div>
+                <input style={{...S.inp,flex:1,fontSize:12}} placeholder="Détail (ex: 4×10-12 · 60%)" value={newBloc.detail} onChange={e=>setNewBloc(b=>({...b,detail:e.target.value}))}/>
+                <button style={S.btnP} onClick={()=>{
+                  if(!newBloc.titre) return;
+                  setContenu("blocs",[...(form.contenu?.blocs||[]),{...newBloc}]);
+                  setNewBloc({titre:"",detail:""});
+                }}>+</button>
+              </div>
+            </>);
+          })()}
         </div>
 
         <FF label="Durée (min)"><input style={{...S.inp,width:100}} type="number" min="0" value={form.contenu?.duree_min||0} onChange={e=>setContenu("duree_min",parseInt(e.target.value))}/></FF>
@@ -1087,13 +1131,26 @@ export default function PlanningSpace({ athletes, isMobile, currentUser }) {
         </div>
         <div style={{marginBottom:12}}>
           <label style={{display:"block",color:"#7a95b0",fontSize:11,marginBottom:8,textTransform:"uppercase",letterSpacing:1}}>Blocs de contenu</label>
-          {(form.contenu?.blocs||[]).map((b,i)=>(
-            <div key={i} style={{display:"flex",gap:8,marginBottom:6,alignItems:"center"}}>
-              <input style={{...S.inp,width:110,fontSize:12}} value={b.titre} onChange={e=>setContenu("blocs",form.contenu.blocs.map((x,j)=>j===i?{...x,titre:e.target.value}:x))}/>
-              <input style={{...S.inp,flex:1,fontSize:12}} value={b.detail} onChange={e=>setContenu("blocs",form.contenu.blocs.map((x,j)=>j===i?{...x,detail:e.target.value}:x))}/>
-              <button style={{...S.actionBtn,borderColor:"#ef444430",color:"#ef4444",padding:"6px 10px"}} onClick={()=>setContenu("blocs",form.contenu.blocs.filter((_,j)=>j!==i))}>×</button>
-            </div>
-          ))}
+          {(()=>{
+            const [dIdx,setDIdx]=React.useState(null);
+            const blocs=form.contenu?.blocs||[];
+            const typeExos=exercises.filter(e=>!form.type_seance||e.type_seance===form.type_seance);
+            function onDO(e,i){e.preventDefault();if(dIdx===null||dIdx===i)return;const nb=[...blocs];const[it]=nb.splice(dIdx,1);nb.splice(i,0,it);setContenu("blocs",nb);setDIdx(i);}
+            return blocs.map((b,i)=>(
+              <div key={i} draggable onDragStart={()=>setDIdx(i)} onDragOver={e=>onDO(e,i)} onDragEnd={()=>setDIdx(null)}
+                style={{display:"flex",gap:8,marginBottom:6,alignItems:"center",opacity:dIdx===i?0.5:1,cursor:"grab"}}>
+                <span style={{color:"#334155",fontSize:14,flexShrink:0}}>⠿</span>
+                <div style={{position:"relative",width:140,flexShrink:0}}>
+                  <input list={`tpl-exos-${i}`} style={{...S.inp,width:"100%",fontSize:12,fontWeight:700,color:"#0ea5e9",borderColor:"#0ea5e940"}}
+                    value={b.titre}
+                    onChange={e=>{const v=e.target.value;const m=exercises.find(x=>x.titre===v);setContenu("blocs",blocs.map((x,j)=>j===i?{...x,titre:v,detail:m?m.detail_defaut:x.detail}:x));}}/>
+                  <datalist id={`tpl-exos-${i}`}>{typeExos.map(e=><option key={e.id} value={e.titre}/>)}</datalist>
+                </div>
+                <input style={{...S.inp,flex:1,fontSize:12}} value={b.detail} onChange={e=>setContenu("blocs",blocs.map((x,j)=>j===i?{...x,detail:e.target.value}:x))}/>
+                <button style={{...S.actionBtn,borderColor:"#ef444430",color:"#ef4444",padding:"6px 10px"}} onClick={()=>setContenu("blocs",blocs.filter((_,j)=>j!==i))}>×</button>
+              </div>
+            ));
+          })()}
           <div style={{display:"flex",gap:8,marginTop:8}}>
             <input style={{...S.inp,width:110,fontSize:12}} placeholder="Titre" value={newBloc.titre} onChange={e=>setNewBloc(b=>({...b,titre:e.target.value}))}/>
             <input style={{...S.inp,flex:1,fontSize:12}} placeholder="Détail" value={newBloc.detail} onChange={e=>setNewBloc(b=>({...b,detail:e.target.value}))}/>

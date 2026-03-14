@@ -144,6 +144,9 @@ export const api = {
   getBoatSettings: ()          => sb("boat_settings?select=*&order=date_reglage.desc"),
   getBodyMeasurements: (athleteId) => sb(`body_measurements?athlete_id=eq.${athleteId}&order=date.desc`),
   getStrengthSessions: (athleteId) => sb(`strength_sessions?athlete_id=eq.${athleteId}&order=date.desc`),
+  getExercises:        ()           => sb("exercises?order=type_seance,titre"),
+  createExercise:      (data)       => sb("exercises", { method:"POST", body:JSON.stringify(data) }),
+  deleteExercise:      (id)         => sb(`exercises?id=eq.${id}`, { method:"DELETE", prefer:"" }),
   getAthleteSessions:  (athleteId) => sb(`strength_sessions?athlete_id=eq.${athleteId}&order=date.desc`),
   createAthleteSession:(data)       => sb("strength_sessions", { method:"POST", body:JSON.stringify(data) }),
   updateAthleteSession:(id, data)   => sb(`strength_sessions?id=eq.${id}`, { method:"PATCH", body:JSON.stringify(data) }),
@@ -187,6 +190,9 @@ export const api = {
   deletePlanOverride:  (id)        => sb(`plan_overrides?id=eq.${id}`, { method:"DELETE", prefer:"" }),
 
   // Planning — Completions
+  getExercises:        ()           => sb("exercises?order=type_seance,titre"),
+  createExercise:      (data)       => sb("exercises", { method:"POST", body:JSON.stringify(data) }),
+  deleteExercise:      (id)         => sb(`exercises?id=eq.${id}`, { method:"DELETE", prefer:"" }),
   getAthleteSessions:  (athleteId) => sb(`session_completions?athlete_id=eq.${athleteId}&session_id=is.null&order=created_at.desc`),
   createAthleteSession:(data)       => {
     const {date,type_seance,titre,blocs,ressenti,commentaire,athlete_id}=data;
