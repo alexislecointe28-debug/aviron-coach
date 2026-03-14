@@ -8,7 +8,7 @@ const CHAMPS_ERGO  = [["temps","Temps","ex: 1:52"],["allure","Allure /500m","ex:
 const CHAMPS_BAT   = [["distance","Distance","ex: 2×1000m"],["temps","Temps","ex: 3:42"],["allure","Allure /500m","ex: 1:51"],["cadence","Cad. spm","ex: 26"]];
 
 function emptyBloc(type) {
-  if (type === "MUSCU") return { titre:"", series:"", reps:"", charge:"", charge_cible:"", rm_estime:"", note_bloc:"", ia_conseil:"" };
+  if (type === "MUSCU") return { titre:"", groupe:"", series:"", reps:"", charge:"", charge_cible:"", rm_estime:"", note_bloc:"", ia_conseil:"" };
   if (type === "BATEAU") return { titre:"", distance:"", temps:"", allure:"", cadence:"" };
   return { titre:"", temps:"", allure:"", watts:"", cadence:"" };
 }
@@ -68,10 +68,27 @@ export default function MesSeances({ athlete, perfs, isMobile }) {
   }
 
   function changeType(t) {
-    setType(t); setBlocs([emptyBloc(t)]); setAiDone(false); setAiError(null);
+    setType(t);
+    const first = emptyBloc(t);
+    if (t === "MUSCU") first.groupe = "A1";
+    setBlocs([first]); setAiDone(false); setAiError(null);
   }
 
-  function addBloc() { setBlocs(b => [...b, emptyBloc(type)]); }
+  function getGroupeBloc(index) {
+    if (type !== "MUSCU") return null;
+    const g = ["A","A","B","B","C","C","D","D"];
+    const pos = ["1","2","1","2","1","2","1","2"];
+    return { lettre: g[index] || String.fromCharCode(65 + Math.floor(index/2)), pos: pos[index] || "1" };
+  }
+  function addBloc() {
+    const nb = blocs.length;
+    const bloc = emptyBloc(type);
+    if (type === "MUSCU") {
+      const g = getGroupeBloc(nb);
+      bloc.groupe = g ? g.lettre + g.pos : "";
+    }
+    setBlocs(b => [...b, bloc]);
+  }
   function removeBloc(i) { setBlocs(b => b.filter((_, j) => j !== i)); }
   function updateBloc(i, field, val) {
     setBlocs(b => { const n = [...b]; n[i] = { ...n[i], [field]: val }; return n; });
@@ -287,114 +304,105 @@ export default function MesSeances({ athlete, perfs, isMobile }) {
           </div>
         )}
 
-        <div style={{ display:"flex", flexDirection:"column", gap:10 }}>
-          {blocs.map((bloc, i) => (
-            <div key={i} style={{
-              background:"#0f172a", borderRadius:12, padding:"12px 14px",
-              border:`1px solid ${bloc.rm_estime || bloc.charge_cible ? tc+"50" : tc+"20"}`,
-            }}>
-              {/* Nom exercice / bloc */}
-              <div style={{ display:"flex", gap:6, marginBottom:type==="MUSCU"?10:8 }}>
-                <input
-                  list={`exos-${i}`}
-                  placeholder={type==="MUSCU" ? "Exercice (ex: Back squat)" : "Bloc (ex: 6×100m, 2×250m vitesse...)"}
-                  value={bloc.titre}
-                  onChange={e => updateBloc(i,"titre",e.target.value)}
-                  style={{ ...INP, fontWeight:700, flex:1, borderColor: bloc.titre ? tc+"50" : "#334155" }}
-                />
-                {type === "MUSCU" && <datalist id={`exos-${i}`}>{EXOS_SUGGEST.map(e=><option key={e} value={e}/>)}</datalist>}
-                {blocs.length > 1 && (
-                  <button onClick={() => removeBloc(i)} style={{ background:"none", border:"none", color:"#475569", cursor:"pointer", fontSize:16, padding:"0 4px", flexShrink:0 }}>✕</button>
-                )}
-              </div>
-
-              {/* ─── Muscu : grille spéciale ─── */}
-              {type === "MUSCU" ? (
-                <div>
-                  <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr 1fr", gap:8, marginBottom:8 }}>
-                    {/* Séries */}
-                    <div>
-                      <div style={{ color:"#475569", fontSize:10, fontWeight:700, marginBottom:3 }}>Séries</div>
-                      <input type="number" min="1" max="10" placeholder="4"
-                        value={bloc.series||""}
-                        onChange={e => updateBloc(i,"series",e.target.value)}
-                        style={{ ...INP, padding:"6px 8px", fontSize:13, textAlign:"center" }}
-                      />
+        {/* ─── MUSCU : blocs A/B/C ─── */}
+        {type === "MUSCU" ? (()=>{
+          const groupes = {};
+          blocs.forEach((b,i) => {
+            const lettre = b.groupe?.[0] || String.fromCharCode(65+Math.floor(i/2));
+            if (!groupes[lettre]) groupes[lettre] = [];
+            groupes[lettre].push({b,i});
+          });
+          const COULEURS_G = {A:"#f97316",B:"#0ea5e9",C:"#a78bfa",D:"#4ade80"};
+          return(
+            <div style={{ display:"flex", flexDirection:"column", gap:12 }}>
+              {Object.entries(groupes).map(([lettre,items]) => {
+                const gc = COULEURS_G[lettre] || tc;
+                return(
+                  <div key={lettre} style={{ border:`1px solid ${gc}35`, borderRadius:12, overflow:"hidden" }}>
+                    {/* Header groupe */}
+                    <div style={{ background:gc+"18", padding:"8px 14px", display:"flex", alignItems:"center", gap:10 }}>
+                      <div style={{ width:26,height:26,borderRadius:"50%",background:gc,color:"#fff",fontWeight:900,fontSize:14,display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0 }}>{lettre}</div>
+                      <div style={{ color:gc,fontWeight:700,fontSize:12,flex:1 }}>Bloc {lettre} {items.length>1?`— Superset ×${items.length}`:""}</div>
+                      <button onClick={()=>{
+                        const bloc=emptyBloc("MUSCU"); bloc.groupe=lettre+(items.length+1);
+                        setBlocs(b=>{ const n=[...b]; n.splice(items[items.length-1].i+1,0,bloc); return n; });
+                      }} style={{ background:"none",border:`1px solid ${gc}40`,borderRadius:5,color:gc,cursor:"pointer",fontSize:10,padding:"2px 7px" }}>+ Exo</button>
                     </div>
-                    {/* Reps */}
-                    <div>
-                      <div style={{ color:"#475569", fontSize:10, fontWeight:700, marginBottom:3 }}>Répétitions</div>
-                      <input placeholder="10 ou 6-8"
-                        value={bloc.reps||""}
-                        onChange={e => updateBloc(i,"reps",e.target.value)}
-                        style={{ ...INP, padding:"6px 8px", fontSize:13, textAlign:"center" }}
-                      />
-                    </div>
-                    {/* Charge réalisée */}
-                    <div>
-                      <div style={{ color:"#475569", fontSize:10, fontWeight:700, marginBottom:3 }}>Charge (kg)</div>
-                      <input type="number" min="0" placeholder="80"
-                        value={bloc.charge||""}
-                        onChange={e => updateBloc(i,"charge",e.target.value)}
-                        style={{ ...INP, padding:"6px 8px", fontSize:13, textAlign:"center" }}
-                      />
-                    </div>
+                    {/* Exercices */}
+                    {items.map(({b:bloc,i},pos)=>(
+                      <div key={i} style={{ padding:"10px 14px",borderTop:pos>0?"1px solid #1e293b":"none",background:"#0f172a" }}>
+                        <div style={{ display:"flex",gap:6,marginBottom:8 }}>
+                          <span style={{ background:gc+"22",color:gc,borderRadius:4,padding:"1px 7px",fontSize:11,fontWeight:800,flexShrink:0,alignSelf:"center" }}>{lettre}{pos+1}</span>
+                          <input list={`exos-${i}`} placeholder="Exercice (ex: Back squat)"
+                            value={bloc.titre} onChange={e=>updateBloc(i,"titre",e.target.value)}
+                            style={{ ...INP,fontWeight:700,flex:1,borderColor:bloc.titre?gc+"50":"#334155" }}/>
+                          <datalist id={`exos-${i}`}>{EXOS_SUGGEST.map(e=><option key={e} value={e}/>)}</datalist>
+                          {blocs.length>1&&<button onClick={()=>removeBloc(i)} style={{ background:"none",border:"none",color:"#475569",cursor:"pointer",fontSize:15,padding:"0 3px" }}>✕</button>}
+                        </div>
+                        <div style={{ display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:6,marginBottom:bloc.charge_cible||bloc.rm_estime?8:0 }}>
+                          {[["series","Séries","4","number"],["reps","Répétitions","10 ou 6-8","text"],["charge","Charge (kg)","80","number"]].map(([f,l,p,t])=>(
+                            <div key={f}>
+                              <div style={{ color:"#475569",fontSize:10,fontWeight:700,marginBottom:3 }}>{l}</div>
+                              <input type={t} placeholder={p} value={bloc[f]||""} onChange={e=>updateBloc(i,f,e.target.value)}
+                                style={{ ...INP,padding:"6px 8px",fontSize:13,textAlign:"center" }}/>
+                            </div>
+                          ))}
+                        </div>
+                        {(bloc.charge_cible||bloc.rm_estime)&&(
+                          <div style={{ background:gc+"10",border:`1px solid ${gc}25`,borderRadius:7,padding:"6px 10px",display:"flex",gap:8,flexWrap:"wrap",alignItems:"center",marginBottom:6 }}>
+                            <span style={{ fontSize:10,color:"#64748b" }}>🤖</span>
+                            {bloc.charge_cible&&<span style={{ background:gc+"25",color:gc,borderRadius:4,padding:"1px 8px",fontSize:11,fontWeight:800 }}>Cible : {bloc.charge_cible}</span>}
+                            {bloc.rm_estime&&<span style={{ background:"#a78bfa25",color:"#a78bfa",borderRadius:4,padding:"1px 8px",fontSize:11,fontWeight:800 }}>1RM ~{bloc.rm_estime}</span>}
+                            {bloc.ia_conseil&&<span style={{ color:"#64748b",fontSize:10,fontStyle:"italic",width:"100%",marginTop:1 }}>{bloc.ia_conseil}</span>}
+                          </div>
+                        )}
+                        <input placeholder="Note (ex: propre, lourd, technique OK...)" value={bloc.note_bloc||""} onChange={e=>updateBloc(i,"note_bloc",e.target.value)}
+                          style={{ ...INP,padding:"5px 8px",fontSize:11,color:"#94a3b8" }}/>
+                      </div>
+                    ))}
                   </div>
-
-                  {/* Résultats IA */}
-                  {(bloc.charge_cible || bloc.rm_estime) && (
-                    <div style={{ background:"#f97316"+10, border:"1px solid #f97316"+30, borderRadius:8, padding:"8px 12px", display:"flex", gap:10, alignItems:"center", flexWrap:"wrap" }}>
-                      <span style={{ fontSize:12, color:"#64748b" }}>🤖 IA :</span>
-                      {bloc.charge_cible && (
-                        <span style={{ background:"#f9741625", color:"#f97316", borderRadius:5, padding:"2px 10px", fontSize:12, fontWeight:800 }}>
-                          Charge cible : {bloc.charge_cible}
-                        </span>
-                      )}
-                      {bloc.rm_estime && (
-                        <span style={{ background:"#a78bfa25", color:"#a78bfa", borderRadius:5, padding:"2px 10px", fontSize:12, fontWeight:800 }}>
-                          1RM ~{bloc.rm_estime}
-                        </span>
-                      )}
-                      {bloc.ia_conseil && (
-                        <span style={{ color:"#64748b", fontSize:11, fontStyle:"italic", width:"100%", marginTop:2 }}>{bloc.ia_conseil}</span>
-                      )}
-                    </div>
-                  )}
-
-                  {/* Note bloc */}
-                  <div style={{ marginTop:8 }}>
-                    <input
-                      placeholder="Note (ex: bien passé, lourd, technique OK...)"
-                      value={bloc.note_bloc||""}
-                      onChange={e => updateBloc(i,"note_bloc",e.target.value)}
-                      style={{ ...INP, padding:"5px 8px", fontSize:12, color:"#94a3b8" }}
-                    />
-                  </div>
+                );
+              })}
+              <button onClick={()=>{
+                const nextL=String.fromCharCode(65+Object.keys(groupes).length);
+                const b1=emptyBloc("MUSCU"); b1.groupe=nextL+"1";
+                const b2=emptyBloc("MUSCU"); b2.groupe=nextL+"2";
+                setBlocs(prev=>[...prev,b1,b2]);
+              }} style={{ alignSelf:"flex-start",background:"transparent",border:`1px dashed ${tc}40`,borderRadius:8,color:tc,cursor:"pointer",fontSize:12,padding:"6px 14px" }}>
+                + Nouveau bloc ({String.fromCharCode(65+Object.keys(groupes).length)})
+              </button>
+            </div>
+          );
+        })() : (
+          /* ─── Ergo / Bateau ─── */
+          <div style={{ display:"flex",flexDirection:"column",gap:8 }}>
+            {blocs.map((bloc,i)=>(
+              <div key={i} style={{ background:"#0f172a",borderRadius:10,padding:"10px 12px",border:`1px solid ${tc}20` }}>
+                <div style={{ display:"flex",gap:6,marginBottom:8 }}>
+                  <input placeholder="Bloc (ex: 6×100m, 2×250m vitesse, 16km B1...)"
+                    value={bloc.titre} onChange={e=>updateBloc(i,"titre",e.target.value)}
+                    style={{ ...INP,fontWeight:700,flex:1 }}/>
+                  {blocs.length>1&&<button onClick={()=>removeBloc(i)} style={{ background:"none",border:"none",color:"#475569",cursor:"pointer",fontSize:15 }}>✕</button>}
                 </div>
-              ) : (
-                /* ─── Ergo / Bateau ─── */
-                <div style={{ display:"grid", gridTemplateColumns: isMobile ? "1fr 1fr" : `repeat(${CHAMPS.length},1fr)`, gap:6 }}>
-                  {CHAMPS.map(([field, label, ph]) => (
-                    <div key={field}>
-                      <div style={{ color:"#475569", fontSize:10, marginBottom:3 }}>{label}</div>
-                      <input placeholder={ph} value={bloc[field]||""}
-                        onChange={e => updateBloc(i,field,e.target.value)}
-                        style={{ ...INP, padding:"5px 8px", fontSize:12 }}
-                      />
+                <div style={{ display:"grid",gridTemplateColumns:isMobile?"1fr 1fr":`repeat(${CHAMPS.length},1fr)`,gap:6 }}>
+                  {CHAMPS.map(([f,l,p])=>(
+                    <div key={f}>
+                      <div style={{ color:"#475569",fontSize:10,marginBottom:3 }}>{l}</div>
+                      <input placeholder={p} value={bloc[f]||""} onChange={e=>updateBloc(i,f,e.target.value)}
+                        style={{ ...INP,padding:"5px 8px",fontSize:12 }}/>
                     </div>
                   ))}
-                  {/* Badge IA ergo/bateau */}
-                  {bloc.allure && aiDone && (
-                    <div style={{ gridColumn:"1/-1", marginTop:4, display:"flex", gap:6 }}>
-                      <span style={{ background:"#0ea5e925", color:"#0ea5e9", borderRadius:5, padding:"2px 8px", fontSize:11, fontWeight:700 }}>🤖 {bloc.allure}/500m</span>
-                      {bloc.cadence && <span style={{ background:"#a78bfa25", color:"#a78bfa", borderRadius:5, padding:"2px 8px", fontSize:11, fontWeight:700 }}>{bloc.cadence} spm</span>}
+                  {bloc.allure&&aiDone&&(
+                    <div style={{ gridColumn:"1/-1",marginTop:4,display:"flex",gap:6 }}>
+                      <span style={{ background:"#0ea5e925",color:"#0ea5e9",borderRadius:5,padding:"2px 8px",fontSize:11,fontWeight:700 }}>🤖 {bloc.allure}/500m</span>
+                      {bloc.cadence&&<span style={{ background:"#a78bfa25",color:"#a78bfa",borderRadius:5,padding:"2px 8px",fontSize:11,fontWeight:700 }}>{bloc.cadence} spm</span>}
                     </div>
                   )}
                 </div>
-              )}
-            </div>
-          ))}
-        </div>
+              </div>
+            ))}
+          </div>
+        )}
       </div>
 
       {/* Ressenti */}
