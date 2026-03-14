@@ -299,10 +299,20 @@ export default function CoachSpace({ currentUser, onLogout }) {
     load();
   }
   function getBoatCrewsFor(boatId) { return boatCrews.filter(bc=>bc.boat_id===boatId).map(bc=>crews.find(c=>c.id===bc.crew_id)).filter(Boolean); }
-  function getPaddlesFor(boatId) { return paddles.filter(p=>p.boat_id===boatId).sort((a,b)=>a.numero.localeCompare(b.numero)); }
-  function getSettingsFor(boatId) { return boatSettings.filter(s=>s.boat_id===boatId).sort((a,b)=>b.date_reglage.localeCompare(a.date_reglage)); }
-  function getLatestSettingPerPoste(boatId) {
-    const settings=getSettingsFor(boatId);
+  function getPaddlesFor(boatId, typeFilter) {
+    return paddles
+      .filter(p=>p.boat_id===boatId)
+      .filter(p=>!typeFilter||!p.type_nage||p.type_nage===typeFilter)
+      .sort((a,b)=>a.numero.localeCompare(b.numero));
+  }
+  function getSettingsFor(boatId, typeFilter) {
+    return boatSettings
+      .filter(s=>s.boat_id===boatId)
+      .filter(s=>!typeFilter||!s.type_nage||s.type_nage===typeFilter)
+      .sort((a,b)=>b.date_reglage.localeCompare(a.date_reglage));
+  }
+  function getLatestSettingPerPoste(boatId, typeFilter) {
+    const settings=getSettingsFor(boatId, typeFilter);
     const boat=boats.find(b=>b.id===boatId);
     if(!boat) return [];
     return Array.from({length:boat.seats},(_, i)=>{
@@ -319,12 +329,21 @@ export default function CoachSpace({ currentUser, onLogout }) {
 
   const BOAT_CATS = ["1x","2x","2-","4x","4-","4+","8+"];
   function getCat(b) {
+    if(b.type_secondaire) {
+      // Bateau dual : afficher les deux catégories
+      const c1 = b.categorie || (b.seats===2?b.type==="couple"?"2x":"2-":b.seats===4?b.type==="couple"?"4x":"4-":null);
+      const c2 = b.seats===2?b.type_secondaire==="couple"?"2x":"2-":b.seats===4?b.type_secondaire==="couple"?"4x":"4-":null;
+      if(c1&&c2) return c1+" / "+c2;
+    }
     if(b.categorie) return b.categorie;
     if(b.seats===1) return "1x";
     if(b.seats===2) return b.type==="couple"?"2x":"2-";
     if(b.seats===4) return b.type==="couple"?"4x":"4-";
     if(b.seats===8) return "8+";
     return null;
+  }
+  function getActiveType(b) {
+    return boatTypeMode[b.id] || b.type;
   }
   function getBoatStats(boatId) {
     const linkedCrews = getBoatCrewsFor(boatId);
@@ -1163,7 +1182,8 @@ export default function CoachSpace({ currentUser, onLogout }) {
           <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(280px,1fr))",gap:14,marginBottom:28}}>
             {boats.filter(b=>!boatFilter||getCat(b)===boatFilter).map(b=>{
               const linked=getBoatCrewsFor(b.id);
-              const lastSetting=getSettingsFor(b.id)[0];
+              const activeType=getActiveType(b);
+              const lastSetting=getSettingsFor(b.id,b.type_secondaire?activeType:null)[0];
               const isOpen=boatOpen[b.id]===true;
               const cat=getCat(b);
               return(
@@ -1185,6 +1205,17 @@ export default function CoachSpace({ currentUser, onLogout }) {
                   {/* Corps repliable */}
                   {isOpen&&<div style={{padding:"0 14px 14px"}}>
                     <div style={{color:"#7a95b0",fontSize:12,marginBottom:8}}>{b.brand} {b.model} — {b.seats} postes</div>
+                    {/* Toggle couple/pointe si double armement */}
+                    {b.type_secondaire&&(
+                      <div style={{display:"flex",gap:6,marginBottom:10}}>
+                        {[b.type,b.type_secondaire].map(t=>(
+                          <button key={t} onClick={()=>setBoatTypeMode(m=>({...m,[b.id]:t}))}
+                            style={{flex:1,padding:"6px",borderRadius:8,border:`2px solid ${getActiveType(b)===t?"#0ea5e9":"#334155"}`,background:getActiveType(b)===t?"#0ea5e920":"transparent",color:getActiveType(b)===t?"#0ea5e9":"#64748b",fontWeight:getActiveType(b)===t?800:500,fontSize:12,cursor:"pointer"}}>
+                            {t==="couple"?"🚣 Couple":"🏊 Pointe"}
+                          </button>
+                        ))}
+                      </div>
+                    )}
                     {b.avg_buoyancy&&<div style={{color:"#f59e0b",fontSize:13,marginBottom:8}}>~ Portance moy. : {b.avg_buoyancy} kg</div>}
                     {linked.length>0&&<div style={{marginBottom:8}}>{linked.map(cr=><div key={cr.id} style={{color:"#0ea5e9",fontSize:12}}>~ {cr.name}</div>)}</div>}
                     {lastSetting&&<div style={{color:"#5a7a9a",fontSize:11,marginBottom:8}}>Dernier réglage : {lastSetting.date_reglage} - {lastSetting.regle_par}</div>}
@@ -1221,7 +1252,7 @@ export default function CoachSpace({ currentUser, onLogout }) {
 
                 {/* Section Pelles */}
                 {(()=>{
-                  const boatPaddles = getPaddlesFor(selBoat);
+                  const boatPaddles = getPaddlesFor(selBoat, boats.find(b=>b.id===selBoat)?.type_secondaire?getActiveType(boats.find(b=>b.id===selBoat)):null);
                   const MARQUES = ["Concept2","Croker","Dreher","Braca","Vespoli","Autre"];
                   const MODELES_C2 = ["Smoothie 2","Fat 2","Fat2 Skinny","BigBlade","Macon","Bantam","Apex","Autre"];
                   async function savePaddle() {
@@ -1489,7 +1520,8 @@ export default function CoachSpace({ currentUser, onLogout }) {
             <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12}}>
               <FF label="Nom"><input style={S.inp} value={editBoat.name} onChange={e=>setEditBoat(p=>({...p,name:e.target.value}))}/></FF>
               <FF label="Postes"><input style={S.inp} type="number" min="1" max="8" value={editBoat.seats} onChange={e=>setEditBoat(p=>({...p,seats:e.target.value}))}/></FF>
-              <FF label="Type"><select style={S.inp} value={editBoat.type} onChange={e=>setEditBoat(p=>({...p,type:e.target.value}))}><option value="couple">~ Couple</option><option value="pointe">~ Pointe</option></select></FF>
+              <FF label="Type principal"><select style={S.inp} value={editBoat.type} onChange={e=>setEditBoat(p=>({...p,type:e.target.value}))}><option value="couple">~ Couple</option><option value="pointe">~ Pointe</option></select></FF>
+              <FF label="2ᵉ armement (optionnel)"><select style={S.inp} value={editBoat.type_secondaire||""} onChange={e=>setEditBoat(p=>({...p,type_secondaire:e.target.value||null}))}><option value="">Aucun</option><option value="couple">~ Couple</option><option value="pointe">~ Pointe</option></select></FF>
               <FF label="Catégorie"><select style={S.inp} value={editBoat.categorie||""} onChange={e=>setEditBoat(p=>({...p,categorie:e.target.value}))}><option value="">Auto (depuis postes + type)</option>{["1x","2x","2-","4x","4-","4+","8+"].map(c=><option key={c} value={c}>{c}</option>)}</select></FF>
               <FF label="Portance (kg)"><input style={S.inp} type="number" value={editBoat.avg_buoyancy||""} onChange={e=>setEditBoat(p=>({...p,avg_buoyancy:e.target.value}))}/></FF>
               <FF label="Marque"><input style={S.inp} value={editBoat.brand||""} onChange={e=>setEditBoat(p=>({...p,brand:e.target.value}))}/></FF>
@@ -1592,7 +1624,7 @@ export default function CoachSpace({ currentUser, onLogout }) {
                       setNS(p=>({...p,numero_pelle:e.target.value,type_pelle:sel?.modele||p.type_pelle}));
                     }}>
                       <option value="">-- Choisir ou saisir --</option>
-                      {getPaddlesFor(selBoat).map(p=><option key={p.id} value={p.numero}>N°{p.numero} — {p.marque} {p.modele} ({p.type_nage}) {p.plage_reglage?`· ${p.plage_reglage}cm`:""}</option>)}
+                      {getPaddlesFor(selBoat, boats.find(b=>b.id===selBoat)?.type_secondaire?getActiveType(boats.find(b=>b.id===selBoat)):null).map(p=><option key={p.id} value={p.numero}>N°{p.numero} — {p.marque} {p.modele} ({p.type_nage}) {p.plage_reglage?`· ${p.plage_reglage}cm`:""}</option>)}
                     </select>
                   </FF>
                   {newSetting.numero_pelle&&(()=>{const sel=paddles.find(p=>p.numero===newSetting.numero_pelle&&p.boat_id===selBoat);if(!sel)return null;return(<div style={{padding:"8px 12px",background:"#0ea5e910",border:"1px solid #0ea5e930",borderRadius:8,marginBottom:8,fontSize:12,color:"#94a3b8"}}>🚣 {sel.type_nage} · {sel.marque} {sel.modele}{sel.plage_reglage?` · Plage: ${sel.plage_reglage} cm`:""}</div>);})()}
