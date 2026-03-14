@@ -815,10 +815,11 @@ export default function PlanningSpace({ athletes, isMobile, currentUser }) {
   function ViewTemplates() {
     const [filterPhase, setFilterPhase] = useState(null);
     const PHASES = [
-      {key:"phase_accumulation",  label:"Accumulation",   color:"#3b82f6"},
-      {key:"phase_transformation",label:"Transformation", color:"#f59e0b"},
-      {key:"phase_realisation",   label:"Réalisation",    color:"#10b981"},
-      {key:"phase_transition",    label:"Transition",     color:"#8b5cf6"},
+      {key:"phase_transition",    label:"Transition",     color:"#6366f1"},
+      {key:"phase_construction",  label:"Construction",   color:"#0ea5e9"},
+      {key:"phase_decharge",      label:"Décharge",       color:"#4ade80"},
+      {key:"phase_surcompensation",label:"Surcompensation",color:"#f59e0b"},
+      {key:"phase_specifique",    label:"Spécifique",     color:"#ec4899"},
     ];
     const filtered = filterPhase ? templates.filter(t=>t[filterPhase]) : templates;
     const byType = {};
@@ -854,10 +855,11 @@ export default function PlanningSpace({ athletes, isMobile, currentUser }) {
     const [open, setOpen] = useState(false);
     const color = TYPE_SEANCE_COLORS[type]||"#64748b";
     const PHASES_BADGE = [
-      {key:"phase_accumulation",  label:"A", color:"#3b82f6"},
-      {key:"phase_transformation",label:"T", color:"#f59e0b"},
-      {key:"phase_realisation",   label:"R", color:"#10b981"},
-      {key:"phase_transition",    label:"Tr",color:"#8b5cf6"},
+      {key:"phase_transition",    label:"Tr", color:"#6366f1"},
+      {key:"phase_construction",  label:"C",  color:"#0ea5e9"},
+      {key:"phase_decharge",      label:"D",  color:"#4ade80"},
+      {key:"phase_surcompensation",label:"S", color:"#f59e0b"},
+      {key:"phase_specifique",    label:"Sp", color:"#ec4899"},
     ];
     return (
       <div style={{marginBottom:16,border:`1px solid ${color}30`,borderRadius:12,overflow:"hidden"}}>
@@ -1061,10 +1063,11 @@ export default function PlanningSpace({ athletes, isMobile, currentUser }) {
     }
 
     const PHASES_TPL = [
-      {key:"phase_accumulation",  label:"Accumulation",   color:"#3b82f6"},
-      {key:"phase_transformation",label:"Transformation", color:"#f59e0b"},
-      {key:"phase_realisation",   label:"Réalisation",    color:"#10b981"},
-      {key:"phase_transition",    label:"Transition",     color:"#8b5cf6"},
+      {key:"phase_transition",    label:"Transition",     color:"#6366f1"},
+      {key:"phase_construction",  label:"Construction",   color:"#0ea5e9"},
+      {key:"phase_decharge",      label:"Décharge",       color:"#4ade80"},
+      {key:"phase_surcompensation",label:"Surcompensation",color:"#f59e0b"},
+      {key:"phase_specifique",    label:"Spécifique",     color:"#ec4899"},
     ];
     const [tplPhaseFilter, setTplPhaseFilter] = useState(null);
     const myTemplates = templates
@@ -1276,10 +1279,11 @@ export default function PlanningSpace({ athletes, isMobile, currentUser }) {
           <label style={{display:"block",color:"#7a95b0",fontSize:11,marginBottom:8,textTransform:"uppercase",letterSpacing:1}}>Phases d'utilisation</label>
           <div style={{display:"flex",gap:8,flexWrap:"wrap"}}>
             {[
-              {key:"phase_accumulation",  label:"Accumulation",   color:"#3b82f6"},
-              {key:"phase_transformation",label:"Transformation", color:"#f59e0b"},
-              {key:"phase_realisation",   label:"Réalisation",    color:"#10b981"},
-              {key:"phase_transition",    label:"Transition",     color:"#8b5cf6"},
+      {key:"phase_transition",    label:"Transition",     color:"#6366f1"},
+      {key:"phase_construction",  label:"Construction",   color:"#0ea5e9"},
+      {key:"phase_decharge",      label:"Décharge",       color:"#4ade80"},
+      {key:"phase_surcompensation",label:"Surcompensation",color:"#f59e0b"},
+      {key:"phase_specifique",    label:"Spécifique",     color:"#ec4899"},
             ].map(p=>(
               <button key={p.key}
                 style={{background:form[p.key]?p.color:"transparent",border:`1px solid ${p.color}60`,color:form[p.key]?"#fff":p.color,borderRadius:6,padding:"5px 12px",fontSize:12,fontWeight:700,cursor:"pointer"}}
