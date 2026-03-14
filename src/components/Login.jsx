@@ -8,6 +8,10 @@ export default function Login({ onLogin }) {
   const [installPrompt, setInstallPrompt] = useState(null);
   const [installed, setInstalled] = useState(false);
 
+  const [showInstallHelp, setShowInstallHelp] = useState(false);
+  const isIOS = /iphone|ipad|ipod/i.test(navigator.userAgent);
+  const isInStandaloneMode = window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone;
+
   useEffect(() => {
     const handler = (e) => { e.preventDefault(); setInstallPrompt(e); };
     window.addEventListener("beforeinstallprompt", handler);
@@ -16,7 +20,8 @@ export default function Login({ onLogin }) {
   }, []);
 
   async function installApp() {
-    if (!installPrompt) return;
+    if (isIOS) { setShowInstallHelp(true); return; }
+    if (!installPrompt) { setShowInstallHelp(true); return; }
     installPrompt.prompt();
     const { outcome } = await installPrompt.userChoice;
     if (outcome === "accepted") setInstalled(true);
