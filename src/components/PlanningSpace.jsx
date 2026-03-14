@@ -926,12 +926,32 @@ export default function PlanningSpace({ athletes, isMobile, currentUser }) {
     const initContenu = editSession?.contenu && typeof editSession.contenu==="object" ? editSession.contenu : {blocs:[],duree_min:60};
     const [form, setForm] = useState({...editSession, contenu: initContenu});
     const [newBloc, setNewBloc] = useState({titre:"",detail:""});
+    const [selTpl, setSelTpl] = useState(null); // template source
+    const [showTplSave, setShowTplSave] = useState(false); // propose sauvegarde
     function set(k,v) { setForm(f=>({...f,[k]:v})); }
     function setContenu(k,v) { setForm(f=>({...f,contenu:{...f.contenu,[k]:v}})); }
 
     function applyTemplate(tpl) {
       const c = typeof tpl.contenu==="string"?JSON.parse(tpl.contenu):tpl.contenu;
       setForm(f=>({...f,type_seance:tpl.type_seance,titre:tpl.name,contenu:{...c}}));
+      setSelTpl(tpl);
+      setShowTplSave(false);
+    }
+
+    function handleSaveSession() {
+      // Si un template a été appliqué, proposer de le sauvegarder
+      if(selTpl) { setShowTplSave(true); return; }
+      saveSession(form);
+    }
+
+    async function saveTplAndSession(mode) {
+      if(mode==="overwrite" && selTpl?.id) {
+        await saveTpl({...selTpl, contenu: form.contenu});
+      } else if(mode==="new") {
+        const {id:_,is_default:__,...rest} = selTpl||{};
+        await saveTpl({...rest, name: (selTpl?.name||form.titre)+" (modifié)", contenu: form.contenu, is_default:false});
+      }
+      saveSession(form);
     }
 
     const PHASES_TPL = [
@@ -991,8 +1011,14 @@ export default function PlanningSpace({ athletes, isMobile, currentUser }) {
           <label style={{display:"block",color:"#7a95b0",fontSize:11,marginBottom:8,textTransform:"uppercase",letterSpacing:1}}>Contenu (blocs)</label>
           {(form.contenu?.blocs||[]).map((b,i)=>(
             <div key={i} style={{display:"flex",gap:8,marginBottom:6,alignItems:"center"}}>
-              <div style={{...S.inp,background:"#0ea5e915",border:"1px solid #0ea5e930",color:"#0ea5e9",fontSize:12,fontWeight:700,width:100,flexShrink:0,padding:"8px 10px"}}>{b.titre}</div>
-              <div style={{...S.inp,flex:1,fontSize:12,color:"#cbd5e1",padding:"8px 10px"}}>{b.detail}</div>
+              <input style={{...S.inp,fontSize:12,fontWeight:700,width:110,flexShrink:0,borderColor:"#0ea5e940",color:"#0ea5e9"}}
+                value={b.titre}
+                onChange={e=>setContenu("blocs",form.contenu.blocs.map((x,j)=>j===i?{...x,titre:e.target.value}:x))}
+                placeholder="Exercice"/>
+              <input style={{...S.inp,flex:1,fontSize:12}}
+                value={b.detail}
+                onChange={e=>setContenu("blocs",form.contenu.blocs.map((x,j)=>j===i?{...x,detail:e.target.value}:x))}
+                placeholder="Détail"/>
               <button style={{...S.actionBtn,borderColor:"#ef444430",color:"#ef4444",padding:"6px 10px"}} onClick={()=>setContenu("blocs",form.contenu.blocs.filter((_,j)=>j!==i))}>×</button>
             </div>
           ))}
@@ -1010,13 +1036,33 @@ export default function PlanningSpace({ athletes, isMobile, currentUser }) {
 
         <FF label="Durée (min)"><input style={{...S.inp,width:100}} type="number" min="0" value={form.contenu?.duree_min||0} onChange={e=>setContenu("duree_min",parseInt(e.target.value))}/></FF>
 
+        {/* Proposition sauvegarde template */}
+        {showTplSave&&selTpl&&(
+          <div style={{background:"#0ea5e910",border:"1px solid #0ea5e930",borderRadius:10,padding:"12px 14px",marginTop:8}}>
+            <div style={{color:"#0ea5e9",fontWeight:700,fontSize:13,marginBottom:8}}>
+              ✏️ Tu as modifié le template <em>"{selTpl.name}"</em>
+            </div>
+            <div style={{display:"flex",gap:8,flexWrap:"wrap"}}>
+              <button style={{...S.btnP,background:"transparent",color:"#64748b",border:"1px solid #334155",fontSize:12}} onClick={()=>{setShowTplSave(false);saveSession(form);}}>
+                Garder les modifs pour cette séance seulement
+              </button>
+              <button style={{...S.btnP,background:"#0ea5e9",fontSize:12}} onClick={()=>saveTplAndSession("overwrite")}>
+                💾 Écraser le template original
+              </button>
+              <button style={{...S.btnP,background:"#4ade80",color:"#0f1923",fontSize:12}} onClick={()=>saveTplAndSession("new")}>
+                ✨ Enregistrer comme nouveau template
+              </button>
+            </div>
+          </div>
+        )}
+
         <div style={{display:"flex",gap:10,justifyContent:"space-between",marginTop:8,flexWrap:"wrap"}}>
           <div>
             {form.id&&<button style={{...S.actionBtn,borderColor:"#ef444430",color:"#ef4444"}} onClick={()=>{deleteSession(form.id);setShowSessionModal(false);}}>Supprimer</button>}
           </div>
           <div style={{display:"flex",gap:10}}>
             <button style={{...S.btnP,background:"transparent",color:"#64748b",border:"1px solid #334155"}} onClick={()=>setShowSessionModal(false)}>Annuler</button>
-            <button style={S.btnP} onClick={()=>saveSession(form)}>Enregistrer</button>
+            <button style={S.btnP} onClick={handleSaveSession}>Enregistrer</button>
           </div>
         </div>
       </Modal>
