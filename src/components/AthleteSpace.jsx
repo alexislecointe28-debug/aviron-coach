@@ -911,7 +911,9 @@ function AthletePlanningView({ athlete, currentUser, isMobile, perfs=[] }) {
   const [selSession, setSelSession] = useState(null);
   const [noteForm, setNoteForm]     = useState({ note:"", commentaire:"" });
   const [aiSession, setAiSession]   = useState(null);
-  const [expandedSessions, setExpandedSessions] = useState({}); // id séance dont on affiche l'IA
+  const [expandedSessions, setExpandedSessions] = useState({});
+  const today = ["Dimanche","Lundi","Mardi","Mercredi","Jeudi","Vendredi","Samedi"][new Date().getDay()];
+  const [activeJour, setActiveJour] = useState(today); // id séance dont on affiche l'IA
   const [aiData, setAiData]         = useState({});    // {sessionId: resultIA}
   const [aiLoading, setAiLoading]   = useState(null);  // id séance en cours de chargement
 
@@ -1117,12 +1119,7 @@ function AthletePlanningView({ athlete, currentUser, isMobile, perfs=[] }) {
 
       {/* Navigation jours — swipe style */}
       {(()=>{
-        const joursAvecSeances = JOURS.filter(j=>(byDay[j]||[]).length>0);
-        const today = ["Dimanche","Lundi","Mardi","Mercredi","Jeudi","Vendredi","Samedi"][new Date().getDay()];
-        const defaultJour = joursAvecSeances.includes(today) ? today : (joursAvecSeances[0]||JOURS[0]);
-        const [activeJour, setActiveJour] = useState(defaultJour);
         const joursessions = byDay[activeJour]||[];
-
         return(
           <div>
             {/* Tabs jours */}
