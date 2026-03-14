@@ -24,6 +24,9 @@ export default function AthleteSpace({ currentUser, onLogout, managedSections=[]
   const [newPerf,setNP] = useState({date:"",time:"",watts:"",spm:"",hr:"",rpe:"",distance:"",distance_type:"2000m"});
   const [perfTypeFilter,setPerfTypeFilter] = useState("2000m");
   const [toast,setToast] = useState(null);
+  const [dashWeek,setDashWeek]       = useState(null);
+  const [dashSessions,setDashSessions] = useState([]);
+  const [dashLoading,setDashLoading] = useState(false);
 
   const load = useCallback(async()=>{
     setLoading(true);
@@ -66,6 +69,33 @@ export default function AthleteSpace({ currentUser, onLogout, managedSections=[]
     setNP({date:"",time:"",watts:"",spm:"",hr:"",rpe:"",distance:"",distance_type:"2000m"}); setShowAddPerf(false);
   }
 
+  // Charge la semaine courante pour le dashboard
+  useEffect(()=>{
+    if(athlete) loadDashboardPlanning();
+  },[athlete?.id]);
+
+  async function loadDashboardPlanning() {
+    setDashLoading(true);
+    try {
+      const allPlans = await api.getSeasonPlans().catch(()=>[]);
+      const myPlans = (allPlans||[]).filter(p=>{
+        const cats=p.category.split(",").map(s=>s.trim());
+        return cats.includes(athlete.category)||cats.includes("Tous");
+      });
+      if(!myPlans.length){ setDashLoading(false); return; }
+      const allWeeks=(await Promise.all(myPlans.map(p=>api.getPlanWeeks(p.id).catch(()=>[]))))
+        .flat().sort((a,b)=>a.date_debut?.localeCompare(b.date_debut||"")||a.num_semaine-b.num_semaine);
+      const today=new Date().toISOString().split("T")[0];
+      const cur=allWeeks.find(w=>w.date_debut&&w.date_debut<=today)||allWeeks[0];
+      if(cur){
+        setDashWeek(cur);
+        const s=await api.getPlannedSessions(cur.id).catch(()=>[]);
+        setDashSessions(s||[]);
+      }
+    } catch(e){}
+    setDashLoading(false);
+  }
+
   const NAV=[{id:"dashboard",label:"Mon espace",icon:"*"},{id:"stats",label:"Mes stats",icon:"*"},{id:"crew",label:"Mon équipage",icon:"~"},{id:"boats",label:"Mon bateau",icon:"~"},{id:"planning",label:"Mon planning",icon:"#"},...(managedSections.length>0?[{id:"section",label:"Ma section",icon:"👥"}]:[])];
   if(loading) return <div style={{...S.root,alignItems:"center",justifyContent:"center"}}><Loader/></div>;
   if(!athlete) return <div style={{minHeight:"100vh",background:"#0f1923",display:"flex",alignItems:"center",justifyContent:"center",color:"#ef4444",fontFamily:"monospace"}}>Fiche athlète introuvable. Contacte ton coach.</div>;
@@ -89,27 +119,141 @@ export default function AthleteSpace({ currentUser, onLogout, managedSections=[]
 
       {/* Contenu principal */}
       <div style={{...S.main,paddingBottom:isMobile?64:0,width:isMobile?"100%":"auto",flex:1}}>
-        {tab==="dashboard"&&(<div style={{...S.page,padding:isMobile?"16px 12px":"28px 32px"}}>
-          <div style={S.ph}><div><h1 style={S.ttl}>Bonjour, {athlete.name.split(" ")[0]} </h1><p style={S.sub}>Ton espace personnel</p></div><button style={{...S.btnP,background:"#a78bfa",color:"#0f1923"}} onClick={()=>setEditing(true)}>✏️ Ma fiche</button></div>
-          <div style={{...S.card,marginBottom:24,borderColor:"#2d1b4e"}}>
-            <div style={{display:"flex",alignItems:"center",gap:20}}>
-              <div style={{...S.av,width:64,height:64,fontSize:22,background:"#a78bfa22",border:"2px solid #a78bfa44",color:"#a78bfa"}}>{athlete.avatar}</div>
-              <div style={{flex:1}}><div style={{fontSize:22,fontWeight:900,color:"#f1f5f9"}}>{athlete.name}</div><div style={{color:"#7a95b0",fontSize:14,marginTop:2}}>{athlete.category} - {athlete.age}ans - {athlete.weight}kg</div></div>
-              <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12}}>
-                <div style={{background:"#4ade8015",border:"1px solid #4ade8030",borderRadius:10,padding:"12px 18px",textAlign:"center"}}><div style={{color:"#7a95b0",fontSize:10,textTransform:"uppercase",letterSpacing:1}}>Best {perfTypeFilter}</div><div style={{color:"#4ade80",fontWeight:900,fontSize:26}}>{best?.time??"--"}</div><div style={{color:"#5a7a9a",fontSize:11}}>{best?.date??""}</div></div>
-                <div style={{background:"#a78bfa15",border:"1px solid #a78bfa30",borderRadius:10,padding:"12px 18px",textAlign:"center"}}><div style={{color:"#7a95b0",fontSize:10,textTransform:"uppercase",letterSpacing:1}}>W/kg</div><div style={{color:"#a78bfa",fontWeight:900,fontSize:26}}>{wpkg??"--"}</div><div style={{color:"#5a7a9a",fontSize:11}}>{lastWatts}W - {athlete.weight}kg</div></div>
+        {tab==="dashboard"&&(()=>{
+          // ——— Jauge de forme ———
+          const CHARGE_WEIGHTS = {"Légère":1,"Modérée":2,"Élevée":3,"Maximale":4,"Compétition":4};
+          const TYPE_SEANCE_LABELS_D = {ERGO:"Ergo",BATEAU:"Bateau",MUSCU:"Muscu",REPOS:"Repos",AUTRE:"Autre"};
+          const TYPE_SEANCE_COLORS_D = {ERGO:"#0ea5e9",BATEAU:"#4ade80",MUSCU:"#f97316",REPOS:"#334155",AUTRE:"#a78bfa"};
+          const weekSessions = dashSessions.filter(s=>s.type_seance!=="REPOS");
+          const chargeScore = weekSessions.reduce((sum,s)=>sum+(CHARGE_WEIGHTS[dashWeek?.charge]||1),0);
+          const chargeMax = Math.max(weekSessions.length * 4, 1);
+          const chargePct = Math.min(Math.round(chargeScore/chargeMax*100),100);
+          const formeColor = chargePct<35?"#4ade80":chargePct<65?"#f59e0b":chargePct<85?"#f97316":"#ef4444";
+          const formeLabel = chargePct<35?"Frais 🟢":chargePct<65?"Chargé 🟡":chargePct<85?"Élevé 🟠":"Limite 🔴";
+
+          // ——— Séance du jour ———
+          const todayJour = ["Dimanche","Lundi","Mardi","Mercredi","Jeudi","Vendredi","Samedi"][new Date().getDay()];
+          const todaySessions = dashSessions.filter(s=>s.jour===todayJour&&s.type_seance!=="REPOS");
+          const JOURS_ORDER = ["Lundi","Mardi","Mercredi","Jeudi","Vendredi","Samedi","Dimanche"];
+          const best2k = getBestTime(myPerfs.filter(p=>(p.distance_type||"2000m")==="2000m"));
+
+          return (
+          <div style={{padding:0,minHeight:"100%"}}>
+
+            {/* ═══ HERO CARD ═══ */}
+            <div style={{background:"linear-gradient(135deg,#1a0a2e 0%,#0f1923 50%,#0a1628 100%)",padding:isMobile?"24px 16px 20px":"32px 40px 28px",borderBottom:"1px solid #2d1b4e",position:"relative",overflow:"hidden"}}>
+              {/* Déco fond */}
+              <div style={{position:"absolute",top:-40,right:-40,width:200,height:200,borderRadius:"50%",background:"#a78bfa08",pointerEvents:"none"}}/>
+              <div style={{position:"absolute",bottom:-20,left:-20,width:120,height:120,borderRadius:"50%",background:"#7c3aed08",pointerEvents:"none"}}/>
+
+              <div style={{display:"flex",alignItems:"center",gap:isMobile?14:24,position:"relative"}}>
+                {/* Avatar */}
+                <div style={{flexShrink:0,width:isMobile?70:90,height:isMobile?70:90,borderRadius:"50%",background:"linear-gradient(135deg,#7c3aed,#a78bfa)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:isMobile?28:36,border:"3px solid #a78bfa50",boxShadow:"0 0 30px #a78bfa30"}}>
+                  {athlete.avatar}
+                </div>
+                {/* Identité */}
+                <div style={{flex:1,minWidth:0}}>
+                  <div style={{color:"#a78bfa",fontSize:11,fontWeight:700,letterSpacing:2,textTransform:"uppercase",marginBottom:4}}>Espace Athlète</div>
+                  <div style={{color:"#f1f5f9",fontSize:isMobile?22:30,fontWeight:900,lineHeight:1.1,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{athlete.name}</div>
+                  <div style={{display:"flex",flexWrap:"wrap",gap:6,marginTop:8}}>
+                    <span style={{background:"#a78bfa20",border:"1px solid #a78bfa40",color:"#a78bfa",borderRadius:20,fontSize:11,fontWeight:700,padding:"2px 10px"}}>{athlete.category}</span>
+                    {myCrew&&<span style={{background:"#0ea5e920",border:"1px solid #0ea5e940",color:"#0ea5e9",borderRadius:20,fontSize:11,fontWeight:700,padding:"2px 10px"}}>🚣 {myCrew.name}</span>}
+                    {athlete.weight&&<span style={{background:"#f97316",color:"#fff",borderRadius:20,fontSize:11,fontWeight:700,padding:"2px 10px"}}>{athlete.weight} kg</span>}
+                  </div>
+                </div>
+                <button style={{...S.btnP,background:"transparent",border:"1px solid #a78bfa50",color:"#a78bfa",fontSize:12,flexShrink:0}} onClick={()=>setEditing(true)}>✏️</button>
+              </div>
+
+              {/* ——— Best perf + W/kg ——— */}
+              <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10,marginTop:20}}>
+                <div style={{background:"#4ade8010",border:"1px solid #4ade8030",borderRadius:12,padding:"14px 16px",textAlign:"center"}}>
+                  <div style={{color:"#64748b",fontSize:10,fontWeight:700,letterSpacing:1.5,textTransform:"uppercase",marginBottom:4}}>Record 2k</div>
+                  <div style={{color:"#4ade80",fontWeight:900,fontSize:isMobile?28:34,lineHeight:1}}>{best2k?.time??"--"}</div>
+                  {best2k&&<div style={{color:"#5a7a9a",fontSize:10,marginTop:4}}>{best2k.date}</div>}
+                </div>
+                <div style={{background:"#a78bfa10",border:"1px solid #a78bfa30",borderRadius:12,padding:"14px 16px",textAlign:"center"}}>
+                  <div style={{color:"#64748b",fontSize:10,fontWeight:700,letterSpacing:1.5,textTransform:"uppercase",marginBottom:4}}>Puissance</div>
+                  <div style={{color:"#a78bfa",fontWeight:900,fontSize:isMobile?28:34,lineHeight:1}}>{wpkg??"--"}<span style={{fontSize:14,fontWeight:400}}> W/kg</span></div>
+                  {lastWatts&&<div style={{color:"#5a7a9a",fontSize:10,marginTop:4}}>{lastWatts} W</div>}
+                </div>
               </div>
             </div>
-          </div>
-          <div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:14,marginBottom:28}}>
-            {[{l:"Sessions",v:myPerfs.length,c:"#0ea5e9",ic:"*"},{l:"Dernière puiss.",v:last?`${last.watts}W`:"--",c:"#a78bfa",ic:"~"},{l:"Km cumulés",v:`${myPerfs.reduce((s,p)=>s+(p.distance||0),0)}km`,c:"#f97316",ic:"~"},{l:"Équipage",v:myCrew?.name??"--",c:"#4ade80",ic:"~"}].map((k,i)=><div key={i} style={S.kpi}><div style={{color:k.c,fontSize:20,marginBottom:8}}>{k.ic}</div><div style={{color:k.c,fontSize:18,fontWeight:900}}>{k.v}</div><div style={{color:"#7a95b0",fontSize:11,textTransform:"uppercase",letterSpacing:1,marginTop:4}}>{k.l}</div></div>)}
-          </div>
-          <div style={S.st}>Dernières performances</div>
-          <div style={{display:"flex",flexDirection:"column",gap:8,marginBottom:20}}>
-            {[...myPerfs].reverse().slice(0,4).map(p=>{const pw=concept2WattsFast(p.time, p.distance_type||"2000m")||p.watts||0;const pwkg=pw&&athlete?.weight?(pw/athlete.weight).toFixed(2):null;return(<div key={p.id} style={{...S.card,display:"flex",alignItems:"center",gap:12,padding:"12px 18px",flexWrap:"wrap"}}><div style={{color:"#7a95b0",fontSize:12,minWidth:85}}>{p.date}</div><div style={{color:"#4ade80",fontWeight:700,fontSize:16,minWidth:55}}>{p.time}</div><div style={{color:"#0ea5e9",fontWeight:700}}>⚡ {pw}W</div>{pwkg&&<div style={{color:"#a78bfa",fontWeight:700,fontSize:13}}>{pwkg} W/kg</div>}<div style={{marginLeft:"auto",color:"#f97316",fontSize:12}}>{p.distance}km</div><div style={{...S.badge,background:`hsl(${(10-p.rpe)*12},80%,40%)`,color:"#fff"}}>{p.rpe}/10</div></div>);})}
-            {!myPerfs.length&&<div style={{...S.card,textAlign:"center",color:"#5a7a9a",padding:"28px"}}>Aucune performance</div>}
-          </div>
-          <button style={{...S.btnP,background:"#a78bfa",color:"#0f1923"}} onClick={()=>setShowAddPerf(true)}>+ Ajouter une performance</button>
+
+            {/* ═══ JAUGE DE FORME ═══ */}
+            <div style={{padding:isMobile?"16px 16px 0":"20px 40px 0"}}>
+              <div style={{background:"#182030",border:`1px solid ${formeColor}30`,borderRadius:12,padding:"14px 18px"}}>
+                <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:10}}>
+                  <div>
+                    <div style={{color:"#f1f5f9",fontWeight:700,fontSize:13}}>Forme cette semaine</div>
+                    {dashWeek&&<div style={{color:"#64748b",fontSize:11,marginTop:2}}>S{dashWeek.num_semaine} · {weekSessions.length} séance{weekSessions.length!==1?"s":""} prévue{weekSessions.length!==1?"s":""}</div>}
+                  </div>
+                  <div style={{color:formeColor,fontWeight:800,fontSize:14}}>{formeLabel}</div>
+                </div>
+                <div style={{height:8,background:"#1e293b",borderRadius:4,overflow:"hidden"}}>
+                  <div style={{height:"100%",width:`${chargePct}%`,background:`linear-gradient(90deg,#4ade80,${formeColor})`,borderRadius:4,transition:"width 0.6s ease"}}/>
+                </div>
+              </div>
+            </div>
+
+            {/* ═══ PLANNING DE LA SEMAINE ═══ */}
+            <div style={{padding:isMobile?"16px 16px 0":"20px 40px 0"}}>
+              <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:12}}>
+                <div style={{color:"#f1f5f9",fontWeight:800,fontSize:15}}>📅 Cette semaine</div>
+                <button style={{...S.actionBtn,borderColor:"#a78bfa40",color:"#a78bfa",fontSize:11}} onClick={()=>setTab("planning")}>Voir tout →</button>
+              </div>
+              {dashLoading?<div style={{color:"#64748b",fontSize:13,padding:"16px 0"}}>Chargement...</div>:
+              dashSessions.length===0?<div style={{background:"#182030",border:"1px solid #334155",borderRadius:12,padding:"20px",textAlign:"center",color:"#5a7a9a",fontSize:13}}>Aucune séance planifiée cette semaine</div>:
+              <div style={{display:"flex",flexDirection:"column",gap:6}}>
+                {JOURS_ORDER.map(jour=>{
+                  const jourSessions=dashSessions.filter(s=>s.jour===jour);
+                  if(!jourSessions.length) return null;
+                  const isToday=jour===todayJour;
+                  return(
+                    <div key={jour} style={{background:isToday?"#a78bfa10":"#182030",border:`1px solid ${isToday?"#a78bfa50":"#1e293b"}`,borderRadius:10,padding:"10px 14px",position:"relative"}}>
+                      {isToday&&<div style={{position:"absolute",top:0,left:0,bottom:0,width:3,background:"#a78bfa",borderRadius:"10px 0 0 10px"}}/>}
+                      <div style={{display:"flex",alignItems:"center",gap:8}}>
+                        <span style={{color:isToday?"#a78bfa":"#475569",fontWeight:isToday?800:600,fontSize:12,minWidth:70}}>{isToday?"▶ Aujourd'hui":jour}</span>
+                        <div style={{display:"flex",gap:5,flexWrap:"wrap",flex:1}}>
+                          {jourSessions.map(s=>{
+                            const tc=TYPE_SEANCE_COLORS_D[s.type_seance]||"#64748b";
+                            const tl=TYPE_SEANCE_LABELS_D[s.type_seance]||s.type_seance;
+                            if(s.type_seance==="REPOS") return <span key={s.id} style={{color:"#334155",fontSize:11}}>Repos</span>;
+                            return <span key={s.id} style={{background:tc+"20",border:"1px solid "+tc+"50",color:tc,borderRadius:6,fontSize:11,fontWeight:700,padding:"2px 8px"}}>{tl}{s.title?" · "+s.title.slice(0,20):""}</span>;
+                          })}
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>}
+            </div>
+
+            {/* ═══ DERNIÈRES PERFS ═══ */}
+            <div style={{padding:isMobile?"16px":"20px 40px"}}>
+              <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:12}}>
+                <div style={{color:"#f1f5f9",fontWeight:800,fontSize:15}}>⚡ Dernières performances</div>
+                <button style={{...S.btnP,background:"#a78bfa",color:"#0f1923",fontSize:11,padding:"4px 12px"}} onClick={()=>setShowAddPerf(true)}>+ Ajouter</button>
+              </div>
+              <div style={{display:"flex",flexDirection:"column",gap:8}}>
+                {[...myPerfs].reverse().slice(0,3).map(p=>{
+                  const pw=concept2WattsFast(p.time,p.distance_type||"2000m")||p.watts||0;
+                  const pwkg=pw&&athlete?.weight?(pw/athlete.weight).toFixed(2):null;
+                  return(
+                    <div key={p.id} style={{background:"#182030",border:"1px solid #1e293b",borderRadius:10,padding:"10px 14px",display:"flex",alignItems:"center",gap:10,flexWrap:"wrap"}}>
+                      <div style={{color:"#475569",fontSize:11,minWidth:80}}>{p.date}</div>
+                      <div style={{color:"#4ade80",fontWeight:800,fontSize:16}}>{p.time}</div>
+                      <div style={{color:"#0ea5e9",fontWeight:700,fontSize:13}}>⚡ {pw}W</div>
+                      {pwkg&&<div style={{color:"#a78bfa",fontWeight:700,fontSize:12}}>{pwkg} W/kg</div>}
+                      <div style={{marginLeft:"auto",background:`hsl(${(10-(p.rpe||5))*12},70%,40%)`,color:"#fff",borderRadius:6,fontSize:10,fontWeight:700,padding:"2px 7px"}}>RPE {p.rpe||"--"}</div>
+                    </div>
+                  );
+                })}
+                {!myPerfs.length&&<div style={{background:"#182030",border:"1px solid #1e293b",borderRadius:12,padding:"24px",textAlign:"center",color:"#5a7a9a",fontSize:13}}>Aucune performance enregistrée</div>}
+              </div>
+            </div>
+
+          </div>);
+        })()}
           {editing&&<Modal title="Éditer ma fiche" onClose={()=>setEditing(false)}>
             <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12}}>
               <FF label="Âge"><input style={S.inp} type="number" value={editForm.age} onChange={e=>setEditForm(p=>({...p,age:e.target.value}))}/></FF>
