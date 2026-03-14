@@ -27,7 +27,7 @@ const TYPES_SEMAINE = ["TRANSITION","CONSTRUCTION","DÉCHARGE","SURCOMPENSATION"
 const CHARGES = ["Légère","Modérée","Élevée","Maximale","Compétition"];
 const JOURS = ["Lundi","Mardi","Mercredi","Jeudi","Vendredi","Samedi","Dimanche"];
 const TYPE_SEANCE_COLORS = {
-  MUSCU:"#f97316", ERGO:"#0ea5e9", BATEAU:"#22d3ee",
+  MUSCU:"#f97316", ERGO:"#0ea5e9", BATEAU:"#22d3ee", PLIO:"#fbbf24",
   RECUP:"#4ade80", REPOS:"#64748b", TEST:"#a78bfa", COMPETITION:"#e879f9",
 };
 const TYPE_SEANCE_LABELS = {
