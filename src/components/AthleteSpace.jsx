@@ -910,7 +910,8 @@ function AthletePlanningView({ athlete, currentUser, isMobile, perfs=[] }) {
   const [showModal, setShowModal]   = useState(false);
   const [selSession, setSelSession] = useState(null);
   const [noteForm, setNoteForm]     = useState({ note:"", commentaire:"" });
-  const [aiSession, setAiSession]   = useState(null); // id séance dont on affiche l'IA
+  const [aiSession, setAiSession]   = useState(null);
+  const [expandedSessions, setExpandedSessions] = useState({}); // id séance dont on affiche l'IA
   const [aiData, setAiData]         = useState({});    // {sessionId: resultIA}
   const [aiLoading, setAiLoading]   = useState(null);  // id séance en cours de chargement
 
@@ -1143,13 +1144,24 @@ function AthletePlanningView({ athlete, currentUser, isMobile, perfs=[] }) {
                       </div>
                       <div style={{fontWeight:700,color:"#f1f5f9",fontSize:13,marginBottom:6}}>{s.titre}</div>
                       {/* Blocs contenu */}
-                      {contenu.blocs?.slice(0,2).map((b,i)=>(
-                        <div key={i} style={{fontSize:11,color:"#64748b",marginBottom:2}}>
-                          <span style={{color:"#475569"}}>• </span><b style={{color:"#94a3b8"}}>{b.titre}</b> {b.detail&&`— ${b.detail}`}
-                        </div>
-                      ))}
-                      {contenu.blocs?.length>2&&<div style={{color:"#475569",fontSize:11}}>+{contenu.blocs.length-2} blocs</div>}
-                      {contenu.duree_min>0&&<div style={{color:"#475569",fontSize:11,marginTop:4}}>⏱ {contenu.duree_min} min</div>}
+                      {(()=>{
+                        const isExp = expandedSessions[s.id];
+                        const blocsToShow = isExp ? contenu.blocs : contenu.blocs?.slice(0,2);
+                        return(<>
+                          {blocsToShow?.map((b,i)=>(
+                            <div key={i} style={{fontSize:11,color:"#64748b",marginBottom:2}}>
+                              <span style={{color:"#475569"}}>• </span><b style={{color:"#94a3b8"}}>{b.titre}</b>{b.detail&&<span style={{color:"#64748b"}}> — {b.detail}</span>}
+                            </div>
+                          ))}
+                          {contenu.blocs?.length>2&&(
+                            <button onClick={()=>setExpandedSessions(p=>({...p,[s.id]:!isExp}))}
+                              style={{background:"none",border:"none",color:"#475569",fontSize:11,cursor:"pointer",padding:"2px 0",marginTop:2,textDecoration:"underline"}}>
+                              {isExp?`▲ Réduire`:`▼ +${contenu.blocs.length-2} blocs`}
+                            </button>
+                          )}
+                          {contenu.duree_min>0&&<div style={{color:"#475569",fontSize:11,marginTop:4}}>⏱ {contenu.duree_min} min</div>}
+                        </>);
+                      })()}
                       {/* Note si fait */}
                       {done&&done.note&&<div style={{marginTop:6,fontSize:11,color:"#4ade80"}}>Note : {done.note}/10{done.commentaire?` — "${done.commentaire}"`:""}</div>}
                       {/* Bouton */}
