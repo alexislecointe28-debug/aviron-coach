@@ -45,8 +45,22 @@ export default function MesSeances({ athlete, perfs, isMobile }) {
   async function loadSessions() {
     if (!athlete) return;
     setLoading(true);
-    const s = await api.getAthleteSessions(athlete.id).catch(() => []);
-    setSessions(s || []);
+    const raw = await api.getAthleteSessions(athlete.id).catch(() => []);
+    // Adapter le format session_completions → format séance
+    const parsed = (raw||[]).map(r => {
+      const meta = r.blocs_realises?._meta || {};
+      return {
+        id: r.id,
+        athlete_id: r.athlete_id,
+        date: meta.date || r.created_at?.split('T')[0] || '',
+        type_seance: meta.type_seance || 'MUSCU',
+        titre: meta.titre || '',
+        blocs: r.blocs_realises?.blocs || [],
+        ressenti: r.note,
+        commentaire: r.commentaire,
+      };
+    });
+    setSessions(parsed);
     setLoading(false);
   }
 
