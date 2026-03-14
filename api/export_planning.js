@@ -49,7 +49,7 @@ body{font-family:'Inter',sans-serif;background:#cbd5e1;padding:0}
 .toolbar h1{color:#38bdf8;font-size:13px;font-weight:700;letter-spacing:-.2px}
 .btn{background:#38bdf8;color:#0f172a;border:none;border-radius:6px;padding:7px 16px;font-size:12px;font-weight:700;cursor:pointer;font-family:'Inter',sans-serif}
 .wrap{padding:52px 16px 16px}
-.page{width:210mm;min-height:297mm;background:#fff;margin:0 auto 16px;box-shadow:0 8px 40px #0003;display:flex;flex-direction:column;font-size:8.5px}
+.page{width:210mm;background:#fff;margin:0 auto 16px;box-shadow:0 8px 40px #0003;display:flex;flex-direction:column;font-size:8.5px}
 .pb{page-break-after:always}
 
 /* Header */
@@ -68,15 +68,15 @@ body{font-family:'Inter',sans-serif;background:#cbd5e1;padding:0}
 .ph-objectif{font-size:8px;color:#475569;font-style:italic}
 
 /* Grille jours */
-.grid{display:grid;grid-template-columns:repeat(7,1fr);flex:1;border-bottom:1px solid #e2e8f0}
+.grid{display:grid;grid-template-columns:repeat(7,1fr);border-bottom:1px solid #e2e8f0}
 
-.day{display:flex;flex-direction:column;border-right:1px solid #e2e8f0}
+.day{display:flex;flex-direction:column;border-right:1px solid #e2e8f0;min-height:0}
 .day:last-child{border-right:none}
 
 .day-head{padding:6px 0 5px;text-align:center;border-bottom:2px solid #e2e8f0;background:#f8fafc}
 .day-name{font-size:7px;font-weight:800;letter-spacing:2px;color:#94a3b8}
 
-.day-body{padding:5px 4px;display:flex;flex-direction:column;gap:4px;flex:1}
+.day-body{padding:5px 4px;display:flex;flex-direction:column;gap:4px}
 .day-rest{display:flex;align-items:center;justify-content:center;flex:1;color:#e2e8f0;font-size:10px}
 
 /* Carte séance */
@@ -104,7 +104,7 @@ body{font-family:'Inter',sans-serif;background:#cbd5e1;padding:0}
   body{background:#fff}
   .toolbar{display:none!important}
   .wrap{padding:0}
-  .page{margin:0;box-shadow:none;min-height:297mm;height:297mm}
+  .page{margin:0;box-shadow:none}
   .pb{page-break-after:always}
   @page{size:A4 portrait;margin:0}
 }
@@ -192,9 +192,6 @@ function buildPage(sem) {
 
   <div class="grid">${cols}</div>
 
-  <div class="pf">
-    <div class="legend">${legend}</div>
-    <div class="pf-right">AvironCoach · Exporté le ${new Date().toLocaleDateString("fr-FR")}</div>
-  </div>
+
 </div>`;
 }
