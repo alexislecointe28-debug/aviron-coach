@@ -1,5 +1,5 @@
 // Version à incrémenter à chaque déploiement pour forcer le remplacement
-const SW_VERSION = 'v4';
+const SW_VERSION = 'v5';
 const CACHE = `aviron-coach-${SW_VERSION}`;
 
 // À l'installation : mettre en cache uniquement les fichiers statiques stables
