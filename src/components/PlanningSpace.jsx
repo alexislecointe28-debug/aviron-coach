@@ -765,9 +765,22 @@ export default function PlanningSpace({ athletes, isMobile, currentUser }) {
         <div style={{display:"grid",gridTemplateColumns:isMobile?"1fr 1fr":"repeat(7,1fr)",gap:isMobile?8:10}}>
           {JOURS.map(jour=>{
             const joursessions = byDay[jour]||[];
+            const isDropTarget = dragSess && dragSess.jour!==jour;
             return (
-              <div key={jour} style={{background:"#1e293b",border:"1px solid #334155",borderRadius:10,padding:isMobile?"10px 8px":"12px 10px",minHeight:isMobile?90:120,display:"flex",flexDirection:"column",gap:6}}>
-                <div style={{fontWeight:700,color:"#f1f5f9",fontSize:isMobile?11:12,marginBottom:4,borderBottom:"1px solid #334155",paddingBottom:4}}>{isMobile?jour.slice(0,3):jour}</div>
+              <div key={jour}
+                onDragOver={e=>{e.preventDefault();}}
+                onDrop={async e=>{
+                  e.preventDefault();
+                  if(!dragSess||dragSess.jour===jour) return;
+                  // Changer le jour de la séance en base
+                  try {
+                    await api.updatePlannedSession(dragSess.id,{jour});
+                    setSessions(prev=>prev.map(s=>s.id===dragSess.id?{...s,jour}:s));
+                  } catch(err) { showToast("Erreur déplacement","error"); }
+                  setDragSess(null);
+                }}
+                style={{background:isDropTarget?"#0ea5e915":"#1e293b",border:`1px solid ${isDropTarget?"#0ea5e960":"#334155"}`,borderRadius:10,padding:isMobile?"10px 8px":"12px 10px",minHeight:isMobile?90:120,display:"flex",flexDirection:"column",gap:6,transition:"background 0.15s,border 0.15s"}}>
+                <div style={{fontWeight:700,color:isDropTarget?"#0ea5e9":"#f1f5f9",fontSize:isMobile?11:12,marginBottom:4,borderBottom:"1px solid #334155",paddingBottom:4}}>{isMobile?jour.slice(0,3):jour}</div>
                 {joursessions.map((s,si)=>{
                   const sc = TYPE_SEANCE_COLORS[s.type_seance]||"#64748b";
                   const isDragging = dragSess?.id===s.id;
@@ -788,10 +801,10 @@ export default function PlanningSpace({ athletes, isMobile, currentUser }) {
                         setDragSess({...dragSess,idx:toIdx});
                       }}
                       onDragEnd={()=>setDragSess(null)}
-                      style={{background:sc+"18",border:`1px solid ${isDragging?"#0ea5e9":sc+"40"}`,borderRadius:6,padding:"5px 7px",cursor:"grab",opacity:isDragging?0.5:1,display:"flex",alignItems:"flex-start",gap:4}}
+                      style={{background:sc+"18",border:`1px solid ${isDragging?"#0ea5e9":sc+"40"}`,borderRadius:6,padding:"5px 7px",cursor:"grab",opacity:isDragging?0.4:1,display:"flex",alignItems:"flex-start",gap:4}}
                     >
                       <span style={{color:"#334155",fontSize:10,flexShrink:0,marginTop:1}}>⠿</span>
-                      <div style={{flex:1,minWidth:0}} onClick={()=>{setEditSession({...s});setShowSessionModal(true);}}>
+                      <div style={{flex:1,minWidth:0}} onClick={()=>{if(!dragSess){setEditSession({...s});setShowSessionModal(true);}}}>
                         <div style={{color:sc,fontSize:10,fontWeight:700}}>{TYPE_SEANCE_LABELS[s.type_seance]||s.type_seance}</div>
                         <div style={{color:"#cbd5e1",fontSize:11,fontWeight:600,marginTop:1,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{s.titre}</div>
                         {s.contenu?.duree_min>0&&<div style={{color:"#64748b",fontSize:10}}>{s.contenu.duree_min}'</div>}
