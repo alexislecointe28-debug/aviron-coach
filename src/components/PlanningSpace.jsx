@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { S } from "../styles.js";
 import { api } from "../config/supabase.js";
 
@@ -930,7 +930,7 @@ export default function PlanningSpace({ athletes, isMobile, currentUser }) {
     const [open, setOpen] = useState(false);
     const [query, setQuery] = useState(value||"");
     // Synchroniser query si value change de l'extérieur (ex: drag & drop)
-    const prevValue = React.useRef(value);
+    const prevValue = useRef(value);
     if(prevValue.current !== value) { prevValue.current = value; }
     // Utiliser value directement comme source de vérité quand pas en focus
     const [focused, setFocused] = useState(false);
