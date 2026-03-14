@@ -752,6 +752,28 @@ export default function PlanningSpace({ athletes, isMobile, currentUser }) {
             {selWeek.date_debut&&<p style={{...S.sub,marginTop:4}}>📆 {selWeek.date_debut}</p>}
             {selWeek.objectif&&<p style={{color:"#94a3b8",fontSize:13,margin:"4px 0 0"}}>{selWeek.objectif}</p>}
           </div>
+          <button
+            onClick={async()=>{
+              try {
+                const r = await fetch("/api/export_planning",{
+                  method:"POST", headers:{"Content-Type":"application/json"},
+                  body: JSON.stringify({
+                    titre:`Planning Semaine ${selWeek.num_semaine} — ${selPlan?.name||""}`,
+                    semaines:[{...selWeek, seances: (() => {
+                      const byDay={};
+                      sessions.forEach(s=>{if(!byDay[s.jour])byDay[s.jour]=[];byDay[s.jour].push(s);});
+                      return byDay;
+                    })()}]
+                  })
+                });
+                const html = await r.text();
+                const w = window.open("","_blank");
+                w.document.write(html); w.document.close();
+              } catch(e) { alert("Erreur export: "+e.message); }
+            }}
+            style={{...S.actionBtn,color:"#0ea5e9",borderColor:"#0ea5e930",flexShrink:0,gap:4}}>
+            🖨️ PDF
+          </button>
         </div>
 
         {/* Notes de la semaine */}
