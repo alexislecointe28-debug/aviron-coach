@@ -1151,67 +1151,157 @@ function AthletePlanningView({ athlete, currentUser }) {
       )}
 
       {/* Modal validation */}
-      {showModal&&selSession&&(
+      {showModal&&selSession&&(()=>{
+        const isMUSCU = selSession.type_seance==="MUSCU";
+        const isERGO  = selSession.type_seance==="ERGO";
+        const isBAT   = selSession.type_seance==="BATEAU";
+        const typeColor = TYPE_SEANCE_COLORS[selSession.type_seance]||"#64748b";
+
+        function updateBloc(i, field, val) {
+          const b=[...noteForm.blocs_realises]; b[i]={...b[i],[field]:val}; setNoteForm(f=>({...f,blocs_realises:b}));
+        }
+        function addBloc() {
+          const newBloc = isMUSCU
+            ? {titre:"",prevu:"",realise:"",libre:true}
+            : {titre:"",prevu:"",format:"",temps:"",allure:"",watts:"",cadence:"",distance:"",libre:true};
+          setNoteForm(f=>({...f,blocs_realises:[...f.blocs_realises,newBloc]}));
+        }
+        function removeBloc(i) {
+          setNoteForm(f=>({...f,blocs_realises:f.blocs_realises.filter((_,j)=>j!==i)}));
+        }
+
+        return(
         <div style={{position:"fixed",inset:0,background:"#00000085",display:"flex",alignItems:"flex-end",justifyContent:"center",zIndex:200,padding:isMobile?0:20}} onClick={e=>e.target===e.currentTarget&&setShowModal(false)}>
-          <div style={{background:"#1a2744",border:"1px solid #2a3f5f",borderRadius:isMobile?"16px 16px 0 0":16,padding:"20px 20px 28px",width:"100%",maxWidth:520,maxHeight:"90vh",overflowY:"auto"}}>
+          <div style={{background:"#1a2744",border:"1px solid #2a3f5f",borderRadius:isMobile?"16px 16px 0 0":16,padding:"20px 20px 24px",width:"100%",maxWidth:560,maxHeight:"92vh",overflowY:"auto"}}>
+
             {/* Header */}
-            <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:16}}>
-              <h2 style={{color:"#f1f5f9",fontSize:17,fontWeight:800,margin:0}}>✅ Séance effectuée</h2>
+            <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:12}}>
+              <h2 style={{color:"#f1f5f9",fontSize:17,fontWeight:800,margin:0}}>✅ Ma séance</h2>
               <button style={{background:"none",border:"none",color:"#7a95b0",cursor:"pointer",fontSize:22}} onClick={()=>setShowModal(false)}>×</button>
             </div>
             <div style={{background:"#0f172a",borderRadius:8,padding:"8px 12px",marginBottom:16,display:"flex",gap:8,alignItems:"center"}}>
-              <span style={{fontSize:11,fontWeight:700,color:TYPE_SEANCE_COLORS[selSession.type_seance]||"#64748b",background:(TYPE_SEANCE_COLORS[selSession.type_seance]||"#64748b")+"20",padding:"2px 8px",borderRadius:4}}>{TYPE_SEANCE_LABELS[selSession.type_seance]||selSession.type_seance}</span>
+              <span style={{fontSize:11,fontWeight:700,color:typeColor,background:typeColor+"20",padding:"2px 8px",borderRadius:4}}>{TYPE_SEANCE_LABELS[selSession.type_seance]||selSession.type_seance}</span>
               <span style={{color:"#f1f5f9",fontWeight:700,fontSize:13}}>{selSession.titre}</span>
             </div>
 
-            {/* ═══ BLOCS RÉALISÉS ═══ */}
-            {noteForm.blocs_realises.length>0&&(
-              <div style={{marginBottom:16}}>
-                <div style={{color:"#94a3b8",fontSize:11,fontWeight:700,textTransform:"uppercase",letterSpacing:1,marginBottom:10}}>📋 Ce que j'ai fait</div>
-                <div style={{display:"flex",flexDirection:"column",gap:8}}>
-                  {noteForm.blocs_realises.map((bloc,i)=>{
-                    const isMuscuBloc = selSession.type_seance==="MUSCU";
-                    return(
-                      <div key={i} style={{background:"#0f172a",borderRadius:10,padding:"10px 12px",border:"1px solid #1e293b"}}>
-                        <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:8}}>
-                          <div style={{color:"#e2e8f0",fontWeight:700,fontSize:13}}>{bloc.titre}</div>
-                          <div style={{color:"#475569",fontSize:11,textAlign:"right",maxWidth:"55%"}}>{bloc.prevu}</div>
-                        </div>
-                        {isMuscuBloc?(
-                          <input
-                            style={{width:"100%",background:"#182030",border:"1px solid #334155",borderRadius:6,color:"#f1f5f9",padding:"7px 10px",fontSize:13,boxSizing:"border-box"}}
-                            placeholder="Réalisé (ex: 4×10 à 80kg)"
-                            value={bloc.realise}
-                            onChange={e=>{const b=[...noteForm.blocs_realises];b[i]={...b[i],realise:e.target.value};setNoteForm(f=>({...f,blocs_realises:b}));}}
-                          />
-                        ):(
-                          <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:6}}>
-                            {[["realise","Temps/Format","text"],["watts","Watts","number"],["cadence","Cad. spm","number"]].map(([field,label,type])=>(
-                              <div key={field}>
-                                <div style={{color:"#475569",fontSize:10,marginBottom:3}}>{label}</div>
-                                <input type={type}
-                                  style={{width:"100%",background:"#182030",border:"1px solid #334155",borderRadius:6,color:"#f1f5f9",padding:"6px 8px",fontSize:12,boxSizing:"border-box"}}
-                                  value={bloc[field]}
-                                  onChange={e=>{const b=[...noteForm.blocs_realises];b[i]={...b[i],[field]:e.target.value};setNoteForm(f=>({...f,blocs_realises:b}));}}
-                                />
-                              </div>
-                            ))}
-                          </div>
-                        )}
-                      </div>
-                    );
-                  })}
-                </div>
-              </div>
-            )}
-
-            {/* ═══ RESSENTI ═══ */}
+            {/* ═══ BLOCS ═══ */}
             <div style={{marginBottom:14}}>
+              <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:10}}>
+                <div style={{color:"#94a3b8",fontSize:11,fontWeight:700,textTransform:"uppercase",letterSpacing:1}}>
+                  📋 Détail de la séance
+                </div>
+                <button onClick={addBloc} style={{background:typeColor+"20",border:`1px solid ${typeColor}50`,color:typeColor,borderRadius:6,padding:"3px 10px",fontSize:12,fontWeight:700,cursor:"pointer"}}>
+                  + Ajouter un bloc
+                </button>
+              </div>
+
+              {noteForm.blocs_realises.length===0&&(
+                <div style={{background:"#0f172a",borderRadius:8,padding:"16px",textAlign:"center",color:"#475569",fontSize:13,border:"1px dashed #334155"}}>
+                  <div style={{marginBottom:6}}>Aucun bloc planifié</div>
+                  <div style={{fontSize:11}}>Clique sur "Ajouter un bloc" pour saisir ce que tu as fait</div>
+                </div>
+              )}
+
+              <div style={{display:"flex",flexDirection:"column",gap:8}}>
+                {noteForm.blocs_realises.map((bloc,i)=>(
+                  <div key={i} style={{background:"#0f172a",borderRadius:10,padding:"10px 12px",border:`1px solid ${bloc.libre?typeColor+"40":"#1e293b"}`}}>
+
+                    {/* Titre du bloc */}
+                    <div style={{display:"flex",gap:6,alignItems:"center",marginBottom:8}}>
+                      <input
+                        placeholder={isMUSCU?"Exercice (ex: Back squat)":"Bloc (ex: 6×100m, 2×1000m, 16km continu)"}
+                        value={bloc.titre||bloc.prevu||""}
+                        onChange={e=>updateBloc(i,"titre",e.target.value)}
+                        style={{flex:1,background:"#182030",border:"1px solid #334155",borderRadius:6,color:"#f1f5f9",padding:"6px 10px",fontSize:13,boxSizing:"border-box",fontWeight:700}}
+                      />
+                      {(bloc.libre||noteForm.blocs_realises.length>0)&&(
+                        <button onClick={()=>removeBloc(i)} style={{background:"none",border:"none",color:"#475569",cursor:"pointer",fontSize:16,padding:"0 2px",flexShrink:0}}>✕</button>
+                      )}
+                    </div>
+
+                    {/* Champs selon le type */}
+                    {isMUSCU?(
+                      <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:6}}>
+                        <div>
+                          <div style={{color:"#475569",fontSize:10,marginBottom:3}}>Séries × reps</div>
+                          <input placeholder="ex: 4×10" value={bloc.realise||""}
+                            onChange={e=>updateBloc(i,"realise",e.target.value)}
+                            style={{width:"100%",background:"#182030",border:"1px solid #334155",borderRadius:6,color:"#f1f5f9",padding:"6px 8px",fontSize:12,boxSizing:"border-box"}}/>
+                        </div>
+                        <div>
+                          <div style={{color:"#475569",fontSize:10,marginBottom:3}}>Charge (kg ou %)</div>
+                          <input placeholder="ex: 80kg / 75%" value={bloc.watts||""}
+                            onChange={e=>updateBloc(i,"watts",e.target.value)}
+                            style={{width:"100%",background:"#182030",border:"1px solid #334155",borderRadius:6,color:"#f1f5f9",padding:"6px 8px",fontSize:12,boxSizing:"border-box"}}/>
+                        </div>
+                        <div style={{gridColumn:"1/-1"}}>
+                          <div style={{color:"#475569",fontSize:10,marginBottom:3}}>Note / ressenti bloc</div>
+                          <input placeholder="ex: propre, manque d'explosivité" value={bloc.cadence||""}
+                            onChange={e=>updateBloc(i,"cadence",e.target.value)}
+                            style={{width:"100%",background:"#182030",border:"1px solid #334155",borderRadius:6,color:"#f1f5f9",padding:"6px 8px",fontSize:12,boxSizing:"border-box"}}/>
+                        </div>
+                      </div>
+                    ):(
+                      <div style={{display:"grid",gridTemplateColumns:isMobile?"1fr 1fr":"1fr 1fr 1fr 1fr",gap:6}}>
+                        {isERGO&&[
+                          ["temps","Temps total","ex: 6×1:32"],
+                          ["allure","Allure /500m","ex: 1:52"],
+                          ["watts","Watts","ex: 185"],
+                          ["cadence","Cadence spm","ex: 24"],
+                        ].map(([field,label,ph])=>(
+                          <div key={field}>
+                            <div style={{color:"#475569",fontSize:10,marginBottom:3}}>{label}</div>
+                            <input placeholder={ph} value={bloc[field]||""}
+                              onChange={e=>updateBloc(i,field,e.target.value)}
+                              style={{width:"100%",background:"#182030",border:"1px solid #334155",borderRadius:6,color:"#f1f5f9",padding:"6px 8px",fontSize:12,boxSizing:"border-box"}}/>
+                          </div>
+                        ))}
+                        {isBAT&&[
+                          ["distance","Distance","ex: 2×1000m"],
+                          ["temps","Temps","ex: 3:42"],
+                          ["allure","Allure /500m","ex: 1:51"],
+                          ["cadence","Cadence spm","ex: 26"],
+                        ].map(([field,label,ph])=>(
+                          <div key={field}>
+                            <div style={{color:"#475569",fontSize:10,marginBottom:3}}>{label}</div>
+                            <input placeholder={ph} value={bloc[field]||""}
+                              onChange={e=>updateBloc(i,field,e.target.value)}
+                              style={{width:"100%",background:"#182030",border:"1px solid #334155",borderRadius:6,color:"#f1f5f9",padding:"6px 8px",fontSize:12,boxSizing:"border-box"}}/>
+                          </div>
+                        ))}
+                        {!isERGO&&!isBAT&&[
+                          ["realise","Réalisé","ex: 4×6'"],
+                          ["watts","Watts","ex: 190"],
+                          ["cadence","Cadence","ex: 26"],
+                        ].map(([field,label,ph])=>(
+                          <div key={field}>
+                            <div style={{color:"#475569",fontSize:10,marginBottom:3}}>{label}</div>
+                            <input placeholder={ph} value={bloc[field]||""}
+                              onChange={e=>updateBloc(i,field,e.target.value)}
+                              style={{width:"100%",background:"#182030",border:"1px solid #334155",borderRadius:6,color:"#f1f5f9",padding:"6px 8px",fontSize:12,boxSizing:"border-box"}}/>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+
+                    {/* Prévu (affiché en lecture seule si rempli depuis template) */}
+                    {!bloc.libre&&bloc.prevu&&(
+                      <div style={{color:"#334155",fontSize:10,marginTop:6}}>
+                        Prévu : <span style={{color:"#475569"}}>{bloc.prevu}</span>
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* ═══ RESSENTI GLOBAL ═══ */}
+            <div style={{marginBottom:12}}>
               <label style={{display:"block",color:"#7a95b0",fontSize:11,textTransform:"uppercase",letterSpacing:1,marginBottom:8}}>Ressenti global / 10</label>
               <div style={{display:"flex",gap:5,flexWrap:"wrap"}}>
                 {[1,2,3,4,5,6,7,8,9,10].map(n=>{
-                  const active = +noteForm.note===n;
-                  const col = n<=3?"#ef4444":n<=6?"#f59e0b":n<=8?"#0ea5e9":"#4ade80";
+                  const active=+noteForm.note===n;
+                  const col=n<=3?"#ef4444":n<=6?"#f59e0b":n<=8?"#0ea5e9":"#4ade80";
                   return <button key={n} onClick={()=>setNoteForm(f=>({...f,note:n}))}
                     style={{width:34,height:34,borderRadius:7,border:`2px solid ${active?col:"#334155"}`,background:active?col+"30":"transparent",color:active?col:"#64748b",fontWeight:active?800:500,fontSize:13,cursor:"pointer"}}>
                     {n}
@@ -1221,11 +1311,11 @@ function AthletePlanningView({ athlete, currentUser }) {
             </div>
 
             {/* ═══ COMMENTAIRE ═══ */}
-            <div style={{marginBottom:18}}>
-              <label style={{display:"block",color:"#7a95b0",fontSize:11,textTransform:"uppercase",letterSpacing:1,marginBottom:6}}>Commentaire (optionnel)</label>
-              <textarea style={{width:"100%",background:"#0f172a",border:"1px solid #334155",borderRadius:8,color:"#f1f5f9",padding:"10px 12px",fontSize:13,resize:"vertical",minHeight:60,boxSizing:"border-box"}}
+            <div style={{marginBottom:16}}>
+              <label style={{display:"block",color:"#7a95b0",fontSize:11,textTransform:"uppercase",letterSpacing:1,marginBottom:6}}>Commentaire</label>
+              <textarea style={{width:"100%",background:"#0f172a",border:"1px solid #334155",borderRadius:8,color:"#f1f5f9",padding:"10px 12px",fontSize:13,resize:"vertical",minHeight:56,boxSizing:"border-box"}}
                 value={noteForm.commentaire} onChange={e=>setNoteForm(f=>({...f,commentaire:e.target.value}))}
-                placeholder="Comment s'est passée la séance ?"/>
+                placeholder="Sensations, remarques technique, contexte..."/>
             </div>
 
             <div style={{display:"flex",gap:10}}>
@@ -1234,7 +1324,8 @@ function AthletePlanningView({ athlete, currentUser }) {
             </div>
           </div>
         </div>
-      )}
+        );
+      })()}
     </div>
   );
 }
