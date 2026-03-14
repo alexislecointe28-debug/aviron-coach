@@ -69,7 +69,7 @@ function buildHTML(semaines, titre) {
             </tr>
           </thead>
           <tbody>
-            <tr>${jourCells}</tr>
+            <tr><td class="td-sem-body"></td>${jourCells}</tr>
           </tbody>
         </table>
         ${sem.objectif ? `<div class="sem-objectif">🎯 ${sem.objectif}</div>` : ""}
@@ -167,6 +167,10 @@ table {
 }
 .cell-empty {
   background: #fafafa;
+}
+.td-sem-body {
+  background: #0f172a;
+  border: 1px solid #1e293b;
 }
 
 /* Carte séance */
