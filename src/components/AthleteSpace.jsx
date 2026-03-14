@@ -1006,13 +1006,7 @@ function AthletePlanningView({ athlete, currentUser, isMobile, perfs=[] }) {
   function openNote(session) {
     const existing = getCompletion(session.id);
     setSelSession(session);
-    // Charger les blocs depuis le template de la session
-    const contenu = session.contenu ? (typeof session.contenu==="string" ? JSON.parse(session.contenu) : session.contenu) : {};
-    const blocs = (contenu.blocs||[]).map((b,i) => {
-      const existingBloc = existing?.blocs_realises?.[i] || {};
-      return { titre: b.titre, prevu: b.detail, realise: existingBloc.realise||"", watts: existingBloc.watts||"", cadence: existingBloc.cadence||"", rpe: existingBloc.rpe||"" };
-    });
-    setNoteForm({ note: existing?.note||"", commentaire: existing?.commentaire||"", blocs_realises: blocs });
+    setNoteForm({ note: existing?.note||"", commentaire: existing?.commentaire||"" });
     setShowModal(true);
   }
 
@@ -1022,7 +1016,6 @@ function AthletePlanningView({ athlete, currentUser, isMobile, perfs=[] }) {
     const payload = {
       note: +noteForm.note||null,
       commentaire: noteForm.commentaire,
-      blocs_realises: noteForm.blocs_realises.filter(b=>b.realise||b.watts||b.cadence||b.rpe)
     };
     try {
       let res;
