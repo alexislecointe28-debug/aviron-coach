@@ -898,7 +898,7 @@ const JOURS = ["Lundi","Mardi","Mercredi","Jeudi","Vendredi","Samedi","Dimanche"
 const TYPE_SEANCE_COLORS = { MUSCU:"#f97316",ERGO:"#0ea5e9",BATEAU:"#22d3ee",RECUP:"#4ade80",REPOS:"#64748b",TEST:"#a78bfa",COMPETITION:"#e879f9" };
 const TYPE_SEANCE_LABELS = { MUSCU:"💪 Muscu",ERGO:"🚣 Ergo",BATEAU:"⛵ Bateau",RECUP:"🔄 Récup",REPOS:"😴 Repos",TEST:"📊 Test",COMPETITION:"🏆 Compét" };
 
-function AthletePlanningView({ athlete, currentUser }) {
+function AthletePlanningView({ athlete, currentUser, isMobile }) {
   const [weeks, setWeeks]           = useState([]);
   const [selWeek, setSelWeek]       = useState(null);
   const [sessions, setSessions]     = useState([]);
