@@ -1,10 +1,27 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { S } from "../styles.js";
 import { api, sb, SUPABASE_URL, SUPABASE_KEY } from "../config/supabase.js";
 import { FF } from "./ui.jsx";
 
 export default function Login({ onLogin }) {
-  const [mode,setMode]=useState("login"); // "login" | "register"
+  const [mode,setMode]=useState("login");
+  const [installPrompt, setInstallPrompt] = useState(null);
+  const [installed, setInstalled] = useState(false);
+
+  useEffect(() => {
+    const handler = (e) => { e.preventDefault(); setInstallPrompt(e); };
+    window.addEventListener("beforeinstallprompt", handler);
+    window.addEventListener("appinstalled", () => setInstalled(true));
+    return () => window.removeEventListener("beforeinstallprompt", handler);
+  }, []);
+
+  async function installApp() {
+    if (!installPrompt) return;
+    installPrompt.prompt();
+    const { outcome } = await installPrompt.userChoice;
+    if (outcome === "accepted") setInstalled(true);
+    setInstallPrompt(null);
+  } // "login" | "register"
   const [email,setEmail]=useState(""); const [pwd,setPwd]=useState(""); const [err,setErr]=useState(""); const [loading,setLoading]=useState(false);
   const [reg,setReg]=useState({name:"",email:"",password:"",password2:"",code:""});
   const [regOk,setRegOk]=useState(false);
