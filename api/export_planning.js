@@ -1,19 +1,26 @@
 export const config = { runtime: "edge" };
 
 const TYPE_COLORS = {
-  MUSCU:"#7c3aed", ERGO:"#0ea5e9", BATEAU:"#06b6d4", PLIO:"#f59e0b",
-  RECUP:"#10b981", REPOS:"#94a3b8", TEST:"#3b82f6", COMPETITION:"#ef4444",
+  MUSCU:"#7c3aed", ERGO:"#0284c7", BATEAU:"#0891b2", PLIO:"#d97706",
+  RECUP:"#059669", REPOS:"#94a3b8", TEST:"#2563eb", COMPETITION:"#dc2626",
 };
-const CHARGE_BG = {
-  "Légère":"#dcfce7","Modérée":"#dbeafe","Élevée":"#fef3c7",
-  "Maximale":"#fee2e2","Compétition":"#fce7f3",
+const TYPE_LABELS = {
+  MUSCU:"Muscu", ERGO:"Ergo", BATEAU:"Bateau", PLIO:"Plio",
+  RECUP:"Récup", REPOS:"Repos", TEST:"Test", COMPETITION:"Compét",
 };
-const CHARGE_TEXT = {
-  "Légère":"#16a34a","Modérée":"#1d4ed8","Élevée":"#d97706",
-  "Maximale":"#dc2626","Compétition":"#9333ea",
+const TYPE_BG = {
+  MUSCU:"#f5f3ff", ERGO:"#eff6ff", BATEAU:"#ecfeff", PLIO:"#fffbeb",
+  RECUP:"#f0fdf4", REPOS:"#f8fafc", TEST:"#eff6ff", COMPETITION:"#fff1f2",
+};
+const CHARGE_STYLES = {
+  "Légère":    { bg:"#dcfce7", text:"#15803d", dot:"#22c55e" },
+  "Modérée":   { bg:"#dbeafe", text:"#1d4ed8", dot:"#3b82f6" },
+  "Élevée":    { bg:"#fef3c7", text:"#b45309", dot:"#f59e0b" },
+  "Maximale":  { bg:"#fee2e2", text:"#b91c1c", dot:"#ef4444" },
+  "Compétition":{ bg:"#fce7f3", text:"#9d174d", dot:"#ec4899" },
 };
 const JOURS = ["Lundi","Mardi","Mercredi","Jeudi","Vendredi","Samedi","Dimanche"];
-const JOURS_SHORT = ["Lun","Mar","Mer","Jeu","Ven","Sam","Dim"];
+const JOURS_SHORT = ["LUN","MAR","MER","JEU","VEN","SAM","DIM"];
 
 export default async function handler(req) {
   if (req.method !== "POST") return new Response("Method not allowed",{status:405});
@@ -24,240 +31,397 @@ export default async function handler(req) {
 }
 
 function buildHTML(semaines, titre) {
-  const semHtml = semaines.map(sem => {
-    const charge = sem.charge || "";
-    const chargeBg   = CHARGE_BG[charge]   || "#f1f5f9";
-    const chargeText = CHARGE_TEXT[charge] || "#475569";
-
-    const jourCells = JOURS.map((jour, ji) => {
-      const seances = sem.seances?.[jour] || [];
-      if (!seances.length) return `<td class="cell cell-empty"></td>`;
-
-      const cards = seances.map(s => {
-        const col = TYPE_COLORS[s.type_seance] || "#64748b";
-        const blocsAll = s.contenu?.blocs || [];
-        const blocsShow = blocsAll.slice(0, 3);
-        const blocsMore = blocsAll.length > 3 ? `<span class="bloc-more">+${blocsAll.length - 3} blocs</span>` : "";
-        const blocs = blocsShow
-          .map(b => `<span class="bloc">· ${b.titre}${b.detail ? ` <em>${b.detail}</em>` : ""}</span>`)
-          .join("") + blocsMore;
-        const duree = s.contenu?.duree_min ? `<span class="duree">${s.contenu.duree_min}'</span>` : "";
-        return `<div class="card" style="--c:${col}">
-          <div class="card-top">
-            <div class="card-title">${s.titre}</div>
-            ${duree}
-          </div>
-          ${blocs ? `<div class="card-blocs">${blocs}</div>` : ""}
-        </div>`;
-      }).join("");
-
-      return `<td class="cell">${cards}</td>`;
-    }).join("");
-
-    return `
-      <div class="semaine">
-        <table>
-          <thead>
-            <tr>
-              <th class="th-sem">
-                <div class="sem-num">S${sem.num_semaine||sem.num}</div>
-                ${sem.date_debut ? `<div class="sem-date">${sem.date_debut}</div>` : ""}
-                ${sem.type_semaine ? `<div class="sem-type">${sem.type_semaine}</div>` : ""}
-                ${charge ? `<div class="sem-charge" style="background:${chargeBg};color:${chargeText}">${charge}</div>` : ""}
-              </th>
-              ${JOURS_SHORT.map(j => `<th class="th-day">${j}</th>`).join("")}
-            </tr>
-          </thead>
-          <tbody>
-            <tr><td class="td-sem-body"></td>${jourCells}</tr>
-          </tbody>
-        </table>
-        ${sem.objectif ? `<div class="sem-objectif">🎯 ${sem.objectif}</div>` : ""}
-      </div>`;
-  }).join("");
+  const pages = semaines.map(sem => buildPage(sem)).join('<div class="page-break"></div>');
 
   return `<!DOCTYPE html>
 <html lang="fr">
 <head>
 <meta charset="UTF-8">
 <title>${titre}</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;0,9..40,800;1,9..40,400&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
 <style>
-* { box-sizing:border-box; margin:0; padding:0; }
+* { box-sizing:border-box; margin:0; padding:0; -webkit-print-color-adjust:exact; print-color-adjust:exact; }
+
+:root {
+  --ink: #0f172a;
+  --ink-2: #334155;
+  --ink-3: #64748b;
+  --ink-4: #94a3b8;
+  --line: #e2e8f0;
+  --bg: #ffffff;
+  --bg-2: #f8fafc;
+  --radius: 10px;
+  --font: 'DM Sans', sans-serif;
+  --mono: 'DM Mono', monospace;
+}
 
 body {
-  font-family: -apple-system, "Helvetica Neue", Arial, sans-serif;
-  font-size: 10px;
-  color: #1e293b;
-  background: #fff;
+  font-family: var(--font);
+  color: var(--ink);
+  background: #e5e7eb;
   padding: 0;
 }
 
-/* ── Barre d'impression ── */
+/* ── Toolbar ── */
 .toolbar {
+  position: fixed;
+  top: 0; left: 0; right: 0;
   background: #0f172a;
-  padding: 8px 14px;
+  padding: 10px 20px;
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 10px;
+  z-index: 100;
+  box-shadow: 0 2px 12px #00000040;
 }
-.toolbar h1 { color: #0ea5e9; font-size: 14px; font-weight: 700; }
+.toolbar-title { color: #38bdf8; font-size: 14px; font-weight: 700; letter-spacing: -0.3px; }
 .btn-print {
-  background: #0ea5e9; color: white; border: none;
-  border-radius: 6px; padding: 6px 16px; font-size: 12px;
-  font-weight: 700; cursor: pointer; letter-spacing: 0.3px;
+  background: #38bdf8; color: #0f172a; border: none;
+  border-radius: 7px; padding: 7px 18px; font-size: 12px;
+  font-weight: 700; cursor: pointer; font-family: var(--font);
+  letter-spacing: 0.2px;
 }
-.btn-print:hover { background: #0284c7; }
+.btn-print:hover { background: #7dd3fc; }
 
-/* ── Contenu ── */
-.content { padding: 6mm; }
+/* ── Pages ── */
+.pages-wrapper { padding: 56px 20px 20px; }
 
-/* ── Semaine ── */
-.semaine { margin-bottom: 5mm; }
-
-table {
-  width: 100%;
-  border-collapse: collapse;
-  table-layout: fixed;
-}
-
-/* En-tête colonne semaine */
-.th-sem {
-  width: 18mm;
-  background: #0f172a;
-  color: white;
-  vertical-align: middle;
-  text-align: center;
-  padding: 5px 3px;
-  border-radius: 6px 0 0 0;
-}
-.sem-num { font-size: 14px; font-weight: 900; color: #f8fafc; letter-spacing: -0.5px; }
-.sem-date { font-size: 7px; color: #64748b; margin-top: 2px; }
-.sem-type { font-size: 7px; color: #94a3b8; margin-top: 1px; text-transform: uppercase; letter-spacing: 0.5px; }
-.sem-charge {
-  display: inline-block;
-  margin-top: 4px;
-  padding: 1px 6px;
-  border-radius: 10px;
-  font-size: 7px;
-  font-weight: 700;
-}
-
-/* En-têtes jours */
-.th-day {
-  background: #f8fafc;
-  color: #64748b;
-  font-size: 8px;
-  font-weight: 700;
-  text-align: center;
-  padding: 4px 2px;
-  border: 1px solid #e2e8f0;
-  border-left: none;
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
-}
-
-/* Cellules */
-.cell {
-  vertical-align: top;
-  padding: 3px;
-  border: 1px solid #e2e8f0;
-  border-top: none;
-  min-height: 14mm;
-}
-.cell-empty {
-  background: #fafafa;
-}
-.td-sem-body {
-  background: #0f172a;
-  border: 1px solid #1e293b;
-}
-
-/* Carte séance */
-.card {
-  border-left: 3px solid var(--c);
-  background: color-mix(in srgb, var(--c) 6%, white);
-  border-radius: 0 4px 4px 0;
-  padding: 3px 4px;
-  margin-bottom: 3px;
-}
-.card:last-child { margin-bottom: 0; }
-
-.card-top {
-  display: flex;
-  justify-content: space-between;
-  align-items: baseline;
-  gap: 4px;
-  margin-bottom: 2px;
-}
-.card-title {
-  font-size: 8.5px;
-  font-weight: 700;
-  color: #0f172a;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  flex: 1;
-  min-width: 0;
-}
-.duree {
-  font-size: 7px;
-  color: #94a3b8;
-  white-space: nowrap;
-  flex-shrink: 0;
-}
-
-.card-blocs {
+.page {
+  width: 210mm;
+  min-height: 297mm;
+  background: var(--bg);
+  margin: 0 auto 20px;
+  box-shadow: 0 4px 32px #00000020;
   display: flex;
   flex-direction: column;
-  gap: 1px;
+  overflow: hidden;
 }
-.bloc {
-  font-size: 7px;
-  color: #475569;
-  line-height: 1.35;
-  display: block;
+
+/* ── Header page ── */
+.page-header {
+  background: var(--ink);
+  padding: 20px 24px 18px;
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
 }
-.bloc em {
-  color: #94a3b8;
-  font-style: normal;
+.header-left {}
+.page-club {
+  font-size: 9px;
+  font-weight: 600;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  color: #38bdf8;
+  margin-bottom: 4px;
 }
-.bloc-more {
-  font-size: 6.5px;
-  color: #94a3b8;
-  display: block;
+.page-title {
+  font-size: 22px;
+  font-weight: 800;
+  color: #f8fafc;
+  letter-spacing: -0.5px;
+  line-height: 1;
+}
+.page-sub {
+  font-size: 11px;
+  color: #64748b;
+  margin-top: 4px;
+  font-weight: 400;
+}
+.header-right {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 6px;
+}
+.sem-badge {
+  background: #1e293b;
+  border: 1px solid #334155;
+  border-radius: 8px;
+  padding: 6px 12px;
+  text-align: center;
+}
+.sem-num { font-size: 20px; font-weight: 900; color: #f1f5f9; line-height: 1; font-variant-numeric: tabular-nums; }
+.sem-label { font-size: 8px; color: #64748b; text-transform: uppercase; letter-spacing: 1px; margin-top: 1px; }
+.charge-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 4px 10px;
+  border-radius: 20px;
+  font-size: 10px;
+  font-weight: 700;
+}
+.charge-dot { width:7px; height:7px; border-radius:50%; flex-shrink:0; }
+.sem-info { font-size: 10px; color: #475569; text-align: right; }
+.sem-objectif { font-size: 9px; color: #64748b; font-style: italic; margin-top: 2px; text-align: right; }
+
+/* ── Grille jours ── */
+.days-grid {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  flex: 1;
+  border-top: 1px solid var(--line);
+}
+
+/* Colonne jour */
+.day-col {
+  display: flex;
+  flex-direction: column;
+  border-right: 1px solid var(--line);
+  min-height: 0;
+}
+.day-col:last-child { border-right: none; }
+
+/* Header jour */
+.day-header {
+  padding: 8px 6px 7px;
+  text-align: center;
+  border-bottom: 2px solid var(--line);
+  background: var(--bg-2);
+  flex-shrink: 0;
+}
+.day-name {
+  font-size: 7.5px;
+  font-weight: 700;
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
+  color: var(--ink-3);
+}
+.day-rest {
+  font-size: 8px;
+  color: var(--ink-4);
+  padding: 10px 6px;
+  text-align: center;
   font-style: italic;
 }
 
-/* Objectif semaine */
-.sem-objectif {
-  font-size: 8px;
-  color: #64748b;
-  padding: 3px 6px;
-  background: #f8fafc;
-  border-left: 3px solid #e2e8f0;
-  margin-top: 2px;
-  border-radius: 0 3px 3px 0;
+/* Contenu du jour */
+.day-body {
+  padding: 6px 5px;
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  flex: 1;
 }
 
-/* ── Impression ── */
-@media print {
-  .toolbar { display: none !important; }
-  body { padding: 0; }
-  .content { padding: 5mm; }
-  .semaine { page-break-inside: avoid; }
-  @page { size: A4 landscape; margin: 5mm; }
+/* Carte séance */
+.session-card {
+  border-radius: 7px;
+  overflow: hidden;
+  border: 1.5px solid;
 }
+.card-header {
+  padding: 5px 7px 4px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 4px;
+}
+.card-type {
+  font-size: 7px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+}
+.card-duree {
+  font-size: 7px;
+  font-weight: 500;
+  opacity: 0.65;
+  font-family: var(--mono);
+  flex-shrink: 0;
+}
+.card-title {
+  font-size: 9.5px;
+  font-weight: 700;
+  line-height: 1.25;
+  padding: 0 7px 5px;
+  color: var(--ink);
+}
+.card-blocs {
+  padding: 0 7px 6px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.bloc-row {
+  display: flex;
+  gap: 4px;
+  align-items: baseline;
+}
+.bloc-bullet {
+  font-size: 6px;
+  flex-shrink: 0;
+  margin-top: 1px;
+  opacity: 0.5;
+}
+.bloc-name {
+  font-size: 7.5px;
+  font-weight: 600;
+  color: var(--ink-2);
+  line-height: 1.3;
+}
+.bloc-detail {
+  font-size: 7px;
+  color: var(--ink-3);
+  font-family: var(--mono);
+  line-height: 1.3;
+  margin-left: 2px;
+}
+.blocs-more {
+  font-size: 6.5px;
+  color: var(--ink-4);
+  font-style: italic;
+  padding: 0 7px 5px;
+}
+
+/* ── Footer ── */
+.page-footer {
+  padding: 8px 24px;
+  border-top: 1px solid var(--line);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: var(--bg-2);
+  flex-shrink: 0;
+}
+.footer-legend {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+.legend-item {
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  font-size: 7px;
+  color: var(--ink-3);
+  font-weight: 500;
+}
+.legend-dot {
+  width: 7px; height: 7px;
+  border-radius: 2px;
+  flex-shrink: 0;
+}
+.footer-right {
+  font-size: 7px;
+  color: var(--ink-4);
+  font-style: italic;
+}
+
+/* ── Print ── */
+@media print {
+  body { background: white; }
+  .toolbar { display: none !important; }
+  .pages-wrapper { padding: 0; }
+  .page { margin: 0; box-shadow: none; min-height: 297mm; height: 297mm; }
+  .page-break { page-break-after: always; }
+  @page { size: A4 portrait; margin: 0; }
+}
+
+.page-break { display: block; }
 </style>
 </head>
 <body>
   <div class="toolbar">
-    <h1>${titre}</h1>
-    <button class="btn-print" onclick="window.print()">🖨 Imprimer / Sauver en PDF</button>
+    <span class="toolbar-title">AvironCoach — Export Planning</span>
+    <button class="btn-print" onclick="window.print()">🖨 Imprimer / PDF</button>
   </div>
-  <div class="content">
-    ${semHtml}
+  <div class="pages-wrapper">
+    ${pages}
   </div>
 </body>
 </html>`;
+}
+
+function buildPage(sem) {
+  const charge = sem.charge || "";
+  const cs = CHARGE_STYLES[charge] || { bg:"#f1f5f9", text:"#475569", dot:"#94a3b8" };
+
+  // Colonnes jours
+  const dayCols = JOURS.map((jour, ji) => {
+    const short = JOURS_SHORT[ji];
+    const seances = sem.seances?.[jour] || [];
+
+    if (!seances.length) {
+      return `<div class="day-col">
+        <div class="day-header"><div class="day-name">${short}</div></div>
+        <div class="day-rest">—</div>
+      </div>`;
+    }
+
+    const cards = seances.map(s => {
+      const col  = TYPE_COLORS[s.type_seance] || "#64748b";
+      const bg   = TYPE_BG[s.type_seance]   || "#f8fafc";
+      const lbl  = TYPE_LABELS[s.type_seance] || s.type_seance;
+      const blocs = s.contenu?.blocs || [];
+      const duree = s.contenu?.duree_min ? `${s.contenu.duree_min}'` : "";
+
+      const blocsHtml = blocs.slice(0,5).map(b => `
+        <div class="bloc-row">
+          <span class="bloc-bullet" style="color:${col}">▸</span>
+          <span class="bloc-name">${b.titre}</span>
+          ${b.detail ? `<span class="bloc-detail">${b.detail}</span>` : ""}
+        </div>`).join("");
+
+      const moreHtml = blocs.length > 5
+        ? `<div class="blocs-more">+${blocs.length-5} blocs</div>` : "";
+
+      return `<div class="session-card" style="border-color:${col}30;background:${bg}">
+        <div class="card-header" style="background:${col}15">
+          <span class="card-type" style="color:${col}">${lbl}</span>
+          ${duree ? `<span class="card-duree" style="color:${col}">${duree}</span>` : ""}
+        </div>
+        <div class="card-title">${s.titre}</div>
+        ${blocsHtml ? `<div class="card-blocs">${blocsHtml}${moreHtml}</div>` : ""}
+      </div>`;
+    }).join("");
+
+    return `<div class="day-col">
+      <div class="day-header"><div class="day-name">${short}</div></div>
+      <div class="day-body">${cards}</div>
+    </div>`;
+  }).join("");
+
+  // Legend
+  const typesPresents = [...new Set(
+    JOURS.flatMap(j => (sem.seances?.[j]||[]).map(s=>s.type_seance)).filter(Boolean)
+  )];
+  const legendHtml = typesPresents.map(t => `
+    <div class="legend-item">
+      <div class="legend-dot" style="background:${TYPE_COLORS[t]||'#94a3b8'}"></div>
+      ${TYPE_LABELS[t]||t}
+    </div>`).join("");
+
+  return `<div class="page">
+    <!-- Header -->
+    <div class="page-header">
+      <div class="header-left">
+        <div class="page-club">AvironCoach</div>
+        <div class="page-title">Semaine ${sem.num_semaine||sem.num||"—"}</div>
+        <div class="page-sub">
+          ${sem.type_semaine ? `${sem.type_semaine}` : ""}
+          ${sem.date_debut ? ` · À partir du ${sem.date_debut}` : ""}
+        </div>
+      </div>
+      <div class="header-right">
+        ${charge ? `<div class="charge-badge" style="background:${cs.bg};color:${cs.text}">
+          <div class="charge-dot" style="background:${cs.dot}"></div>
+          Charge ${charge}
+        </div>` : ""}
+        ${sem.objectif ? `<div class="sem-objectif">${sem.objectif}</div>` : ""}
+      </div>
+    </div>
+
+    <!-- Grille -->
+    <div class="days-grid">${dayCols}</div>
+
+    <!-- Footer -->
+    <div class="page-footer">
+      <div class="footer-legend">${legendHtml}</div>
+      <div class="footer-right">Exporté le ${new Date().toLocaleDateString("fr-FR")}</div>
+    </div>
+  </div>`;
 }
