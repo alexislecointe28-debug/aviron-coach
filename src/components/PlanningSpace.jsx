@@ -804,7 +804,7 @@ export default function PlanningSpace({ athletes, isMobile, currentUser }) {
   }
 
   function TplGroup({type, tpls, isMobile}) {
-    const [open, setOpen] = useState(true);
+    const [open, setOpen] = useState(false);
     const color = TYPE_SEANCE_COLORS[type]||"#64748b";
     const PHASES_BADGE = [
       {key:"phase_accumulation",  label:"A", color:"#3b82f6"},
