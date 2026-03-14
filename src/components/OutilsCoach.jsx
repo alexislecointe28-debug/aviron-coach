@@ -273,7 +273,21 @@ function ChronoHandicap({ crewsConfig, setCrewsConfig, running, setRunning, star
       {crewsConfig.length > 0 && (
         <div style={{ display: "flex", flexDirection: "column", gap: 8, marginBottom: 20 }}>
           {crewsConfig.map((c, i) => (
-            <div key={c.id} style={{ background: "#182030", borderRadius: 10, padding: "12px 16px", display: "flex", alignItems: "center", gap: 12 }}>
+            <div key={c.id}
+              draggable
+              onDragStart={() => setDragCrewIdx(i)}
+              onDragOver={e => {
+                e.preventDefault();
+                if (dragCrewIdx === null || dragCrewIdx === i) return;
+                const next = [...crewsConfig];
+                const [item] = next.splice(dragCrewIdx, 1);
+                next.splice(i, 0, item);
+                setCrewsConfig(next);
+                setDragCrewIdx(i);
+              }}
+              onDragEnd={() => setDragCrewIdx(null)}
+              style={{ background: "#182030", borderRadius: 10, padding: "12px 16px", display: "flex", alignItems: "center", gap: 12, opacity: dragCrewIdx === i ? 0.5 : 1, cursor: "grab", border: `1px solid ${dragCrewIdx === i ? "#0ea5e940" : "transparent"}` }}>
+              <span style={{ color: "#334155", fontSize: 16, flexShrink: 0 }}>⠿</span>
               <div style={{ background: "#0ea5e920", color: "#0ea5e9", borderRadius: 6, padding: "2px 10px", fontSize: 13, fontWeight: 700, minWidth: 28, textAlign: "center" }}>#{i+1}</div>
               <div style={{ flex: 1, color: "#f1f5f9", fontWeight: 700 }}>{c.name}</div>
               <div style={{ color: c.delay > 0 ? "#f59e0b" : "#4ade80", fontSize: 13, fontWeight: 700 }}>
