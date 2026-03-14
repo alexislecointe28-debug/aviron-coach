@@ -1012,7 +1012,7 @@ export default function PlanningSpace({ athletes, isMobile, currentUser }) {
         <div style={{marginBottom:12}}>
           <label style={{display:"block",color:"#7a95b0",fontSize:11,marginBottom:8,textTransform:"uppercase",letterSpacing:1}}>Contenu (blocs) — glisser pour réordonner</label>
           {(()=>{
-            const [dragIdx, setDragIdx] = React.useState(null);
+            const [dragIdx, setDragIdx] = useState(null);
             const blocs = form.contenu?.blocs||[];
             const typeExos = exercises.filter(e=>!form.type_seance||e.type_seance===form.type_seance);
 
@@ -1132,7 +1132,7 @@ export default function PlanningSpace({ athletes, isMobile, currentUser }) {
         <div style={{marginBottom:12}}>
           <label style={{display:"block",color:"#7a95b0",fontSize:11,marginBottom:8,textTransform:"uppercase",letterSpacing:1}}>Blocs de contenu</label>
           {(()=>{
-            const [dIdx,setDIdx]=React.useState(null);
+            const [dIdx,setDIdx]=useState(null);
             const blocs=form.contenu?.blocs||[];
             const typeExos=exercises.filter(e=>!form.type_seance||e.type_seance===form.type_seance);
             function onDO(e,i){e.preventDefault();if(dIdx===null||dIdx===i)return;const nb=[...blocs];const[it]=nb.splice(dIdx,1);nb.splice(i,0,it);setContenu("blocs",nb);setDIdx(i);}
