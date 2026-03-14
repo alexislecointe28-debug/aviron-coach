@@ -73,6 +73,7 @@ export default function CoachSpace({ currentUser, onLogout }) {
   const [voiceRec,setVoiceRec]       = useState(false);
   const [voiceRecorder,setVoiceRecorder] = useState(null);
   const [boatOpen,setBoatOpen]   = useState({});
+  const [boatTypeMode,setBoatTypeMode] = useState({});
   const [showAddBoat,setShowAddBoat] = useState(false);
   const [paddles,setPaddles] = useState([]);
   const [showAddPaddle,setShowAddPaddle] = useState(false);
