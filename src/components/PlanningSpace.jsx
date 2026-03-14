@@ -929,24 +929,30 @@ export default function PlanningSpace({ athletes, isMobile, currentUser }) {
   function ExoInput({value, onChange, exercises, typeSeance, style, placeholder}) {
     const [open, setOpen] = useState(false);
     const [query, setQuery] = useState(value||"");
+    // Synchroniser query si value change de l'extérieur (ex: drag & drop)
+    const prevValue = React.useRef(value);
+    if(prevValue.current !== value) { prevValue.current = value; }
+    // Utiliser value directement comme source de vérité quand pas en focus
+    const [focused, setFocused] = useState(false);
+    const displayValue = focused ? query : (value||"");
     const filtered = exercises
       .filter(e=>!typeSeance||e.type_seance===typeSeance)
-      .filter(e=>!query||e.titre.toLowerCase().includes(query.toLowerCase()))
+      .filter(e=>!displayValue||e.titre.toLowerCase().includes(displayValue.toLowerCase()))
       .slice(0,12);
     return(
-      <div style={{position:"relative",flex:1}} onBlur={e=>{if(!e.currentTarget.contains(e.relatedTarget))setOpen(false)}}>
+      <div style={{position:"relative",flex:1,minWidth:0}} onBlur={e=>{if(!e.currentTarget.contains(e.relatedTarget)){setOpen(false);setFocused(false);}}}>
         <input
-          style={{...style,width:"100%"}}
-          value={query}
+          style={{...style,width:"100%",boxSizing:"border-box"}}
+          value={displayValue}
           placeholder={placeholder||"Exercice..."}
           onChange={e=>{setQuery(e.target.value);onChange(e.target.value,"");setOpen(true);}}
-          onFocus={()=>setOpen(true)}
+          onFocus={()=>{setQuery(value||"");setFocused(true);setOpen(true);}}
         />
-        {open&&filtered.length>0&&(
+        {open&&focused&&filtered.length>0&&(
           <div style={{position:"absolute",top:"100%",left:0,right:0,background:"#1e293b",border:"1px solid #334155",borderRadius:8,zIndex:500,maxHeight:200,overflowY:"auto",boxShadow:"0 8px 24px #00000060"}}>
             {filtered.map(e=>(
               <div key={e.id}
-                onMouseDown={()=>{setQuery(e.titre);onChange(e.titre,e.detail_defaut||"");setOpen(false);}}
+                onMouseDown={()=>{onChange(e.titre,e.detail_defaut||"");setQuery(e.titre);setOpen(false);setFocused(false);}}
                 style={{padding:"8px 12px",cursor:"pointer",borderBottom:"1px solid #263547",display:"flex",justifyContent:"space-between",alignItems:"center"}}
                 onMouseEnter={e2=>e2.currentTarget.style.background="#263547"}
                 onMouseLeave={e2=>e2.currentTarget.style.background="transparent"}>
