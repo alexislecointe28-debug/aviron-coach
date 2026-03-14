@@ -581,7 +581,7 @@ export default function AthleteSpace({ currentUser, onLogout, managedSections=[]
           />
         )}
         {tab==="planning"&&(<div style={{...S.page,padding:0}}>
-          <AthletePlanningView athlete={athlete} currentUser={currentUser} isMobile={isMobile}/>
+          <AthletePlanningView athlete={athlete} currentUser={currentUser} isMobile={isMobile} perfs={myPerfs}/>
         </div>)}
       </div>
 
@@ -900,7 +900,7 @@ const JOURS = ["Lundi","Mardi","Mercredi","Jeudi","Vendredi","Samedi","Dimanche"
 const TYPE_SEANCE_COLORS = { MUSCU:"#f97316",ERGO:"#0ea5e9",BATEAU:"#22d3ee",RECUP:"#4ade80",REPOS:"#64748b",TEST:"#a78bfa",COMPETITION:"#e879f9" };
 const TYPE_SEANCE_LABELS = { MUSCU:"💪 Muscu",ERGO:"🚣 Ergo",BATEAU:"⛵ Bateau",RECUP:"🔄 Récup",REPOS:"😴 Repos",TEST:"📊 Test",COMPETITION:"🏆 Compét" };
 
-function AthletePlanningView({ athlete, currentUser, isMobile }) {
+function AthletePlanningView({ athlete, currentUser, isMobile, perfs=[] }) {
   const [weeks, setWeeks]           = useState([]);
   const [selWeek, setSelWeek]       = useState(null);
   const [sessions, setSessions]     = useState([]);
@@ -910,6 +910,9 @@ function AthletePlanningView({ athlete, currentUser, isMobile }) {
   const [showModal, setShowModal]   = useState(false);
   const [selSession, setSelSession] = useState(null);
   const [noteForm, setNoteForm]     = useState({ note:"", commentaire:"" });
+  const [aiSession, setAiSession]   = useState(null); // id séance dont on affiche l'IA
+  const [aiData, setAiData]         = useState({});    // {sessionId: resultIA}
+  const [aiLoading, setAiLoading]   = useState(null);  // id séance en cours de chargement
 
   useEffect(() => { if(athlete) loadPlanning(); }, [athlete]);
 
@@ -978,6 +981,26 @@ function AthletePlanningView({ athlete, currentUser, isMobile }) {
 
   function getCompletion(sessionId) {
     return completions.find(c=>c.session_id===sessionId&&c.athlete_id===athlete.id);
+  }
+
+  async function callPlanningAI(session) {
+    const contenu = typeof session.contenu==="string" ? JSON.parse(session.contenu||"{}") : session.contenu||{};
+    const blocs = contenu.blocs||[];
+    if(!blocs.length) { setAiData(d=>({...d,[session.id]:{error:"Aucun bloc dans cette séance."}})); return; }
+    setAiLoading(session.id);
+    setAiSession(session.id);
+    try {
+      const r = await fetch("/api/athlete_ai", {
+        method:"POST", headers:{"Content-Type":"application/json"},
+        body: JSON.stringify({ mode:"planning", athlete, perfs, blocs, session_type: session.type_seance })
+      });
+      const data = await r.json();
+      if(data.error) throw new Error(data.error);
+      setAiData(d=>({...d,[session.id]:data}));
+    } catch(e) {
+      setAiData(d=>({...d,[session.id]:{error:e.message}}));
+    }
+    setAiLoading(null);
   }
 
   function openNote(session) {
@@ -1137,12 +1160,38 @@ function AthletePlanningView({ athlete, currentUser, isMobile }) {
                       {/* Note si fait */}
                       {done&&done.note&&<div style={{marginTop:6,fontSize:11,color:"#4ade80"}}>Note : {done.note}/10{done.commentaire?` — "${done.commentaire}"`:""}</div>}
                       {/* Bouton */}
-                      {s.type_seance!=="REPOS"&&(
+                      {s.type_seance!=="REPOS"&&(<>
                         <button onClick={()=>openNote(s)}
                           style={{marginTop:10,width:"100%",padding:"7px",borderRadius:7,border:`1px solid ${done?"#4ade8040":"#334155"}`,background:done?"#4ade8015":"#0f172a",color:done?"#4ade80":"#64748b",fontSize:11,fontWeight:700,cursor:"pointer"}}>
                           {done?"✓ Modifier":"Marquer comme fait"}
                         </button>
-                      )}
+                        <button onClick={()=>aiSession===s.id&&aiData[s.id]?setAiSession(null):callPlanningAI(s)}
+                          disabled={aiLoading===s.id}
+                          style={{marginTop:6,width:"100%",padding:"6px",borderRadius:7,border:`1px solid ${sc}40`,background:aiSession===s.id&&aiData[s.id]?sc+"15":"transparent",color:sc,fontSize:11,fontWeight:700,cursor:"pointer",opacity:aiLoading===s.id?0.6:1}}>
+                          {aiLoading===s.id?"🤖 Calcul...":aiSession===s.id&&aiData[s.id]?"▲ Masquer IA":"🤖 Splits & cadence"}
+                        </button>
+                        {aiSession===s.id&&aiData[s.id]&&(()=>{
+                          const ai=aiData[s.id];
+                          if(ai.error) return <div style={{marginTop:6,padding:"6px 10px",background:"#ef444415",borderRadius:7,color:"#ef4444",fontSize:11}}>{ai.error}</div>;
+                          return(
+                            <div style={{marginTop:6,background:sc+"08",border:`1px solid ${sc}25`,borderRadius:8,padding:"8px 10px"}}>
+                              {ai.intro&&<div style={{color:sc,fontSize:11,fontStyle:"italic",marginBottom:6}}>🤖 {ai.intro}</div>}
+                              {(ai.conseils||ai.blocs||[]).map((c,i)=>(
+                                <div key={i} style={{borderTop:i>0?"1px solid #1e293b":"none",paddingTop:i>0?6:0,marginTop:i>0?6:0}}>
+                                  <div style={{color:"#e2e8f0",fontWeight:700,fontSize:11,marginBottom:3}}>{c.bloc||c.titre}</div>
+                                  <div style={{display:"flex",gap:6,flexWrap:"wrap"}}>
+                                    {c.allure&&<span style={{background:"#0ea5e920",color:"#0ea5e9",borderRadius:4,padding:"1px 6px",fontSize:10,fontWeight:700}}>{c.allure}/500m</span>}
+                                    {c.watts&&<span style={{background:"#f59e0b20",color:"#f59e0b",borderRadius:4,padding:"1px 6px",fontSize:10,fontWeight:700}}>{c.watts}W</span>}
+                                    {c.cadence&&<span style={{background:"#a78bfa20",color:"#a78bfa",borderRadius:4,padding:"1px 6px",fontSize:10,fontWeight:700}}>{c.cadence} spm</span>}
+                                    {c.intensite&&<span style={{background:"#4ade8020",color:"#4ade80",borderRadius:4,padding:"1px 6px",fontSize:10}}>{c.intensite}</span>}
+                                  </div>
+                                  {c.conseil&&<div style={{color:"#64748b",fontSize:10,marginTop:3,fontStyle:"italic"}}>{c.conseil}</div>}
+                                </div>
+                              ))}
+                            </div>
+                          );
+                        })()}
+                      </>)}
                     </div>
                   );
                 })}
