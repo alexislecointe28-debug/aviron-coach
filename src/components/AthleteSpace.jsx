@@ -281,19 +281,179 @@ export default function AthleteSpace({ currentUser, onLogout, managedSections=[]
             </div>
             <button style={{...S.btnP,width:"100%",marginTop:8,background:"#a78bfa",color:"#0f1923"}} onClick={addPerf}>Enregistrer</button>
           </Modal>}
-        {tab==="stats"&&(<div style={{...S.page,padding:isMobile?"16px 12px":"28px 32px"}}>
-          <div style={S.ph}><div><h1 style={S.ttl}>Mes Stats</h1><p style={S.sub}>Progression</p></div></div>
-          {myPerfs.length<2?<div style={{...S.card,textAlign:"center",padding:"40px",color:"#5a7a9a"}}>Ajoute au moins 2 sessions pour voir ta progression.</div>:(<>
-            <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:14,marginBottom:24}}>
-              {/* Filtre type perf */}
-              <div style={{display:"flex",gap:6,marginBottom:12}}>{"500m 1000m 2000m".split(" ").map(t=><button key={t} onClick={()=>setPerfTypeFilter(t)} style={{padding:"4px 12px",borderRadius:6,border:`1px solid ${perfTypeFilter===t?"#a78bfa":"#1e293b"}`,background:perfTypeFilter===t?"#a78bfa20":"transparent",color:perfTypeFilter===t?"#a78bfa":"#5a7a9a",fontSize:12,cursor:"pointer",fontWeight:perfTypeFilter===t?700:400}}>{t}</button>)}</div>
-              {[{l:`Best ${perfTypeFilter}`,v:best?.time??"--",c:"#4ade80",ic:"~"},{l:"Record watts",v:`${Math.max(...myPerfs.map(p=>concept2WattsFast(p.time, p.distance_type||"2000m")||p.watts||0))}W`,c:"#0ea5e9",ic:"~"},{l:"W/kg actuel",v:wpkg??"--",c:"#a78bfa",ic:"~"},{l:"Km totaux",v:`${filteredPerfs.reduce((s,p)=>s+(p.distance||0),0)}km`,c:"#f97316",ic:"~"}].map((k,i)=><div key={i} style={S.kpi}><div style={{color:k.c,fontSize:20,marginBottom:8}}>{k.ic}</div><div style={{color:k.c,fontSize:22,fontWeight:900}}>{k.v}</div><div style={{color:"#7a95b0",fontSize:11,textTransform:"uppercase",letterSpacing:1,marginTop:4}}>{k.l}</div></div>)}
+        {tab==="stats"&&(()=>{
+          // ——— Données courbe ———
+          const perfs2k = myPerfs.filter(p=>(p.distance_type||"2000m")==="2000m").slice(-12);
+          const perfs1k = myPerfs.filter(p=>p.distance_type==="1000m").slice(-12);
+          const chartPerfs = perfTypeFilter==="1000m"?perfs1k:perfTypeFilter==="500m"?myPerfs.filter(p=>p.distance_type==="500m").slice(-12):perfs2k;
+          const chartWatts = chartPerfs.map(p=>concept2WattsFast(p.time,p.distance_type||"2000m")||p.watts||0);
+          const chartTimes = chartPerfs.map(p=>timeToSeconds(p.time)).filter(Boolean);
+
+          // ——— Records ———
+          const recordWatts = Math.max(0,...myPerfs.map(p=>concept2WattsFast(p.time,p.distance_type||"2000m")||p.watts||0));
+          const recordWattsPerf = myPerfs.find(p=>(concept2WattsFast(p.time,p.distance_type||"2000m")||p.watts||0)===recordWatts);
+          const best2kPerf = getBestTime(perfs2k);
+          const best1kPerf = getBestTime(perfs1k);
+
+          // ——— Streak assiduité (séances validées consécutives) ———
+          // On simule avec les perfs: chaque perf = 1 séance honorée
+          const sortedDates=[...new Set(myPerfs.map(p=>p.date))].sort();
+          let streak=0,maxStreak=0,cur=0;
+          for(let i=0;i<sortedDates.length;i++){
+            if(i===0){cur=1;}else{
+              const d1=new Date(sortedDates[i-1]),d2=new Date(sortedDates[i]);
+              const diff=Math.round((d2-d1)/(1000*60*60*24));
+              cur=diff<=7?cur+1:1;
+            }
+            maxStreak=Math.max(maxStreak,cur);
+          }
+          streak=cur;
+
+          // ——— Comparaison équipe ———
+          const teamWatts = myCrew ? allAthletes
+            .filter(a=>crewMembers.some(m=>m.crew_id===myCrew.id&&m.athlete_id===a.id))
+            .map(a=>{
+              const ap=myPerfs.filter(p=>p.athlete_id===a.id);
+              const lp=ap[ap.length-1];
+              return lp?(concept2WattsFast(lp.time,lp.distance_type||"2000m")||lp.watts||0):0;
+            }).filter(Boolean) : [];
+          const teamAvgW = teamWatts.length?Math.round(teamWatts.reduce((s,v)=>s+v,0)/teamWatts.length):null;
+          const myRankW = teamWatts.length?[...teamWatts].sort((a,b)=>b-a).indexOf(lastWatts)+1:null;
+
+          // ——— Mini courbe SVG animée ———
+          function MiniChart({data, color, invert, label, unit, dispFn}) {
+            if(!data||data.length<2) return null;
+            const W=280,H=80,pad=8;
+            const mn=Math.min(...data),mx=Math.max(...data);
+            const range=mx-mn||1;
+            const pts=data.map((v,i)=>{
+              const x=pad+(i/(data.length-1))*(W-pad*2);
+              const y=invert?pad+(v-mn)/range*(H-pad*2):H-pad-(v-mn)/range*(H-pad*2);
+              return `${x},${y}`;
+            }).join(" ");
+            const last=data[data.length-1];
+            const prev=data[data.length-2];
+            const trend=invert?(last<prev):(last>prev);
+            return(
+              <div style={{background:"#0f1923",borderRadius:10,padding:"12px 14px",border:`1px solid ${color}25`}}>
+                <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:6}}>
+                  <div style={{color:"#64748b",fontSize:11,fontWeight:700,textTransform:"uppercase",letterSpacing:1}}>{label}</div>
+                  <div style={{display:"flex",alignItems:"center",gap:4}}>
+                    <span style={{color:trend?"#4ade80":"#ef4444",fontSize:11}}>{trend?"▲":"▼"}</span>
+                    <span style={{color:color,fontWeight:900,fontSize:18}}>{dispFn?dispFn(last):last}{unit&&<span style={{fontSize:11,fontWeight:400,color:"#64748b"}}> {unit}</span>}</span>
+                  </div>
+                </div>
+                <svg viewBox={`0 0 ${W} ${H}`} style={{width:"100%",height:60,overflow:"visible"}}>
+                  <defs>
+                    <linearGradient id={`g${label.replace(/ /g,'')}`} x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="0%" stopColor={color} stopOpacity="0.3"/>
+                      <stop offset="100%" stopColor={color} stopOpacity="0"/>
+                    </linearGradient>
+                  </defs>
+                  <polyline points={pts} fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                  {data.map((v,i)=>{
+                    const x=pad+(i/(data.length-1))*(W-pad*2);
+                    const y=invert?pad+(v-mn)/range*(H-pad*2):H-pad-(v-mn)/range*(H-pad*2);
+                    return i===data.length-1?<circle key={i} cx={x} cy={y} r="4" fill={color} stroke="#0f1923" strokeWidth="2"/>:null;
+                  })}
+                </svg>
+                <div style={{color:"#334155",fontSize:10,textAlign:"right"}}>{data.length} sessions</div>
+              </div>
+            );
+          }
+
+          return(
+          <div style={{padding:isMobile?"16px 12px":"28px 40px"}}>
+
+            {/* Filtre distance */}
+            <div style={{display:"flex",gap:6,marginBottom:20}}>
+              {["500m","1000m","2000m"].map(t=>(
+                <button key={t} onClick={()=>setPerfTypeFilter(t)}
+                  style={{padding:"5px 14px",borderRadius:8,border:`1px solid ${perfTypeFilter===t?"#a78bfa":"#1e293b"}`,background:perfTypeFilter===t?"#a78bfa20":"transparent",color:perfTypeFilter===t?"#a78bfa":"#5a7a9a",fontSize:12,cursor:"pointer",fontWeight:perfTypeFilter===t?700:400}}>
+                  {t}
+                </button>
+              ))}
             </div>
-            <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:14}}>
-              {[{l:"Puissance",vals:myPerfs.map(p=>concept2WattsFast(p.time, p.distance_type||"2000m")||p.watts||0),c:"#0ea5e9",hi:true},{l:"Temps 2k (s)",vals:myPerfs.map(p=>timeToSeconds(p.time)),c:"#4ade80",hi:false,disp:v=>secondsToTime(v)},{l:"W/kg",vals:myPerfs.map(p=>+((concept2WattsFast(p.time, p.distance_type||"2000m")||p.watts||0)/(athlete.weight||1)).toFixed(2)),c:"#a78bfa",hi:true},{l:"Distance",vals:myPerfs.map(p=>p.distance||0),c:"#f97316",hi:true}].map(m=>{const lv=m.vals[m.vals.length-1],pv=m.vals[m.vals.length-2],diff=lv-pv,up=m.hi?diff>0:diff<0;return(<div key={m.l} style={S.mc}><div style={{color:"#7a95b0",fontSize:12,marginBottom:6}}>{m.l}</div><div style={{color:m.c,fontSize:22,fontWeight:900}}>{m.disp?m.disp(lv):lv}</div><div style={{color:up?"#4ade80":"#ef4444",fontSize:12,marginBottom:8}}>{up?"^":"v"} {Math.abs(diff)}</div><Sparkline data={m.vals} color={m.c} invert={!m.hi}/></div>);})}
+
+            {/* ═══ RECORDS ═══ */}
+            <div style={{color:"#f1f5f9",fontWeight:800,fontSize:15,marginBottom:12}}>🏆 Records personnels</div>
+            <div style={{display:"grid",gridTemplateColumns:isMobile?"1fr 1fr":"repeat(4,1fr)",gap:10,marginBottom:24}}>
+              {[
+                {label:"Best 2000m",value:best2kPerf?.time??"--",sub:best2kPerf?.date??"",color:"#4ade80",icon:"⏱"},
+                {label:"Best 1000m",value:best1kPerf?.time??"--",sub:best1kPerf?.date??"",color:"#0ea5e9",icon:"⚡"},
+                {label:"Record watts",value:recordWatts?`${recordWatts}W`:"--",sub:recordWattsPerf?.date??"",color:"#f59e0b",icon:"💥"},
+                {label:"W/kg record",value:recordWatts&&athlete?.weight?`${(recordWatts/athlete.weight).toFixed(2)}`:"--",sub:`${athlete.weight}kg`,color:"#a78bfa",icon:"⚖️"},
+              ].map((r,i)=>(
+                <div key={i} style={{background:"#182030",border:`1px solid ${r.color}30`,borderRadius:12,padding:"14px",textAlign:"center"}}>
+                  <div style={{fontSize:18,marginBottom:4}}>{r.icon}</div>
+                  <div style={{color:r.color,fontWeight:900,fontSize:isMobile?18:22}}>{r.value}</div>
+                  <div style={{color:"#64748b",fontSize:10,marginTop:2,textTransform:"uppercase",letterSpacing:1}}>{r.label}</div>
+                  {r.sub&&<div style={{color:"#475569",fontSize:10,marginTop:2}}>{r.sub}</div>}
+                </div>
+              ))}
             </div>
-          </>)}
-        </div>)}
+
+            {/* ═══ COURBES ═══ */}
+            <div style={{color:"#f1f5f9",fontWeight:800,fontSize:15,marginBottom:12}}>📈 Progression</div>
+            {chartPerfs.length<2
+              ?<div style={{background:"#182030",border:"1px solid #1e293b",borderRadius:12,padding:"32px",textAlign:"center",color:"#5a7a9a",marginBottom:24}}>
+                Pas assez de données pour {perfTypeFilter} — ajoute des performances !
+              </div>
+              :<div style={{display:"grid",gridTemplateColumns:isMobile?"1fr":"1fr 1fr",gap:10,marginBottom:24}}>
+                <MiniChart data={chartWatts} color="#0ea5e9" label="Puissance" unit="W" invert={false}/>
+                <MiniChart data={chartTimes} color="#4ade80" label="Temps" invert={true} dispFn={secondsToTime}/>
+                <MiniChart data={chartPerfs.map(p=>+((concept2WattsFast(p.time,p.distance_type||"2000m")||p.watts||0)/(athlete.weight||1)).toFixed(2))} color="#a78bfa" label="W/kg" invert={false}/>
+                <MiniChart data={chartPerfs.map(p=>p.distance||0)} color="#f97316" label="Distance" unit="km" invert={false}/>
+              </div>
+            }
+
+            {/* ═══ STREAK + COMPARAISON ═══ */}
+            <div style={{display:"grid",gridTemplateColumns:isMobile?"1fr":"1fr 1fr",gap:10}}>
+
+              {/* Streak */}
+              <div style={{background:"#182030",border:"1px solid #f59e0b30",borderRadius:12,padding:"16px"}}>
+                <div style={{color:"#f1f5f9",fontWeight:700,fontSize:13,marginBottom:12}}>🔥 Assiduité</div>
+                <div style={{display:"flex",alignItems:"center",gap:16"}}>
+                  <div style={{textAlign:"center"}}>
+                    <div style={{color:"#f59e0b",fontWeight:900,fontSize:36,lineHeight:1}}>{streak}</div>
+                    <div style={{color:"#64748b",fontSize:10,textTransform:"uppercase",letterSpacing:1,marginTop:2}}>Séances récentes</div>
+                  </div>
+                  <div style={{flex:1,borderLeft:"1px solid #1e293b",paddingLeft:16}}>
+                    <div style={{color:"#94a3b8",fontSize:13,marginBottom:4}}>Record : <span style={{color:"#f59e0b",fontWeight:700}}>{maxStreak}</span></div>
+                    <div style={{color:"#94a3b8",fontSize:13,marginBottom:4}}>Total sessions : <span style={{color:"#f1f5f9",fontWeight:700}}>{myPerfs.length}</span></div>
+                    <div style={{color:"#94a3b8",fontSize:13}}>Km totaux : <span style={{color:"#f97316",fontWeight:700}}>{myPerfs.reduce((s,p)=>s+(p.distance||0),0)} km</span></div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Comparaison équipe */}
+              <div style={{background:"#182030",border:"1px solid #0ea5e930",borderRadius:12,padding:"16px"}}>
+                <div style={{color:"#f1f5f9",fontWeight:700,fontSize:13,marginBottom:12}}>👥 vs Équipe {myCrew?`(${myCrew.name})`:""}</div>
+                {!myCrew||!teamAvgW
+                  ?<div style={{color:"#5a7a9a",fontSize:13"}}>Aucun équipage assigné</div>
+                  :<>
+                    <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:12}}>
+                      <div style={{flex:1}}>
+                        <div style={{color:"#64748b",fontSize:10,textTransform:"uppercase",letterSpacing:1,marginBottom:2}}>Toi</div>
+                        <div style={{color:lastWatts>teamAvgW?"#4ade80":"#f97316",fontWeight:900,fontSize:22}}>{lastWatts??"--"}W</div>
+                      </div>
+                      <div style={{color:"#334155",fontSize:20}}>vs</div>
+                      <div style={{flex:1,textAlign:"right"}}>
+                        <div style={{color:"#64748b",fontSize:10,textTransform:"uppercase",letterSpacing:1,marginBottom:2}}>Moy. équipe</div>
+                        <div style={{color:"#0ea5e9",fontWeight:900,fontSize:22}}>{teamAvgW}W</div>
+                      </div>
+                    </div>
+                    {myRankW&&<div style={{background:"#0f1923",borderRadius:8,padding:"8px 12px",display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+                      <span style={{color:"#64748b",fontSize:12}}>Classement équipe</span>
+                      <span style={{color:myRankW===1?"#f59e0b":"#94a3b8",fontWeight:800,fontSize:16}}>#{myRankW} {myRankW===1?"🥇":myRankW===2?"🥈":myRankW===3?"🥉":""}</span>
+                    </div>}
+                  </>
+                }
+              </div>
+            </div>
+
+          </div>);
+        })()}
         {tab==="crew"&&(<div style={{...S.page,padding:isMobile?"16px 12px":"28px 32px"}}>
           <div style={S.ph}><div><h1 style={S.ttl}>Mon Équipage</h1><p style={S.sub}>Assigné par le coach</p></div></div>
           {!myCrew?<div style={{...S.card,textAlign:"center",padding:"40px",color:"#5a7a9a"}}>Aucun équipage assigné pour le moment.</div>:(<>
