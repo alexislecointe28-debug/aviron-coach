@@ -96,13 +96,14 @@ export default function PlanningSpace({ athletes, isMobile, currentUser }) {
   async function loadAll() {
     setLoading(true);
     try {
-      const [pl, tpl] = await Promise.all([
+      const [pl, tpl, exos] = await Promise.all([
         api.getSeasonPlans(),
         api.getSessionTemplates(),
         api.getExercises().catch(()=>[]),
       ]);
       setPlans(pl||[]);
       setTemplates(tpl||[]);
+      setExercises(exos||[]);
     } catch(e) { showToast("Erreur chargement","error"); }
     setLoading(false);
   }
@@ -924,6 +925,41 @@ export default function PlanningSpace({ athletes, isMobile, currentUser }) {
     );
   }
 
+  // Composant de sélection d'exercice avec dropdown custom (compatible Safari)
+  function ExoInput({value, onChange, exercises, typeSeance, style, placeholder}) {
+    const [open, setOpen] = useState(false);
+    const [query, setQuery] = useState(value||"");
+    const filtered = exercises
+      .filter(e=>!typeSeance||e.type_seance===typeSeance)
+      .filter(e=>!query||e.titre.toLowerCase().includes(query.toLowerCase()))
+      .slice(0,12);
+    return(
+      <div style={{position:"relative",flex:1}} onBlur={e=>{if(!e.currentTarget.contains(e.relatedTarget))setOpen(false)}}>
+        <input
+          style={{...style,width:"100%"}}
+          value={query}
+          placeholder={placeholder||"Exercice..."}
+          onChange={e=>{setQuery(e.target.value);onChange(e.target.value,"");setOpen(true);}}
+          onFocus={()=>setOpen(true)}
+        />
+        {open&&filtered.length>0&&(
+          <div style={{position:"absolute",top:"100%",left:0,right:0,background:"#1e293b",border:"1px solid #334155",borderRadius:8,zIndex:500,maxHeight:200,overflowY:"auto",boxShadow:"0 8px 24px #00000060"}}>
+            {filtered.map(e=>(
+              <div key={e.id}
+                onMouseDown={()=>{setQuery(e.titre);onChange(e.titre,e.detail_defaut||"");setOpen(false);}}
+                style={{padding:"8px 12px",cursor:"pointer",borderBottom:"1px solid #263547",display:"flex",justifyContent:"space-between",alignItems:"center"}}
+                onMouseEnter={e2=>e2.currentTarget.style.background="#263547"}
+                onMouseLeave={e2=>e2.currentTarget.style.background="transparent"}>
+                <span style={{color:"#f1f5f9",fontSize:13,fontWeight:600}}>{e.titre}</span>
+                {e.detail_defaut&&<span style={{color:"#475569",fontSize:11,marginLeft:8}}>{e.detail_defaut.slice(0,30)}</span>}
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+    );
+  }
+
   function ModalSession() {
     const initContenu = editSession?.contenu && typeof editSession.contenu==="object" ? editSession.contenu : {blocs:[],duree_min:60};
     const [form, setForm] = useState({...editSession, contenu: initContenu});
@@ -1023,12 +1059,14 @@ export default function PlanningSpace({ athletes, isMobile, currentUser }) {
                 onDragEnd={()=>setDragIdx(null)}
                 style={{display:"flex",gap:8,marginBottom:6,alignItems:"center",opacity:dragIdx===i?0.5:1,cursor:"grab",background:dragIdx===i?"#0ea5e910":"transparent",borderRadius:6,padding:"2px 0"}}>
                 <span style={{color:"#334155",fontSize:16,cursor:"grab",flexShrink:0,paddingLeft:2}}>⠿</span>
-                <input
-                  list="sess-exos"
-                  style={{...S.inp,fontSize:12,fontWeight:700,width:140,flexShrink:0,borderColor:"#0ea5e940",color:"#0ea5e9"}}
+                <ExoInput
                   value={b.titre}
-                  onChange={e=>{const v=e.target.value;const m=exercises.find(x=>x.titre===v);setContenu("blocs",blocs.map((x,j)=>j===i?{...x,titre:v,detail:m?m.detail_defaut:x.detail}:x));}}
-                  placeholder="Exercice"/>
+                  exercises={exercises}
+                  typeSeance={form.type_seance}
+                  style={{...S.inp,fontSize:12,fontWeight:700,borderColor:"#0ea5e940",color:"#0ea5e9"}}
+                  placeholder="Exercice"
+                  onChange={(titre,detail)=>setContenu("blocs",blocs.map((x,j)=>j===i?{...x,titre,detail:detail||x.detail}:x))}
+                />
                 <input style={{...S.inp,flex:1,fontSize:12}}
                   value={b.detail}
                   onChange={e=>setContenu("blocs",blocs.map((x,j)=>j===i?{...x,detail:e.target.value}:x))}
@@ -1037,14 +1075,16 @@ export default function PlanningSpace({ athletes, isMobile, currentUser }) {
               </div>
             );
           })}
-          <datalist id="sess-exos">
-            {exercises.filter(e=>!form.type_seance||e.type_seance===form.type_seance).map(e=><option key={e.id} value={e.titre}>{e.detail_defaut}</option>)}
-          </datalist>
           {/* Ajouter un bloc */}
           <div style={{display:"flex",gap:8,marginTop:8}}>
-            <input list="sess-exos" style={{...S.inp,width:140,flexShrink:0,fontSize:12}} placeholder="Exercice"
+            <ExoInput
               value={newBloc.titre}
-              onChange={e=>{const v=e.target.value;const m=exercises.find(x=>x.titre===v);setNewBloc(b=>({...b,titre:v,detail:m?m.detail_defaut:b.detail}));}}/>
+              exercises={exercises}
+              typeSeance={form.type_seance}
+              style={{...S.inp,fontSize:12}}
+              placeholder="Exercice"
+              onChange={(titre,detail)=>setNewBloc(b=>({...b,titre,detail:detail||b.detail}))}
+            />
             <input style={{...S.inp,flex:1,fontSize:12}} placeholder="Détail (ex: 4×10-12 · 60%)" value={newBloc.detail} onChange={e=>setNewBloc(b=>({...b,detail:e.target.value}))}/>
             <button style={S.btnP} onClick={()=>{if(!newBloc.titre)return;setContenu("blocs",[...(form.contenu?.blocs||[]),{...newBloc}]);setNewBloc({titre:"",detail:""});}}>+</button>
           </div>
@@ -1125,9 +1165,6 @@ export default function PlanningSpace({ athletes, isMobile, currentUser }) {
               </div>
             );
           })}
-          <datalist id="tpl-exos">
-            {exercises.filter(e=>!form.type_seance||e.type_seance===form.type_seance).map(e=><option key={e.id} value={e.titre}>{e.detail_defaut}</option>)}
-          </datalist>
           <div style={{display:"flex",gap:8,marginTop:8}}>
             <input style={{...S.inp,width:110,fontSize:12}} placeholder="Titre" value={newBloc.titre} onChange={e=>setNewBloc(b=>({...b,titre:e.target.value}))}/>
             <input style={{...S.inp,flex:1,fontSize:12}} placeholder="Détail" value={newBloc.detail} onChange={e=>setNewBloc(b=>({...b,detail:e.target.value}))}/>
