@@ -31,7 +31,7 @@ const TYPE_SEANCE_COLORS = {
   RECUP:"#4ade80", REPOS:"#64748b", TEST:"#a78bfa", COMPETITION:"#e879f9",
 };
 const TYPE_SEANCE_LABELS = {
-  MUSCU:"💪 Muscu", ERGO:"🚣 Ergo", BATEAU:"⛵ Bateau",
+  MUSCU:"💪 Muscu", ERGO:"🚣 Ergo", BATEAU:"⛵ Bateau", PLIO:"⚡ Plio",
   RECUP:"🔄 Récup", REPOS:"😴 Repos", TEST:"📊 Test", COMPETITION:"🏆 Compét",
 };
 
