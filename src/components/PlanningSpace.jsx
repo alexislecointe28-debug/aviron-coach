@@ -79,6 +79,17 @@ export default function PlanningSpace({ athletes, isMobile, currentUser }) {
   const [showSessionModal,   setShowSessionModal]   = useState(false);
   const [showTplModal,       setShowTplModal]       = useState(false);
   const [exercises,          setExercises]          = useState([]);
+  const [favTpls,            setFavTpls]            = useState(()=>{
+    try { return JSON.parse(localStorage.getItem("fav_templates")||"[]"); } catch { return []; }
+  });
+
+  function toggleFavTpl(id) {
+    setFavTpls(prev => {
+      const next = prev.includes(id) ? prev.filter(x=>x!==id) : [...prev, id];
+      localStorage.setItem("fav_templates", JSON.stringify(next));
+      return next;
+    });
+  }
   const [showAthletesModal,  setShowAthletesModal]  = useState(false);
   const [editPlan,           setEditPlan]           = useState(null);
   const [editWeek,           setEditWeek]           = useState(null);
@@ -828,7 +839,11 @@ export default function PlanningSpace({ athletes, isMobile, currentUser }) {
                     <div style={{fontWeight:700,color:"#f1f5f9",fontSize:14}}>{t.name}</div>
                     <div style={{display:"flex",gap:4}}>
                       <button style={{...S.actionBtn,borderColor:"#334155",color:"#94a3b8",fontSize:10,padding:"3px 8px"}} onClick={()=>{setEditTpl({...t,contenu:typeof t.contenu==="string"?JSON.parse(t.contenu):t.contenu});setShowTplModal(true);}}>✏️</button>
-                      {!t.is_default&&<button style={{...S.actionBtn,borderColor:"#ef444430",color:"#ef4444",fontSize:10,padding:"3px 8px"}} onClick={()=>deleteTpl(t.id)}>🗑</button>}
+                      <button onClick={()=>toggleFavTpl(t.id)}
+                      style={{...S.actionBtn,borderColor:favTpls.includes(t.id)?"#f59e0b40":"#334155",color:favTpls.includes(t.id)?"#f59e0b":"#475569",fontSize:13,padding:"2px 6px"}}>
+                      {favTpls.includes(t.id)?"♥":"♡"}
+                    </button>
+                    {!t.is_default&&<button style={{...S.actionBtn,borderColor:"#ef444430",color:"#ef4444",fontSize:10,padding:"3px 8px"}} onClick={()=>deleteTpl(t.id)}>🗑</button>}
                     </div>
                   </div>
                   {(()=>{
@@ -1049,14 +1064,24 @@ export default function PlanningSpace({ athletes, isMobile, currentUser }) {
               ))}
             </div>
             <div style={{display:"flex",gap:6,flexWrap:"wrap"}}>
-              {myTemplates.map(t=>(
-                <button key={t.id} style={{...S.fb,fontSize:11}} onClick={()=>applyTemplate(t)}>
-                  {t.name}
-                  {PHASES_TPL.filter(p=>t[p.key]).map(p=>(
-                    <span key={p.key} style={{marginLeft:4,background:p.color+"30",color:p.color,borderRadius:3,fontSize:8,padding:"0 4px",verticalAlign:"middle"}}>{p.label[0]}</span>
-                  ))}
-                </button>
-              ))}
+          {/* Favoris en premier */}
+            {myTemplates.filter(t=>favTpls.includes(t.id)).length>0&&(
+              <div style={{display:"flex",gap:4,flexWrap:"wrap",marginBottom:4}}>
+                {myTemplates.filter(t=>favTpls.includes(t.id)).map(t=>(
+                  <button key={t.id} style={{...S.fb,fontSize:11,borderColor:"#f59e0b40",background:"#f59e0b08"}} onClick={()=>applyTemplate(t)}>
+                    ♥ {t.name}
+                  </button>
+                ))}
+              </div>
+            )}
+            {myTemplates.map(t=>(
+              <button key={t.id} style={{...S.fb,fontSize:11}} onClick={()=>applyTemplate(t)}>
+                {t.name}
+                {PHASES_TPL.filter(p=>t[p.key]).map(p=>(
+                  <span key={p.key} style={{marginLeft:4,background:p.color+"30",color:p.color,borderRadius:3,fontSize:8,padding:"0 4px",verticalAlign:"middle"}}>{p.label[0]}</span>
+                ))}
+              </button>
+            ))}
             </div>
           </FF>
         )}
@@ -1107,6 +1132,25 @@ export default function PlanningSpace({ athletes, isMobile, currentUser }) {
         </div>
 
         <FF label="Durée (min)"><input style={{...S.inp,width:100}} type="number" min="0" value={form.contenu?.duree_min||0} onChange={e=>setContenu("duree_min",parseInt(e.target.value))}/></FF>
+
+        {/* Transformer la séance en template */}
+        <div style={{display:"flex",justifyContent:"center",marginBottom:8}}>
+          <button
+            onClick={()=>{
+              setShowTplModal(false);
+              setEditTpl({
+                name: form.titre||"Nouveau template",
+                type_seance: form.type_seance||"ERGO",
+                contenu: form.contenu||{blocs:[],duree_min:60},
+                is_default: false,
+              });
+              setShowSessionModal(false);
+              setShowTplModal(true);
+            }}
+            style={{background:"none",border:"1px dashed #334155",borderRadius:8,color:"#64748b",fontSize:12,cursor:"pointer",padding:"5px 14px",display:"flex",alignItems:"center",gap:6}}>
+            📋 Transformer en template
+          </button>
+        </div>
 
         {/* Proposition sauvegarde template */}
         {showTplSave&&selTpl&&(
