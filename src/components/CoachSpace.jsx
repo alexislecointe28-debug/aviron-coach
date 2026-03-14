@@ -3,6 +3,7 @@ import { LineChart, Line, XAxis, YAxis, Tooltip, Legend, ResponsiveContainer } f
 import { TYPE_COLORS, CMP_COLORS, AGE_CAT_COLORS, AGE_CAT_GROUPS, BLADE_TYPES, CREW_SLOTS, S } from "../styles.js";
 import { api } from "../config/supabase.js";
 import { FF, Modal, Toast, Loader, Sparkline, StatPill } from "./ui.jsx";
+import OutilsCoach from "./OutilsCoach.jsx";
 import PlanningSpace from "./PlanningSpace.jsx";
 import {
   timeToSeconds, secondsToTime, concept2Watts, concept2WattsFast,
@@ -55,6 +56,22 @@ export default function CoachSpace({ currentUser, onLogout }) {
   // Boats states
   const [selBoat,setSelBoat]   = useState(null);
   const [boatFilter,setBoatFilter] = useState(null);
+  // ═══ OUTILS ═══
+  const [outiTab,setOutiTab]   = useState("cadence");
+  // Cadencemètre
+  const [cadTaps,setCadTaps]   = useState([]);
+  const [cadSpm,setCadSpm]     = useState(null);
+  const [cadActive,setCadActive] = useState(false);
+  // Chrono départs différés
+  const [chronoCrews,setChronoCrews]   = useState([]);
+  const [chronoRunning,setChronoRunning] = useState(false);
+  const [chronoStart,setChronoStart]   = useState(null);
+  const [chronoNow,setChronoNow]       = useState(0);
+  const [chronoArrivals,setChronoArrivals] = useState({});
+  // Notes vocales
+  const [voiceNotes,setVoiceNotes]   = useState([]);
+  const [voiceRec,setVoiceRec]       = useState(false);
+  const [voiceRecorder,setVoiceRecorder] = useState(null);
   const [boatOpen,setBoatOpen]   = useState({});
   const [showAddBoat,setShowAddBoat] = useState(false);
   const [paddles,setPaddles] = useState([]);
@@ -336,7 +353,7 @@ export default function CoachSpace({ currentUser, onLogout }) {
     return()=>window.removeEventListener('resize',handler);
   },[]);
 
-  const NAV=[{id:"dashboard",label:"Dashboard",icon:"📊"},{id:"athletes",label:"Athlètes",icon:"👤"},{id:"performances",label:"Performances",icon:"⚡"},{id:"compare",label:"Comparer",icon:"⚖️"},{id:"crew",label:"Équipages",icon:"🚣"},{id:"boats",label:"Bateaux",icon:"🛶"},{id:"planning",label:"Planning",icon:"📅"}];
+  const NAV=[{id:"dashboard",label:"Dashboard",icon:"📊"},{id:"athletes",label:"Athlètes",icon:"👤"},{id:"performances",label:"Performances",icon:"⚡"},{id:"compare",label:"Comparer",icon:"⚖️"},{id:"crew",label:"Équipages",icon:"🚣"},{id:"boats",label:"Bateaux",icon:"🛶"},{id:"planning",label:"Planning",icon:"📅"},{id:"outils",label:"Outils",icon:"🧰"}];
 
 
   async function applyAllRigging() {
@@ -1589,6 +1606,17 @@ export default function CoachSpace({ currentUser, onLogout }) {
         </div>)}
 
         {tab==="planning"&&(<div style={{...S.page,padding:isMobile?"16px 12px":"28px 32px"}}><PlanningSpace athletes={athletes} isMobile={isMobile} currentUser={currentUser}/></div>)}
+
+        {tab==="outils"&&(<OutilsCoach
+          outiTab={outiTab} setOutiTab={setOutiTab}
+          cadTaps={cadTaps} setCadTaps={setCadTaps} cadSpm={cadSpm} setCadSpm={setCadSpm} cadActive={cadActive} setCadActive={setCadActive}
+          chronoCrews={chronoCrews} setChronoCrews={setChronoCrews} chronoRunning={chronoRunning} setChronoRunning={setChronoRunning}
+          chronoStart={chronoStart} setChronoStart={setChronoStart} chronoNow={chronoNow} setChronoNow={setChronoNow}
+          chronoArrivals={chronoArrivals} setChronoArrivals={setChronoArrivals}
+          voiceNotes={voiceNotes} setVoiceNotes={setVoiceNotes} voiceRec={voiceRec} setVoiceRec={setVoiceRec}
+          voiceRecorder={voiceRecorder} setVoiceRecorder={setVoiceRecorder}
+          crews={crews} isMobile={isMobile} S={S}
+        />)}
 
 
 
