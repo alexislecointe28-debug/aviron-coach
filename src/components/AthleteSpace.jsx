@@ -1172,11 +1172,10 @@ function AthletePlanningView({ athlete, currentUser, isMobile, perfs=[] }) {
                               {(ai.conseils||ai.blocs||[]).map((c,i)=>(
                                 <div key={i} style={{borderTop:i>0?"1px solid #1e293b":"none",paddingTop:i>0?6:0,marginTop:i>0?6:0}}>
                                   <div style={{color:"#e2e8f0",fontWeight:700,fontSize:11,marginBottom:3}}>{c.bloc||c.titre}</div>
-                                  <div style={{display:"flex",gap:6,flexWrap:"wrap"}}>
-                                    {c.allure&&<span style={{background:"#0ea5e920",color:"#0ea5e9",borderRadius:4,padding:"1px 6px",fontSize:10,fontWeight:700}}>{c.allure}/500m</span>}
-                                    {c.watts&&<span style={{background:"#f59e0b20",color:"#f59e0b",borderRadius:4,padding:"1px 6px",fontSize:10,fontWeight:700}}>{c.watts}W</span>}
-                                    {c.cadence&&<span style={{background:"#a78bfa20",color:"#a78bfa",borderRadius:4,padding:"1px 6px",fontSize:10,fontWeight:700}}>{c.cadence} spm</span>}
-                                    {c.intensite&&<span style={{background:"#4ade8020",color:"#4ade80",borderRadius:4,padding:"1px 6px",fontSize:10}}>{c.intensite}</span>}
+                                  <div style={{display:"flex",gap:5,flexWrap:"wrap",marginTop:3}}>
+                                    {(c.allure_range||c.allure)&&<span style={{background:"#0ea5e925",color:"#0ea5e9",borderRadius:5,padding:"2px 8px",fontSize:11,fontWeight:800}}>{c.allure_range||c.allure}/500m</span>}
+                                    {c.cadence&&<span style={{background:"#a78bfa25",color:"#a78bfa",borderRadius:5,padding:"2px 8px",fontSize:11,fontWeight:700}}>{c.cadence} spm</span>}
+                                    {c.intensite&&<span style={{background:"#4ade8015",color:"#4ade80",borderRadius:5,padding:"2px 7px",fontSize:10}}>{c.intensite}</span>}
                                   </div>
                                   {c.conseil&&<div style={{color:"#64748b",fontSize:10,marginTop:3,fontStyle:"italic"}}>{c.conseil}</div>}
                                 </div>
