@@ -1164,7 +1164,7 @@ export default function CoachSpace({ currentUser, onLogout }) {
             {boats.filter(b=>!boatFilter||getCat(b)===boatFilter).map(b=>{
               const linked=getBoatCrewsFor(b.id);
               const lastSetting=getSettingsFor(b.id)[0];
-              const isOpen=boatOpen[b.id]!==false;
+              const isOpen=boatOpen[b.id]===true;
               const cat=getCat(b);
               return(
                 <div key={b.id} style={{...S.card,borderTop:`3px solid ${selBoat===b.id?"#0ea5e9":"#263547"}`,background:selBoat===b.id?"#22d3ee08":"#182030",padding:0,overflow:"hidden"}}>
@@ -1173,7 +1173,7 @@ export default function CoachSpace({ currentUser, onLogout }) {
                     <span style={{color:"#94a3b8",fontSize:13,marginRight:2}}>{isOpen?"▼":"▶"}</span>
                     <div style={{flex:1,minWidth:0}}>
                       <div style={{fontWeight:900,color:"#f1f5f9",fontSize:15,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{b.name}</div>
-                      {!isOpen&&<div style={{color:"#5a7a9a",fontSize:11,marginTop:1}}>{b.brand} {b.model}</div>}
+                      <div style={{color:"#5a7a9a",fontSize:11,marginTop:1}}>{b.brand} {b.model}</div>
                     </div>
                     {cat&&<span style={{...S.badge,background:"#22d3ee15",color:"#0ea5e9",border:"1px solid #22d3ee30",flexShrink:0}}>{cat}</span>}
                     <span style={{...S.badge,background:b.type==="couple"?"#22d3ee15":"#a78bfa15",color:b.type==="couple"?"#0ea5e9":"#a78bfa",border:`1px solid ${b.type==="couple"?"#22d3ee30":"#a78bfa30"}`,flexShrink:0,display:isOpen?"inline":"none"}}>{b.type==="couple"?"Couple":"Pointe"}</span>
