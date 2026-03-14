@@ -413,7 +413,7 @@ export default function AthleteSpace({ currentUser, onLogout, managedSections=[]
               {/* Streak */}
               <div style={{background:"#182030",border:"1px solid #f59e0b30",borderRadius:12,padding:"16px"}}>
                 <div style={{color:"#f1f5f9",fontWeight:700,fontSize:13,marginBottom:12}}>🔥 Assiduité</div>
-                <div style={{display:"flex",alignItems:"center",gap:16"}}>
+                <div style={{display:"flex",alignItems:"center",gap:16}}>
                   <div style={{textAlign:"center"}}>
                     <div style={{color:"#f59e0b",fontWeight:900,fontSize:36,lineHeight:1}}>{streak}</div>
                     <div style={{color:"#64748b",fontSize:10,textTransform:"uppercase",letterSpacing:1,marginTop:2}}>Séances récentes</div>
@@ -430,7 +430,7 @@ export default function AthleteSpace({ currentUser, onLogout, managedSections=[]
               <div style={{background:"#182030",border:"1px solid #0ea5e930",borderRadius:12,padding:"16px"}}>
                 <div style={{color:"#f1f5f9",fontWeight:700,fontSize:13,marginBottom:12}}>👥 vs Équipe {myCrew?`(${myCrew.name})`:""}</div>
                 {!myCrew||!teamAvgW
-                  ?<div style={{color:"#5a7a9a",fontSize:13"}}>Aucun équipage assigné</div>
+                  ?<div style={{color:"#5a7a9a",fontSize:13}}>Aucun équipage assigné</div>
                   :<>
                     <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:12}}>
                       <div style={{flex:1}}>
