@@ -183,10 +183,10 @@ export const api = {
   deletePlanOverride:  (id)        => sb(`plan_overrides?id=eq.${id}`, { method:"DELETE", prefer:"" }),
 
   // Planning — Completions
-  getAthleteSessions:  (athleteId) => sb(`strength_sessions?athlete_id=eq.${athleteId}&order=date.desc`),
-  createAthleteSession:(data)       => sb("strength_sessions", { method:"POST", body:JSON.stringify(data) }),
-  updateAthleteSession:(id, data)   => sb(`strength_sessions?id=eq.${id}`, { method:"PATCH", body:JSON.stringify(data) }),
-  deleteAthleteSession:(id)         => sb(`strength_sessions?id=eq.${id}`, { method:"DELETE", prefer:"" }),
+  getAthleteSessions:  (athleteId) => sb(`athlete_sessions?athlete_id=eq.${athleteId}&order=date.desc`),
+  createAthleteSession:(data)       => sb("athlete_sessions", { method:"POST", body:JSON.stringify(data) }),
+  updateAthleteSession:(id, data)   => sb(`athlete_sessions?id=eq.${id}`, { method:"PATCH", body:JSON.stringify(data) }),
+  deleteAthleteSession:(id)         => sb(`athlete_sessions?id=eq.${id}`, { method:"DELETE", prefer:"" }),
   getSessionCompletions:(athleteId) => sb(`session_completions?athlete_id=eq.${athleteId}&order=created_at.desc`),
   createCompletion:    (data)       => sb("session_completions", { method:"POST", body:JSON.stringify(data) }),
   updateCompletion:    (id, data)   => sb(`session_completions?id=eq.${id}`, { method:"PATCH", body:JSON.stringify(data) }),
