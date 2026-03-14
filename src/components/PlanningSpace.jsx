@@ -1076,9 +1076,21 @@ export default function PlanningSpace({ athletes, isMobile, currentUser }) {
             ))}
           </div>
         </div>
-        <div style={{display:"flex",gap:10,justifyContent:"flex-end",marginTop:8}}>
-          <button style={{...S.btnP,background:"transparent",color:"#64748b",border:"1px solid #334155"}} onClick={()=>setShowTplModal(false)}>Annuler</button>
-          <button style={S.btnP} onClick={()=>saveTpl(form)} disabled={!form.name}>Enregistrer</button>
+        <div style={{display:"flex",gap:8,marginTop:12,flexWrap:"wrap"}}>
+          <button style={{...S.btnP,background:"transparent",color:"#64748b",border:"1px solid #334155",flex:1}} onClick={()=>setShowTplModal(false)}>Annuler</button>
+          {form.id&&(
+            <button style={{...S.btnP,background:"#0ea5e9",flex:2}} disabled={!form.name}
+              onClick={()=>saveTpl(form)}>
+              💾 Écraser l'original
+            </button>
+          )}
+          <button style={{...S.btnP,background:"#4ade80",color:"#0f1923",flex:2}} disabled={!form.name}
+            onClick={()=>{
+              const {id:_,is_default:__,...rest} = form;
+              saveTpl({...rest, name: form.id ? form.name+" (copie)" : form.name, is_default:false});
+            }}>
+            ✨ {form.id?"Enregistrer comme nouveau":"Créer le template"}
+          </button>
         </div>
       </Modal>
     );
