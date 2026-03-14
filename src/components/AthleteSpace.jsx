@@ -281,7 +281,6 @@ export default function AthleteSpace({ currentUser, onLogout, managedSections=[]
             </div>
             <button style={{...S.btnP,width:"100%",marginTop:8,background:"#a78bfa",color:"#0f1923"}} onClick={addPerf}>Enregistrer</button>
           </Modal>}
-        </div>)}
         {tab==="stats"&&(<div style={{...S.page,padding:isMobile?"16px 12px":"28px 32px"}}>
           <div style={S.ph}><div><h1 style={S.ttl}>Mes Stats</h1><p style={S.sub}>Progression</p></div></div>
           {myPerfs.length<2?<div style={{...S.card,textAlign:"center",padding:"40px",color:"#5a7a9a"}}>Ajoute au moins 2 sessions pour voir ta progression.</div>:(<>
