@@ -718,9 +718,25 @@ export default function PlanningSpace({ athletes, isMobile, currentUser }) {
     const col = TYPE_SEMAINE_COLORS[selWeek.type_semaine]||"#64748b";
 
     // Group sessions by day
+    const [dragSess, setDragSess] = useState(null); // {id, jour, idx}
+    const [localOrder, setLocalOrder] = useState({}); // {jour: [id, id, ...]}
+
     const byDay = {};
     JOURS.forEach(j=>{ byDay[j]=[]; });
     sessions.forEach(s=>{ if(byDay[s.jour]) byDay[s.jour].push(s); });
+    // Appliquer l'ordre local
+    JOURS.forEach(j=>{
+      if(localOrder[j]) {
+        byDay[j].sort((a,b)=>{
+          const ia = localOrder[j].indexOf(a.id);
+          const ib = localOrder[j].indexOf(b.id);
+          if(ia===-1&&ib===-1) return 0;
+          if(ia===-1) return 1;
+          if(ib===-1) return -1;
+          return ia-ib;
+        });
+      }
+    });
 
     return (
       <div>
@@ -752,14 +768,34 @@ export default function PlanningSpace({ athletes, isMobile, currentUser }) {
             return (
               <div key={jour} style={{background:"#1e293b",border:"1px solid #334155",borderRadius:10,padding:isMobile?"10px 8px":"12px 10px",minHeight:isMobile?90:120,display:"flex",flexDirection:"column",gap:6}}>
                 <div style={{fontWeight:700,color:"#f1f5f9",fontSize:isMobile?11:12,marginBottom:4,borderBottom:"1px solid #334155",paddingBottom:4}}>{isMobile?jour.slice(0,3):jour}</div>
-                {joursessions.map(s=>{
+                {joursessions.map((s,si)=>{
                   const sc = TYPE_SEANCE_COLORS[s.type_seance]||"#64748b";
+                  const isDragging = dragSess?.id===s.id;
                   return (
-                    <div key={s.id} style={{background:sc+"18",border:`1px solid ${sc}40`,borderRadius:6,padding:"5px 7px",cursor:"pointer"}}
-                      onClick={()=>{setEditSession({...s});setShowSessionModal(true);}}>
-                      <div style={{color:sc,fontSize:10,fontWeight:700}}>{TYPE_SEANCE_LABELS[s.type_seance]||s.type_seance}</div>
-                      <div style={{color:"#cbd5e1",fontSize:11,fontWeight:600,marginTop:1}}>{s.titre}</div>
-                      {s.contenu?.duree_min>0&&<div style={{color:"#64748b",fontSize:10}}>{s.contenu.duree_min}'</div>}
+                    <div key={s.id}
+                      draggable
+                      onDragStart={e=>{e.stopPropagation();setDragSess({id:s.id,jour,idx:si});}}
+                      onDragOver={e=>{
+                        e.preventDefault();e.stopPropagation();
+                        if(!dragSess||dragSess.jour!==jour||dragSess.id===s.id) return;
+                        const cur=[...joursessions];
+                        const fromIdx=cur.findIndex(x=>x.id===dragSess.id);
+                        const toIdx=si;
+                        if(fromIdx===toIdx) return;
+                        const [item]=cur.splice(fromIdx,1);
+                        cur.splice(toIdx,0,item);
+                        setLocalOrder(o=>({...o,[jour]:cur.map(x=>x.id)}));
+                        setDragSess({...dragSess,idx:toIdx});
+                      }}
+                      onDragEnd={()=>setDragSess(null)}
+                      style={{background:sc+"18",border:`1px solid ${isDragging?"#0ea5e9":sc+"40"}`,borderRadius:6,padding:"5px 7px",cursor:"grab",opacity:isDragging?0.5:1,display:"flex",alignItems:"flex-start",gap:4}}
+                    >
+                      <span style={{color:"#334155",fontSize:10,flexShrink:0,marginTop:1}}>⠿</span>
+                      <div style={{flex:1,minWidth:0}} onClick={()=>{setEditSession({...s});setShowSessionModal(true);}}>
+                        <div style={{color:sc,fontSize:10,fontWeight:700}}>{TYPE_SEANCE_LABELS[s.type_seance]||s.type_seance}</div>
+                        <div style={{color:"#cbd5e1",fontSize:11,fontWeight:600,marginTop:1,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{s.titre}</div>
+                        {s.contenu?.duree_min>0&&<div style={{color:"#64748b",fontSize:10}}>{s.contenu.duree_min}'</div>}
+                      </div>
                     </div>
                   );
                 })}
