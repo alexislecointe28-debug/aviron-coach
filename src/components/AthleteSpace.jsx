@@ -1115,97 +1115,150 @@ function AthletePlanningView({ athlete, currentUser, isMobile, perfs=[] }) {
         </div>
       )}
 
-      {/* Grille jours */}
-      {sessions.length===0?(
-        <div style={{background:"#1e293b",border:"1px solid #334155",borderRadius:12,padding:40,textAlign:"center",color:"#64748b"}}>Aucune séance cette semaine.</div>
-      ):(
-        <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(160px,1fr))",gap:12}}>
-          {JOURS.map(jour=>{
-            const joursessions = byDay[jour]||[];
-            if(joursessions.length===0) return (
-              <div key={jour} style={{background:"#0f172a",border:"1px solid #1e293b",borderRadius:10,padding:"12px 10px",minHeight:80,opacity:0.4}}>
-                <div style={{fontWeight:700,color:"#334155",fontSize:12,marginBottom:6}}>{jour.slice(0,3)}</div>
-                <div style={{color:"#1e293b",fontSize:11}}>Repos</div>
+      {/* Navigation jours — swipe style */}
+      {(()=>{
+        const joursAvecSeances = JOURS.filter(j=>(byDay[j]||[]).length>0);
+        const today = ["Dimanche","Lundi","Mardi","Mercredi","Jeudi","Vendredi","Samedi"][new Date().getDay()];
+        const defaultJour = joursAvecSeances.includes(today) ? today : (joursAvecSeances[0]||JOURS[0]);
+        const [activeJour, setActiveJour] = useState(defaultJour);
+        const joursessions = byDay[activeJour]||[];
+
+        return(
+          <div>
+            {/* Tabs jours */}
+            <div style={{display:"flex",gap:4,overflowX:"auto",paddingBottom:8,marginBottom:16,scrollbarWidth:"none"}}>
+              {JOURS.map(jour=>{
+                const js = byDay[jour]||[];
+                const hasSeances = js.length>0;
+                const isDone = hasSeances && js.filter(s=>s.type_seance!=="REPOS").every(s=>getCompletion(s.id));
+                const isToday = jour===today;
+                const isActive = jour===activeJour;
+                const sc = hasSeances ? (TYPE_SEANCE_COLORS[js[0].type_seance]||"#64748b") : "#334155";
+                return(
+                  <button key={jour} onClick={()=>setActiveJour(jour)}
+                    style={{
+                      flexShrink:0, display:"flex", flexDirection:"column", alignItems:"center",
+                      padding:"8px 12px", borderRadius:10, cursor:"pointer",
+                      border:`2px solid ${isActive?sc:isToday?"#334155":"transparent"}`,
+                      background: isActive?sc+"20":isToday?"#1e293b":"transparent",
+                      minWidth:52,
+                    }}>
+                    <span style={{fontSize:10,color:isActive?sc:"#475569",fontWeight:700,textTransform:"uppercase",letterSpacing:0.5}}>{jour.slice(0,3)}</span>
+                    <span style={{fontSize:16,marginTop:2}}>{isDone?"✅":hasSeances?"🏋️":"—"}</span>
+                    {isToday&&<span style={{fontSize:8,color:"#0ea5e9",fontWeight:700,marginTop:1}}>auj.</span>}
+                  </button>
+                );
+              })}
+            </div>
+
+            {/* Carte du jour sélectionné */}
+            {joursessions.length===0 ? (
+              <div style={{background:"#0f172a",border:"1px dashed #1e293b",borderRadius:16,padding:"40px 24px",textAlign:"center"}}>
+                <div style={{fontSize:32,marginBottom:8}}>😴</div>
+                <div style={{color:"#334155",fontWeight:700,fontSize:15}}>Repos</div>
+                <div style={{color:"#1e293b",fontSize:12,marginTop:4}}>Pas de séance prévue</div>
               </div>
-            );
-            return (
-              <div key={jour} style={{display:"flex",flexDirection:"column",gap:8}}>
-                <div style={{fontWeight:700,color:"#94a3b8",fontSize:12,padding:"0 2px"}}>{jour}</div>
+            ) : (
+              <div style={{display:"flex",flexDirection:"column",gap:16}}>
                 {joursessions.map(s=>{
                   const sc = TYPE_SEANCE_COLORS[s.type_seance]||"#64748b";
                   const done = getCompletion(s.id);
                   const contenu = typeof s.contenu==="string"?JSON.parse(s.contenu||"{}"):s.contenu||{};
-                  return (
-                    <div key={s.id} style={{background:done?"#4ade8010":"#1e293b",border:`2px solid ${done?"#4ade8040":sc+"40"}`,borderRadius:10,padding:"12px"}}>
-                      {/* Type + titre */}
-                      <div style={{display:"flex",alignItems:"center",gap:6,marginBottom:6}}>
-                        <span style={{fontSize:10,fontWeight:700,color:sc,background:sc+"20",padding:"2px 8px",borderRadius:4}}>{TYPE_SEANCE_LABELS[s.type_seance]||s.type_seance}</span>
-                        {done&&<span style={{fontSize:10,color:"#4ade80",fontWeight:700}}>✓</span>}
+                  const isExp = expandedSessions[s.id];
+                  const blocsToShow = isExp ? contenu.blocs : contenu.blocs?.slice(0,10);
+
+                  return(
+                    <div key={s.id} style={{background:done?"#0a1f14":"#0f172a",border:`2px solid ${done?"#4ade8050":sc+"50"}`,borderRadius:16,overflow:"hidden"}}>
+                      {/* Header séance */}
+                      <div style={{background:sc+"18",padding:"14px 18px",borderBottom:`1px solid ${sc}25`}}>
+                        <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:4}}>
+                          <span style={{fontSize:11,fontWeight:800,color:sc,textTransform:"uppercase",letterSpacing:1}}>
+                            {TYPE_SEANCE_LABELS[s.type_seance]||s.type_seance}
+                          </span>
+                          <div style={{display:"flex",alignItems:"center",gap:8}}>
+                            {contenu.duree_min>0&&<span style={{fontSize:12,color:"#64748b"}}>⏱ {contenu.duree_min} min</span>}
+                            {done&&<span style={{fontSize:13,color:"#4ade80",fontWeight:800}}>✓ Fait</span>}
+                          </div>
+                        </div>
+                        <div style={{fontWeight:900,color:"#f1f5f9",fontSize:20,lineHeight:1.2}}>{s.titre}</div>
                       </div>
-                      <div style={{fontWeight:700,color:"#f1f5f9",fontSize:13,marginBottom:6}}>{s.titre}</div>
+
                       {/* Blocs contenu */}
-                      {(()=>{
-                        const isExp = expandedSessions[s.id];
-                        const blocsToShow = isExp ? contenu.blocs : contenu.blocs?.slice(0,2);
-                        return(<>
-                          {blocsToShow?.map((b,i)=>(
-                            <div key={i} style={{fontSize:11,color:"#64748b",marginBottom:2}}>
-                              <span style={{color:"#475569"}}>• </span><b style={{color:"#94a3b8"}}>{b.titre}</b>{b.detail&&<span style={{color:"#64748b"}}> — {b.detail}</span>}
-                            </div>
-                          ))}
-                          {contenu.blocs?.length>2&&(
-                            <button onClick={()=>setExpandedSessions(p=>({...p,[s.id]:!isExp}))}
-                              style={{background:"none",border:"none",color:"#475569",fontSize:11,cursor:"pointer",padding:"2px 0",marginTop:2,textDecoration:"underline"}}>
-                              {isExp?`▲ Réduire`:`▼ +${contenu.blocs.length-2} blocs`}
-                            </button>
-                          )}
-                          {contenu.duree_min>0&&<div style={{color:"#475569",fontSize:11,marginTop:4}}>⏱ {contenu.duree_min} min</div>}
-                        </>);
-                      })()}
-                      {/* Note si fait */}
-                      {done&&done.note&&<div style={{marginTop:6,fontSize:11,color:"#4ade80"}}>Note : {done.note}/10{done.commentaire?` — "${done.commentaire}"`:""}</div>}
-                      {/* Bouton */}
-                      {s.type_seance!=="REPOS"&&(<>
-                        <button onClick={()=>openNote(s)}
-                          style={{marginTop:10,width:"100%",padding:"7px",borderRadius:7,border:`1px solid ${done?"#4ade8040":"#334155"}`,background:done?"#4ade8015":"#0f172a",color:done?"#4ade80":"#64748b",fontSize:11,fontWeight:700,cursor:"pointer"}}>
-                          {done?"✓ Modifier":"Marquer comme fait"}
-                        </button>
-                        <button onClick={()=>aiSession===s.id&&aiData[s.id]?setAiSession(null):callPlanningAI(s)}
-                          disabled={aiLoading===s.id}
-                          style={{marginTop:6,width:"100%",padding:"6px",borderRadius:7,border:`1px solid ${sc}40`,background:aiSession===s.id&&aiData[s.id]?sc+"15":"transparent",color:sc,fontSize:11,fontWeight:700,cursor:"pointer",opacity:aiLoading===s.id?0.6:1}}>
-                          {aiLoading===s.id?"🤖 Calcul...":aiSession===s.id&&aiData[s.id]?"▲ Masquer IA":"🤖 Splits & cadence"}
-                        </button>
-                        {aiSession===s.id&&aiData[s.id]&&(()=>{
-                          const ai=aiData[s.id];
-                          if(ai.error) return <div style={{marginTop:6,padding:"6px 10px",background:"#ef444415",borderRadius:7,color:"#ef4444",fontSize:11}}>{ai.error}</div>;
-                          return(
-                            <div style={{marginTop:6,background:sc+"08",border:`1px solid ${sc}25`,borderRadius:8,padding:"8px 10px"}}>
-                              {ai.intro&&<div style={{color:sc,fontSize:11,fontStyle:"italic",marginBottom:6}}>🤖 {ai.intro}</div>}
-                              {(ai.conseils||ai.blocs||[]).map((c,i)=>(
-                                <div key={i} style={{borderTop:i>0?"1px solid #1e293b":"none",paddingTop:i>0?6:0,marginTop:i>0?6:0}}>
-                                  <div style={{color:"#e2e8f0",fontWeight:700,fontSize:11,marginBottom:3}}>{c.bloc||c.titre}</div>
-                                  <div style={{display:"flex",gap:5,flexWrap:"wrap",marginTop:3}}>
-                                    {(c.allure_range||c.allure)&&<span style={{background:"#0ea5e925",color:"#0ea5e9",borderRadius:5,padding:"2px 8px",fontSize:11,fontWeight:800}}>{c.allure_range||c.allure}/500m</span>}
-                                    {c.cadence&&<span style={{background:"#a78bfa25",color:"#a78bfa",borderRadius:5,padding:"2px 8px",fontSize:11,fontWeight:700}}>{c.cadence} spm</span>}
-                                    {c.intensite&&<span style={{background:"#4ade8015",color:"#4ade80",borderRadius:5,padding:"2px 7px",fontSize:10}}>{c.intensite}</span>}
-                                  </div>
-                                  {c.conseil&&<div style={{color:"#64748b",fontSize:10,marginTop:3,fontStyle:"italic"}}>{c.conseil}</div>}
+                      {contenu.blocs?.length>0&&(
+                        <div style={{padding:"14px 18px"}}>
+                          <div style={{color:"#475569",fontSize:10,fontWeight:700,textTransform:"uppercase",letterSpacing:1,marginBottom:10}}>Contenu</div>
+                          <div style={{display:"flex",flexDirection:"column",gap:8}}>
+                            {blocsToShow?.map((b,i)=>(
+                              <div key={i} style={{display:"flex",gap:10,alignItems:"baseline"}}>
+                                <span style={{color:sc,fontSize:14,flexShrink:0,marginTop:1}}>▸</span>
+                                <div>
+                                  <span style={{color:"#e2e8f0",fontWeight:700,fontSize:14}}>{b.titre}</span>
+                                  {b.detail&&<span style={{color:"#64748b",fontSize:13}}> — {b.detail}</span>}
                                 </div>
-                              ))}
+                              </div>
+                            ))}
+                            {contenu.blocs?.length>10&&(
+                              <button onClick={()=>setExpandedSessions(p=>({...p,[s.id]:!isExp}))}
+                                style={{background:"none",border:"none",color:sc,fontSize:12,cursor:"pointer",padding:"4px 0",textAlign:"left",fontWeight:700}}>
+                                {isExp?"▲ Réduire":`▼ Voir +${contenu.blocs.length-10} blocs`}
+                              </button>
+                            )}
+                          </div>
+                          {done&&done.note&&(
+                            <div style={{marginTop:12,padding:"8px 12px",background:"#4ade8015",borderRadius:8,border:"1px solid #4ade8030"}}>
+                              <span style={{color:"#4ade80",fontWeight:700,fontSize:12}}>Note : {done.note}/10</span>
+                              {done.commentaire&&<span style={{color:"#64748b",fontSize:12}}> — {done.commentaire}</span>}
                             </div>
-                          );
-                        })()}
-                      </>)}
+                          )}
+                        </div>
+                      )}
+
+                      {/* IA */}
+                      {aiSession===s.id&&aiData[s.id]&&(()=>{
+                        const ai=aiData[s.id];
+                        if(ai.error) return <div style={{margin:"0 18px 14px",padding:"8px 12px",background:"#ef444415",borderRadius:8,color:"#ef4444",fontSize:12}}>{ai.error}</div>;
+                        return(
+                          <div style={{margin:"0 18px 14px",background:sc+"08",border:`1px solid ${sc}25`,borderRadius:10,padding:"12px 14px"}}>
+                            {ai.intro&&<div style={{color:sc,fontSize:12,fontStyle:"italic",marginBottom:10}}>🤖 {ai.intro}</div>}
+                            {(ai.conseils||ai.blocs||[]).map((c,i)=>(
+                              <div key={i} style={{borderTop:i>0?"1px solid #1e293b20":"none",paddingTop:i>0?10:0,marginTop:i>0?10:0}}>
+                                <div style={{color:"#e2e8f0",fontWeight:700,fontSize:13,marginBottom:5}}>{c.bloc||c.titre}</div>
+                                <div style={{display:"flex",gap:6,flexWrap:"wrap"}}>
+                                  {(c.allure_range||c.allure)&&<span style={{background:"#0ea5e925",color:"#0ea5e9",borderRadius:6,padding:"3px 10px",fontSize:12,fontWeight:800}}>{c.allure_range||c.allure}/500m</span>}
+                                  {c.cadence&&<span style={{background:"#a78bfa25",color:"#a78bfa",borderRadius:6,padding:"3px 10px",fontSize:12,fontWeight:700}}>{c.cadence} spm</span>}
+                                  {c.intensite&&<span style={{background:"#4ade8015",color:"#4ade80",borderRadius:6,padding:"3px 10px",fontSize:11}}>{c.intensite}</span>}
+                                </div>
+                                {c.conseil&&<div style={{color:"#64748b",fontSize:12,marginTop:6,fontStyle:"italic"}}>{c.conseil}</div>}
+                              </div>
+                            ))}
+                          </div>
+                        );
+                      })()}
+
+                      {/* Actions */}
+                      {s.type_seance!=="REPOS"&&(
+                        <div style={{padding:"0 18px 16px",display:"flex",gap:10}}>
+                          <button onClick={()=>openNote(s)}
+                            style={{flex:2,padding:"12px",borderRadius:10,border:`1px solid ${done?"#4ade8050":"#334155"}`,background:done?"#4ade8020":"#1e293b",color:done?"#4ade80":"#94a3b8",fontSize:13,fontWeight:700,cursor:"pointer"}}>
+                            {done?"✓ Modifier":"Marquer comme fait"}
+                          </button>
+                          <button onClick={()=>aiSession===s.id&&aiData[s.id]?setAiSession(null):callPlanningAI(s)}
+                            disabled={aiLoading===s.id}
+                            style={{flex:1,padding:"12px",borderRadius:10,border:`1px solid ${sc}50`,background:aiSession===s.id&&aiData[s.id]?sc+"20":"transparent",color:sc,fontSize:13,fontWeight:700,cursor:"pointer",opacity:aiLoading===s.id?0.6:1}}>
+                            {aiLoading===s.id?"🤖...":"🤖 IA"}
+                          </button>
+                        </div>
+                      )}
                     </div>
                   );
                 })}
               </div>
-            );
-          })}
-        </div>
-      )}
+            )}
+          </div>
+        );
+      })()}
 
-      {/* Modal validation */}
+            {/* Modal validation */}
       {showModal&&selSession&&(
         <div style={{position:"fixed",inset:0,background:"#00000080",display:"flex",alignItems:"center",justifyContent:"center",zIndex:100}} onClick={e=>e.target===e.currentTarget&&setShowModal(false)}>
           <div style={{background:"#1a2744",border:"1px solid #2a3f5f",borderRadius:16,padding:28,width:420,maxWidth:"95vw"}}>
