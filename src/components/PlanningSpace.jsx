@@ -821,6 +821,7 @@ export default function PlanningSpace({ athletes, isMobile, currentUser }) {
                         cur.splice(toIdx,0,item);
                         setLocalOrder(o=>({...o,[jour]:cur.map(x=>x.id)}));
                         setDragSess({...dragSess,idx:toIdx});
+                        cur.forEach((s2,i2)=>api.updatePlannedSession(s2.id,{ordre:i2}).catch(()=>{}));
                       }}
                       onDragEnd={()=>setDragSess(null)}
                       style={{background:sc+"18",border:`1px solid ${isDragging?"#0ea5e9":sc+"40"}`,borderRadius:6,padding:"5px 7px",cursor:"grab",opacity:isDragging?0.4:1,display:"flex",alignItems:"flex-start",gap:4}}
