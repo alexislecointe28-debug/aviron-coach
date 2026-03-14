@@ -1,76 +1,75 @@
 export const config = { runtime: "edge" };
 
-// Couleurs par type de séance
 const TYPE_COLORS = {
-  MUSCU: "#7c3aed", ERGO: "#0ea5e9", BATEAU: "#06b6d4", PLIO: "#f59e0b",
-  RECUP: "#10b981", REPOS: "#475569", TEST: "#3b82f6", COMPETITION: "#ef4444",
+  MUSCU:"#7c3aed", ERGO:"#0ea5e9", BATEAU:"#06b6d4", PLIO:"#f59e0b",
+  RECUP:"#10b981", REPOS:"#94a3b8", TEST:"#3b82f6", COMPETITION:"#ef4444",
 };
-const TYPE_LABELS = {
-  MUSCU:"MUS", ERGO:"ERG", BATEAU:"BAT", PLIO:"PLI",
-  RECUP:"REC", REPOS:"REP", TEST:"TES", COMPETITION:"COM",
+const CHARGE_BG = {
+  "Légère":"#dcfce7","Modérée":"#dbeafe","Élevée":"#fef3c7",
+  "Maximale":"#fee2e2","Compétition":"#fce7f3",
 };
-const CHARGE_COLORS = {
-  "Légère":"#4ade80","Modérée":"#0ea5e9","Élevée":"#f59e0b","Maximale":"#ef4444","Compétition":"#ef4444"
+const CHARGE_TEXT = {
+  "Légère":"#16a34a","Modérée":"#1d4ed8","Élevée":"#d97706",
+  "Maximale":"#dc2626","Compétition":"#9333ea",
 };
 const JOURS = ["Lundi","Mardi","Mercredi","Jeudi","Vendredi","Samedi","Dimanche"];
+const JOURS_SHORT = ["Lun","Mar","Mer","Jeu","Ven","Sam","Dim"];
 
 export default async function handler(req) {
-  if (req.method !== "POST") return new Response("Method not allowed", { status: 405 });
-
+  if (req.method !== "POST") return new Response("Method not allowed",{status:405});
   const { semaines, titre } = await req.json();
-  // semaines: [{num, type, charge, date, seances: {Lundi:[{type,titre,duree,blocs:[{titre,detail}]}]}}]
-
-  const html = buildHTML(semaines, titre || "AvironCoach — Planning");
-
-  return new Response(html, {
-    headers: {
-      "Content-Type": "text/html; charset=utf-8",
-    },
+  return new Response(buildHTML(semaines, titre||"Planning AvironCoach"), {
+    headers:{"Content-Type":"text/html; charset=utf-8"},
   });
 }
 
 function buildHTML(semaines, titre) {
   const semHtml = semaines.map(sem => {
-    const chargeColor = CHARGE_COLORS[sem.charge] || "#64748b";
-    const maxRows = Math.max(1, ...JOURS.map(j => (sem.seances?.[j]?.length || 0)));
+    const charge = sem.charge || "";
+    const chargeBg   = CHARGE_BG[charge]   || "#f1f5f9";
+    const chargeText = CHARGE_TEXT[charge] || "#475569";
 
-    const jourCols = JOURS.map(j => {
-      const seances = sem.seances?.[j] || [];
-      return `<td class="day-cell">
-        ${seances.map(s => {
-          const col = TYPE_COLORS[s.type_seance] || "#64748b";
-          const lbl = TYPE_LABELS[s.type_seance] || s.type_seance;
-          const blocs = (s.contenu?.blocs || []).map(b => `${b.titre}${b.detail ? ` — ${b.detail}` : ""}`).join(" · ");
-          return `<div class="seance-card" style="border-left:3px solid ${col}">
-            <div class="seance-header" style="color:${col}">[${lbl}] <b>${s.titre}</b>${s.contenu?.duree_min ? ` <span class="duree">${s.contenu.duree_min}'</span>` : ""}</div>
-            ${blocs ? `<div class="seance-blocs">${blocs}</div>` : ""}
-          </div>`;
-        }).join("")}
-      </td>`;
+    const jourCells = JOURS.map((jour, ji) => {
+      const seances = sem.seances?.[jour] || [];
+      if (!seances.length) return `<td class="cell cell-empty"></td>`;
+
+      const cards = seances.map(s => {
+        const col = TYPE_COLORS[s.type_seance] || "#64748b";
+        const blocs = (s.contenu?.blocs || [])
+          .map(b => `<span class="bloc">${b.titre}${b.detail ? ` <em>${b.detail}</em>` : ""}</span>`)
+          .join("");
+        const duree = s.contenu?.duree_min ? `<span class="duree">${s.contenu.duree_min}'</span>` : "";
+        return `<div class="card" style="--c:${col}">
+          <div class="card-top">
+            <div class="card-title">${s.titre}</div>
+            ${duree}
+          </div>
+          ${blocs ? `<div class="card-blocs">${blocs}</div>` : ""}
+        </div>`;
+      }).join("");
+
+      return `<td class="cell">${cards}</td>`;
     }).join("");
 
     return `
       <div class="semaine">
-        <table class="week-table">
-          <colgroup>
-            <col class="col-label">
-            ${JOURS.map(() => '<col class="col-day">').join("")}
-          </colgroup>
+        <table>
           <thead>
             <tr>
-              <th class="week-header">
-                <div class="week-num">S${sem.num}</div>
-                <div class="week-type">${sem.type_semaine || ""}</div>
-                <div class="week-charge" style="color:${chargeColor}">${sem.charge || ""}</div>
-                ${sem.date_debut ? `<div class="week-date">${sem.date_debut}</div>` : ""}
+              <th class="th-sem">
+                <div class="sem-num">S${sem.num_semaine||sem.num}</div>
+                ${sem.date_debut ? `<div class="sem-date">${sem.date_debut}</div>` : ""}
+                ${sem.type_semaine ? `<div class="sem-type">${sem.type_semaine}</div>` : ""}
+                ${charge ? `<div class="sem-charge" style="background:${chargeBg};color:${chargeText}">${charge}</div>` : ""}
               </th>
-              ${JOURS.map(j => `<th class="day-header">${j.slice(0,3)}</th>`).join("")}
+              ${JOURS_SHORT.map(j => `<th class="th-day">${j}</th>`).join("")}
             </tr>
           </thead>
           <tbody>
-            <tr>${jourCols}</tr>
+            <tr>${jourCells}</tr>
           </tbody>
         </table>
+        ${sem.objectif ? `<div class="sem-objectif">🎯 ${sem.objectif}</div>` : ""}
       </div>`;
   }).join("");
 
@@ -80,65 +79,171 @@ function buildHTML(semaines, titre) {
 <meta charset="UTF-8">
 <title>${titre}</title>
 <style>
-  * { box-sizing: border-box; margin: 0; padding: 0; }
-  body { font-family: Arial, sans-serif; font-size: 9px; color: #1e293b; background: white; }
+* { box-sizing:border-box; margin:0; padding:0; }
 
-  @media print {
-    body { margin: 0; }
-    .no-print { display: none !important; }
-    .semaine { page-break-inside: avoid; }
-    @page { size: A4 landscape; margin: 8mm; }
-  }
+body {
+  font-family: -apple-system, "Helvetica Neue", Arial, sans-serif;
+  font-size: 10px;
+  color: #1e293b;
+  background: #fff;
+  padding: 0;
+}
 
-  .header { display: flex; justify-content: space-between; align-items: center; padding: 6px 10px; background: #0f172a; color: white; margin-bottom: 6px; }
-  .header h1 { font-size: 13px; color: #0ea5e9; }
-  .header .meta { font-size: 9px; color: #64748b; }
+/* ── Barre d'impression ── */
+.toolbar {
+  background: #0f172a;
+  padding: 8px 14px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+.toolbar h1 { color: #0ea5e9; font-size: 14px; font-weight: 700; }
+.btn-print {
+  background: #0ea5e9; color: white; border: none;
+  border-radius: 6px; padding: 6px 16px; font-size: 12px;
+  font-weight: 700; cursor: pointer; letter-spacing: 0.3px;
+}
+.btn-print:hover { background: #0284c7; }
 
-  .no-print { padding: 8px; background: #f1f5f9; display: flex; gap: 8px; margin-bottom: 6px; }
-  .btn { padding: 6px 14px; border: none; border-radius: 6px; cursor: pointer; font-size: 11px; font-weight: bold; }
-  .btn-print { background: #0ea5e9; color: white; }
+/* ── Contenu ── */
+.content { padding: 6mm; }
 
-  .semaine { margin-bottom: 5mm; }
-  .week-table { width: 100%; border-collapse: collapse; table-layout: fixed; }
-  .col-label { width: 18mm; }
-  .col-day { width: calc((100% - 18mm) / 7); }
+/* ── Semaine ── */
+.semaine { margin-bottom: 5mm; }
 
-  .week-header { background: #1e293b; color: white; text-align: center; padding: 4px 3px; vertical-align: middle; }
-  .week-num { font-size: 11px; font-weight: bold; color: #f1f5f9; }
-  .week-type { font-size: 7px; color: #94a3b8; margin-top: 1px; }
-  .week-charge { font-size: 8px; font-weight: bold; margin-top: 1px; }
-  .week-date { font-size: 7px; color: #64748b; margin-top: 1px; }
+table {
+  width: 100%;
+  border-collapse: collapse;
+  table-layout: fixed;
+}
 
-  .day-header { background: #0f172a; color: #94a3b8; text-align: center; font-size: 8px; font-weight: bold; padding: 3px 2px; border: 1px solid #1e293b; }
-  .day-cell { vertical-align: top; padding: 2px; border: 1px solid #e2e8f0; background: #fafafa; min-height: 12mm; }
+/* En-tête colonne semaine */
+.th-sem {
+  width: 18mm;
+  background: #0f172a;
+  color: white;
+  vertical-align: middle;
+  text-align: center;
+  padding: 5px 3px;
+  border-radius: 6px 0 0 0;
+}
+.sem-num { font-size: 14px; font-weight: 900; color: #f8fafc; letter-spacing: -0.5px; }
+.sem-date { font-size: 7px; color: #64748b; margin-top: 2px; }
+.sem-type { font-size: 7px; color: #94a3b8; margin-top: 1px; text-transform: uppercase; letter-spacing: 0.5px; }
+.sem-charge {
+  display: inline-block;
+  margin-top: 4px;
+  padding: 1px 6px;
+  border-radius: 10px;
+  font-size: 7px;
+  font-weight: 700;
+}
 
-  .seance-card { padding: 2px 3px; margin-bottom: 2px; border-radius: 2px; background: white; }
-  .seance-header { font-size: 8px; font-weight: bold; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-  .seance-blocs { font-size: 7px; color: #64748b; margin-top: 1px; line-height: 1.3; }
-  .duree { font-size: 7px; color: #94a3b8; font-weight: normal; }
+/* En-têtes jours */
+.th-day {
+  background: #f8fafc;
+  color: #64748b;
+  font-size: 8px;
+  font-weight: 700;
+  text-align: center;
+  padding: 4px 2px;
+  border: 1px solid #e2e8f0;
+  border-left: none;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
 
-  .legend { display: flex; gap: 8px; flex-wrap: wrap; padding: 4px 6px; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 4px; margin-top: 4mm; }
-  .legend-item { font-size: 8px; display: flex; align-items: center; gap: 3px; }
-  .legend-dot { width: 8px; height: 8px; border-radius: 2px; flex-shrink: 0; }
+/* Cellules */
+.cell {
+  vertical-align: top;
+  padding: 3px;
+  border: 1px solid #e2e8f0;
+  border-top: none;
+  min-height: 14mm;
+}
+.cell-empty {
+  background: #fafafa;
+}
+
+/* Carte séance */
+.card {
+  border-left: 3px solid var(--c);
+  background: color-mix(in srgb, var(--c) 6%, white);
+  border-radius: 0 4px 4px 0;
+  padding: 3px 4px;
+  margin-bottom: 3px;
+}
+.card:last-child { margin-bottom: 0; }
+
+.card-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 4px;
+  margin-bottom: 2px;
+}
+.card-title {
+  font-size: 8.5px;
+  font-weight: 700;
+  color: #0f172a;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  flex: 1;
+  min-width: 0;
+}
+.duree {
+  font-size: 7px;
+  color: #94a3b8;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.card-blocs {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+.bloc {
+  font-size: 7px;
+  color: #475569;
+  line-height: 1.4;
+  display: block;
+}
+.bloc em {
+  color: #94a3b8;
+  font-style: normal;
+}
+
+/* Objectif semaine */
+.sem-objectif {
+  font-size: 8px;
+  color: #64748b;
+  padding: 3px 6px;
+  background: #f8fafc;
+  border-left: 3px solid #e2e8f0;
+  margin-top: 2px;
+  border-radius: 0 3px 3px 0;
+}
+
+/* ── Impression ── */
+@media print {
+  .toolbar { display: none !important; }
+  body { padding: 0; }
+  .content { padding: 5mm; }
+  .semaine { page-break-inside: avoid; }
+  @page { size: A4 landscape; margin: 5mm; }
+}
 </style>
 </head>
 <body>
-  <div class="no-print">
-    <button class="btn btn-print" onclick="window.print()">🖨️ Imprimer / Exporter PDF</button>
-  </div>
-  <div class="header">
+  <div class="toolbar">
     <h1>${titre}</h1>
-    <div class="meta">Export ${new Date().toLocaleDateString("fr-FR")}</div>
+    <button class="btn-print" onclick="window.print()">🖨 Imprimer / Sauver en PDF</button>
   </div>
-
-  ${semHtml}
-
-  <div class="legend">
-    ${Object.entries(TYPE_COLORS).map(([k,c]) => `
-      <div class="legend-item">
-        <div class="legend-dot" style="background:${c}"></div>
-        <b>${TYPE_LABELS[k]}</b> ${k.charAt(0)+k.slice(1).toLowerCase().replace("u","u").replace("ergo","Ergo")}
-      </div>`).join("")}
+  <div class="content">
+    ${semHtml}
   </div>
 </body>
 </html>`;
