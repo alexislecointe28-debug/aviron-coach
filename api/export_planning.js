@@ -35,9 +35,12 @@ function buildHTML(semaines, titre) {
 
       const cards = seances.map(s => {
         const col = TYPE_COLORS[s.type_seance] || "#64748b";
-        const blocs = (s.contenu?.blocs || [])
-          .map(b => `<span class="bloc">${b.titre}${b.detail ? ` <em>${b.detail}</em>` : ""}</span>`)
-          .join("");
+        const blocsAll = s.contenu?.blocs || [];
+        const blocsShow = blocsAll.slice(0, 3);
+        const blocsMore = blocsAll.length > 3 ? `<span class="bloc-more">+${blocsAll.length - 3} blocs</span>` : "";
+        const blocs = blocsShow
+          .map(b => `<span class="bloc">· ${b.titre}${b.detail ? ` <em>${b.detail}</em>` : ""}</span>`)
+          .join("") + blocsMore;
         const duree = s.contenu?.duree_min ? `<span class="duree">${s.contenu.duree_min}'</span>` : "";
         return `<div class="card" style="--c:${col}">
           <div class="card-top">
@@ -208,12 +211,18 @@ table {
 .bloc {
   font-size: 7px;
   color: #475569;
-  line-height: 1.4;
+  line-height: 1.35;
   display: block;
 }
 .bloc em {
   color: #94a3b8;
   font-style: normal;
+}
+.bloc-more {
+  font-size: 6.5px;
+  color: #94a3b8;
+  display: block;
+  font-style: italic;
 }
 
 /* Objectif semaine */
