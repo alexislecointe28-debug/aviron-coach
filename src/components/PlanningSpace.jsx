@@ -936,9 +936,16 @@ export default function PlanningSpace({ athletes, isMobile, currentUser }) {
     const [focused, setFocused] = useState(false);
     const displayValue = focused ? query : (value||"");
     const filtered = exercises
-      .filter(e=>!typeSeance||e.type_seance===typeSeance)
       .filter(e=>!displayValue||e.titre.toLowerCase().includes(displayValue.toLowerCase()))
-      .slice(0,12);
+      .sort((a,b)=>{
+        // Prioriser les exos du même type en haut
+        const sameA = !typeSeance||a.type_seance===typeSeance;
+        const sameB = !typeSeance||b.type_seance===typeSeance;
+        if(sameA&&!sameB) return -1;
+        if(!sameA&&sameB) return 1;
+        return a.titre.localeCompare(b.titre);
+      })
+      .slice(0,15);
     return(
       <div style={{position:"relative",flex:1,minWidth:0}} onBlur={e=>{if(!e.currentTarget.contains(e.relatedTarget)){setOpen(false);setFocused(false);}}}>
         <input
@@ -957,7 +964,10 @@ export default function PlanningSpace({ athletes, isMobile, currentUser }) {
                 onMouseEnter={e2=>e2.currentTarget.style.background="#263547"}
                 onMouseLeave={e2=>e2.currentTarget.style.background="transparent"}>
                 <span style={{color:"#f1f5f9",fontSize:13,fontWeight:600}}>{e.titre}</span>
-                {e.detail_defaut&&<span style={{color:"#475569",fontSize:11,marginLeft:8}}>{e.detail_defaut.slice(0,30)}</span>}
+                <div style={{display:"flex",gap:4,alignItems:"center",marginLeft:"auto"}}>
+                  {e.type_seance&&e.type_seance!==typeSeance&&<span style={{background:"#33415530",color:"#64748b",borderRadius:4,fontSize:9,padding:"1px 5px"}}>{e.type_seance}</span>}
+                  {e.detail_defaut&&<span style={{color:"#475569",fontSize:11}}>{e.detail_defaut.slice(0,25)}</span>}
+                </div>
               </div>
             ))}
           </div>
