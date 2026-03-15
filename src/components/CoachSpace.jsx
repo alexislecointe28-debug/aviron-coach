@@ -359,6 +359,7 @@ export default function CoachSpace({ currentUser, onLogout }) {
   }
 
     const categories=["Tous",...new Set(athletes.map(a=>a.category))];
+  const [openAthCards, setOpenAthCards] = useState({});
   const filteredAths=filterCat==="Tous"?athletes:athletes.filter(a=>matchesAgeGroup(a,filterCat)||a.category===filterCat);
   const dashPerfs=performances.filter(p=>(p.distance_type||"2000m")===dashDistType);
   const dashAthletes=dashCatFilter==="Tous"?athletes:athletes.filter(a=>matchesAgeGroup(a,dashCatFilter)||a.category===dashCatFilter);
@@ -497,23 +498,46 @@ export default function CoachSpace({ currentUser, onLogout }) {
           <div style={{display:"grid",gridTemplateColumns:isMobile?"1fr":"repeat(auto-fill,minmax(290px,1fr))",gap:isMobile?12:16}}>
             {filteredAths.map(a=>{
               const{perfs,filtered,best,last,wpkg}=aStats(a,"2000m");const wTrend=filtered.length>=2?(concept2WattsFast(filtered[filtered.length-1].time,"2000m")||0)-(concept2WattsFast(filtered[filtered.length-2].time,"2000m")||0):0;const aCrew=getCrewForAthlete(a);
-              return(<div key={a.id} style={{...S.card,cursor:"pointer"}}>
-                <div style={{display:"flex",alignItems:"center",gap:14,marginBottom:14}}>
-                  {a.photo_url?<img src={a.photo_url} style={{...S.av,objectFit:"cover"}} onError={e=>{e.target.style.display="none";}}/>:<div style={{...S.av,backgroundImage:a.photo_url?`url(${a.photo_url})`:"none",backgroundSize:"cover",backgroundPosition:"center"}}>{!a.photo_url&&a.avatar}</div>}
-                  <div style={{flex:1}} onClick={()=>{setSelAth(a.id);setFicheTab("general");setSelBoatDetail(null);setTab("athlete_detail");}}><div style={{fontWeight:800,color:"#f1f5f9",fontSize:15,display:"flex",alignItems:"center",gap:8}}>{a.name}<span style={{fontSize:10,padding:"2px 7px",borderRadius:10,background:(AGE_CAT_COLORS[a.date_naissance?getAgeCatFromBirthYear(new Date(a.date_naissance).getFullYear()):getAgeCategory(a.age)] || "#374151")+"25",color:(AGE_CAT_COLORS[a.date_naissance?getAgeCatFromBirthYear(new Date(a.date_naissance).getFullYear()):getAgeCategory(a.age)] || "#94a3b8"),fontWeight:700}}>{a.date_naissance?getAgeCatFromBirthYear(new Date(a.date_naissance).getFullYear()):getAgeCategory(a.age)}</span></div><div style={{color:"#7a95b0",fontSize:12}}>{a.category} — {a.date_naissance?calcRealAge(a.date_naissance):a.age} ans — {a.weight} kg{a.taille?" — "+a.taille+"cm":""}</div>{aCrew&&<div style={{color:"#0ea5e9",fontSize:11,marginTop:2}}>~ {aCrew.name}</div>}</div>
-                  <button style={{...S.actionBtn,color:"#0ea5e9",borderColor:"#22d3ee30",flexShrink:0}} onClick={e=>{e.stopPropagation();setEditAth({...a});}}>✏️ Edit</button>
+              const isOpen = openAthCards[a.id];
+              return(<div key={a.id} style={{...S.card,padding:0,overflow:"hidden"}}>
+                {/* Header toujours visible */}
+                <div style={{display:"flex",alignItems:"center",gap:12,padding:"10px 14px",cursor:"pointer"}}
+                  onClick={()=>setOpenAthCards(p=>({...p,[a.id]:!isOpen}))}>
+                  <span style={{color:"#475569",fontSize:12,flexShrink:0}}>{isOpen?"▼":"▶"}</span>
+                  {a.photo_url?<img src={a.photo_url} style={{...S.av,width:32,height:32,objectFit:"cover"}} onError={e=>{e.target.style.display="none";}}/>:<div style={{...S.av,width:32,height:32,fontSize:13,flexShrink:0}}>{a.avatar}</div>}
+                  <div style={{flex:1,minWidth:0}}>
+                    <div style={{fontWeight:700,color:"#f1f5f9",fontSize:14,display:"flex",alignItems:"center",gap:6,flexWrap:"wrap"}}>
+                      {a.name}
+                      <span style={{fontSize:10,padding:"1px 6px",borderRadius:8,background:(AGE_CAT_COLORS[a.date_naissance?getAgeCatFromBirthYear(new Date(a.date_naissance).getFullYear()):getAgeCategory(a.age)]||"#374151")+"25",color:(AGE_CAT_COLORS[a.date_naissance?getAgeCatFromBirthYear(new Date(a.date_naissance).getFullYear()):getAgeCategory(a.age)]||"#94a3b8"),fontWeight:700}}>
+                        {a.date_naissance?getAgeCatFromBirthYear(new Date(a.date_naissance).getFullYear()):getAgeCategory(a.age)}
+                      </span>
+                    </div>
+                    <div style={{color:"#475569",fontSize:11}}>{a.category}{a.weight?" · "+a.weight+"kg":""}{aCrew?" · "+aCrew.name:""}</div>
+                  </div>
+                  {last&&<div style={{textAlign:"right",flexShrink:0}}>
+                    <div style={{color:"#4ade80",fontWeight:800,fontSize:14}}>{best?.time??"--"}</div>
+                    {wpkg&&<div style={{color:"#a78bfa",fontSize:11}}>{wpkg} W/kg</div>}
+                  </div>}
+                  <button style={{...S.actionBtn,color:"#0ea5e9",borderColor:"#22d3ee30",flexShrink:0,marginLeft:4}} onClick={e=>{e.stopPropagation();setEditAth({...a});}}>✏️</button>
                 </div>
-                {last?(<>
-                  <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8,marginBottom:10}} onClick={()=>{setSelAth(a.id);setFicheTab("general");setSelBoatDetail(null);setTab("athlete_detail");}}>
-                    <div style={{background:"#4ade8015",border:"1px solid #4ade8030",borderRadius:8,padding:"7px 10px"}}><div style={{color:"#7a95b0",fontSize:10,textTransform:"uppercase",letterSpacing:1}}>Best {best?.distance_type||"2k"}</div><div style={{color:"#4ade80",fontWeight:900,fontSize:20}}>{best?.time??"--"}</div></div>
-                    <div style={{background:"#a78bfa15",border:"1px solid #a78bfa30",borderRadius:8,padding:"7px 10px"}}><div style={{color:"#7a95b0",fontSize:10,textTransform:"uppercase",letterSpacing:1}}>W/kg</div><div style={{color:"#a78bfa",fontWeight:900,fontSize:20}}>{wpkg??"--"}</div></div>
-                  </div>
-                  <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginTop:8}} onClick={()=>{setSelAth(a.id);setFicheTab("general");setSelBoatDetail(null);setTab("athlete_detail");}}>
-                    <span style={{color:"#7a95b0",fontSize:12}}>{perfs.length} sessions</span>
-                    <span style={{color:wTrend>=0?"#4ade80":"#ef4444",fontSize:13,fontWeight:700}}>{wTrend>=0?"^":"v"} {Math.abs(wTrend)}W</span>
-                    <Sparkline data={perfs.map(p=>p.watts)} color="#0ea5e9"/>
-                  </div>
-                </>):<div style={{color:"#5a7a9a",fontSize:13,textAlign:"center",padding:"12px 0"}} onClick={()=>{setSelAth(a.id);setFicheTab("general");setSelBoatDetail(null);setTab("athlete_detail");}}>Aucune performance</div>}
+                {/* Corps dépliable */}
+                {isOpen&&<div style={{padding:"0 14px 14px",borderTop:"1px solid #1e293b"}}>
+                  <div style={{color:"#475569",fontSize:12,marginBottom:10,marginTop:10}}>{a.date_naissance?calcRealAge(a.date_naissance):a.age} ans{a.taille?" · "+a.taille+"cm":""}</div>
+                  {last?(<>
+                    <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8,marginBottom:10}} onClick={()=>{setSelAth(a.id);setFicheTab("general");setSelBoatDetail(null);setTab("athlete_detail");}}>
+                      <div style={{background:"#4ade8015",border:"1px solid #4ade8030",borderRadius:8,padding:"7px 10px"}}><div style={{color:"#7a95b0",fontSize:10,textTransform:"uppercase",letterSpacing:1}}>Best {best?.distance_type||"2k"}</div><div style={{color:"#4ade80",fontWeight:900,fontSize:20}}>{best?.time??"--"}</div></div>
+                      <div style={{background:"#a78bfa15",border:"1px solid #a78bfa30",borderRadius:8,padding:"7px 10px"}}><div style={{color:"#7a95b0",fontSize:10,textTransform:"uppercase",letterSpacing:1}}>W/kg</div><div style={{color:"#a78bfa",fontWeight:900,fontSize:20}}>{wpkg??"--"}</div></div>
+                    </div>
+                    <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:10,cursor:"pointer"}} onClick={()=>{setSelAth(a.id);setFicheTab("general");setSelBoatDetail(null);setTab("athlete_detail");}}>
+                      <span style={{color:"#7a95b0",fontSize:12}}>{perfs.length} sessions</span>
+                      <span style={{color:wTrend>=0?"#4ade80":"#ef4444",fontSize:13,fontWeight:700}}>{wTrend>=0?"^":"v"} {Math.abs(wTrend)}W</span>
+                      <Sparkline data={perfs.map(p=>p.watts)} color="#0ea5e9"/>
+                    </div>
+                  </>):<div style={{color:"#5a7a9a",fontSize:13,padding:"8px 0"}}>Aucune performance</div>}
+                  <button style={{...S.btnP,width:"100%",fontSize:12,padding:"7px"}} onClick={()=>{setSelAth(a.id);setFicheTab("general");setSelBoatDetail(null);setTab("athlete_detail");}}>
+                    Voir la fiche →
+                  </button>
+                </div>}
               </div>);
             })}
           </div>
