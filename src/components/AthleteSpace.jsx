@@ -1745,41 +1745,66 @@ function AthletePlanningView({ athlete, currentUser, isMobile, perfs=[], complet
                               <button onClick={()=>setLibreForm(f=>({...f,blocs:f.blocs.filter((_,j)=>j!==i)}))}
                                 style={{background:"none",border:"none",color:"#475569",fontSize:16,cursor:"pointer",padding:"0 4px",flexShrink:0}}>×</button>
                             </div>
-                            {/* Champs muscu : séries × reps × charge */}
+                            {/* Champs selon type */}
                             {isMuscu?(
-                              <div style={{display:"flex",gap:6,alignItems:"flex-end"}}>
-                                <div style={{flex:1}}>
+                              <div style={{display:"flex",gap:6,alignItems:"flex-end",flexWrap:"wrap"}}>
+                                <div style={{flex:1,minWidth:60}}>
                                   <div style={{color:"#475569",fontSize:10,marginBottom:3}}>Séries</div>
                                   <input type="number" min="1" placeholder="4"
                                     value={b.series||""} onChange={e=>setLibreForm(f=>({...f,blocs:f.blocs.map((x,j)=>j===i?{...x,series:e.target.value}:x)}))}
                                     style={{width:"100%",background:"#182030",border:"1px solid #334155",borderRadius:7,color:"#f1f5f9",padding:"7px 8px",fontSize:14,textAlign:"center",boxSizing:"border-box"}}/>
                                 </div>
                                 <div style={{color:"#475569",fontSize:16,paddingBottom:8}}>×</div>
-                                <div style={{flex:1}}>
+                                <div style={{flex:1,minWidth:60}}>
                                   <div style={{color:"#475569",fontSize:10,marginBottom:3}}>Reps</div>
                                   <input type="number" min="1" placeholder="8"
                                     value={b.reps||""} onChange={e=>setLibreForm(f=>({...f,blocs:f.blocs.map((x,j)=>j===i?{...x,reps:e.target.value}:x)}))}
                                     style={{width:"100%",background:"#182030",border:"1px solid #334155",borderRadius:7,color:"#f1f5f9",padding:"7px 8px",fontSize:14,textAlign:"center",boxSizing:"border-box"}}/>
                                 </div>
                                 <div style={{color:"#475569",fontSize:16,paddingBottom:8}}>@</div>
-                                <div style={{flex:1}}>
+                                <div style={{flex:1,minWidth:60}}>
                                   <div style={{color:"#475569",fontSize:10,marginBottom:3}}>Charge (kg)</div>
                                   <input type="number" min="0" placeholder="80"
                                     value={b.charge_kg||""} onChange={e=>setLibreForm(f=>({...f,blocs:f.blocs.map((x,j)=>j===i?{...x,charge_kg:e.target.value}:x)}))}
                                     style={{width:"100%",background:"#182030",border:`1px solid ${col}50`,borderRadius:7,color:"#f1f5f9",padding:"7px 8px",fontSize:14,textAlign:"center",boxSizing:"border-box"}}/>
                                 </div>
-                                {/* 1RM estimé */}
-                                {rm1&&(
-                                  <div style={{flexShrink:0,textAlign:"center",paddingBottom:4}}>
-                                    <div style={{color:"#a78bfa",fontWeight:900,fontSize:15}}>~{rm1}</div>
-                                    <div style={{color:"#475569",fontSize:9}}>1RM kg</div>
-                                  </div>
-                                )}
+                                {rm1&&<div style={{flexShrink:0,textAlign:"center",paddingBottom:4}}>
+                                  <div style={{color:"#a78bfa",fontWeight:900,fontSize:15}}>~{rm1}</div>
+                                  <div style={{color:"#475569",fontSize:9}}>1RM kg</div>
+                                </div>}
                               </div>
                             ):(
-                              <input placeholder="réalisé (ex: 1:52/500m, 26spm...)"
-                                value={b.note||""} onChange={e=>setLibreForm(f=>({...f,blocs:f.blocs.map((x,j)=>j===i?{...x,note:e.target.value}:x)}))}
-                                style={{width:"100%",background:"#182030",border:`1px solid ${col}40`,borderRadius:7,color:"#f1f5f9",padding:"7px 10px",fontSize:13,boxSizing:"border-box",marginTop:8}}/>
+                              <div style={{display:"flex",gap:6,alignItems:"flex-end",marginTop:8}}>
+                                <div style={{flex:2}}>
+                                  <div style={{color:"#475569",fontSize:10,marginBottom:3}}>
+                                    {libreType==="ERGO"||libreType==="BATEAU"?"Format (ex: 3×6', 60'...)":"Détail"}
+                                  </div>
+                                  <input placeholder={libreType==="ERGO"||libreType==="BATEAU"?"ex: 3×6' r5', 60' B1":"ex: réalisé"}
+                                    value={b.format||""} onChange={e=>setLibreForm(f=>({...f,blocs:f.blocs.map((x,j)=>j===i?{...x,format:e.target.value}:x)}))}
+                                    style={{width:"100%",background:"#182030",border:`1px solid ${col}40`,borderRadius:7,color:"#f1f5f9",padding:"7px 10px",fontSize:13,boxSizing:"border-box"}}/>
+                                </div>
+                                {(libreType==="ERGO"||libreType==="BATEAU")&&(
+                                  <div style={{flex:1}}>
+                                    <div style={{color:"#475569",fontSize:10,marginBottom:3}}>Cadence (spm)</div>
+                                    <input type="number" placeholder="18"
+                                      value={b.cadence||""} onChange={e=>setLibreForm(f=>({...f,blocs:f.blocs.map((x,j)=>j===i?{...x,cadence:e.target.value}:x)}))}
+                                      style={{width:"100%",background:"#182030",border:`1px solid ${col}40`,borderRadius:7,color:"#f1f5f9",padding:"7px 8px",fontSize:14,textAlign:"center",boxSizing:"border-box"}}/>
+                                  </div>
+                                )}
+                                {(libreType==="ERGO"||libreType==="BATEAU")&&(
+                                  <div style={{flex:1}}>
+                                    <div style={{color:"#475569",fontSize:10,marginBottom:3}}>Allure /500m</div>
+                                    <input placeholder="1:52"
+                                      value={b.allure||""} onChange={e=>setLibreForm(f=>({...f,blocs:f.blocs.map((x,j)=>j===i?{...x,allure:e.target.value}:x)}))}
+                                      style={{width:"100%",background:"#182030",border:`1px solid ${col}40`,borderRadius:7,color:"#f1f5f9",padding:"7px 8px",fontSize:13,textAlign:"center",boxSizing:"border-box"}}/>
+                                  </div>
+                                )}
+                                {libreType!=="ERGO"&&libreType!=="BATEAU"&&(
+                                  <input placeholder="réalisé"
+                                    value={b.note||""} onChange={e=>setLibreForm(f=>({...f,blocs:f.blocs.map((x,j)=>j===i?{...x,note:e.target.value}:x)}))}
+                                    style={{flex:1,background:"#182030",border:`1px solid ${col}40`,borderRadius:7,color:"#f1f5f9",padding:"7px 10px",fontSize:13,boxSizing:"border-box"}}/>
+                                )}
+                              </div>
                             )}
                           </div>
                         );
