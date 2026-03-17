@@ -997,19 +997,40 @@ export default function CoachSpace({ currentUser, onLogout }) {
 
             return(
               <div>
-                {/* Mini-cartes athlètes filtrées */}
-                <div style={{display:"flex",gap:6,marginBottom:16,flexWrap:"wrap"}}>
-                  <button style={{...S.fb,...(selAth===null?S.fbon:{})}} onClick={()=>setSelAth(null)}>Tous ({visibleAths.length})</button>
-                  {visibleAths.map(a=>{
-                    const best = getBestTime(getPerfFor(a.id).filter(p=>(p.distance_type||"2000m")===perfDist));
-                    return(
-                      <button key={a.id} style={{...S.fb,...(selAth===a.id?{background:"#0ea5e920",border:"1px solid #0ea5e960",color:"#0ea5e9"}:{})}}
-                        onClick={()=>setSelAth(a.id)}>
-                        {a.name}{best?<span style={{color:"#4ade80",fontSize:10,marginLeft:4}}>{best.time}</span>:null}
-                      </button>
-                    );
-                  })}
-                </div>
+                {/* Sélectionné */}
+                {selAth&&(()=>{const a=athletes.find(x=>x.id===selAth);return a?(
+                  <div style={{display:"flex",alignItems:"center",gap:6,marginBottom:10}}>
+                    <div onClick={()=>setSelAth(null)} style={{display:"flex",alignItems:"center",gap:5,background:"#0ea5e920",border:"1px solid #0ea5e950",borderRadius:20,padding:"4px 12px",cursor:"pointer"}}>
+                      <span style={{color:"#0ea5e9",fontSize:12,fontWeight:700}}>{a.name}</span>
+                      <span style={{color:"#0ea5e9",fontSize:11}}>×</span>
+                    </div>
+                    <span style={{color:"#475569",fontSize:11}}>Cliquer pour voir tous</span>
+                  </div>
+                ):null;})()}
+
+                {/* Grille chips — seulement si catégorie sélectionnée */}
+                {perfCat==="Tous"&&!selAth?(
+                  <div style={{marginBottom:16}}>
+                    <div style={{color:"#64748b",fontSize:12,marginBottom:8}}>Filtrer par catégorie ou rechercher un athlète</div>
+                  </div>
+                ):(
+                  <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:4,marginBottom:16}}>
+                    <button style={{padding:"5px 8px",borderRadius:7,border:"none",background:selAth===null?"#0ea5e930":"#1e293b",outline:selAth===null?"2px solid #0ea5e9":"none",color:selAth===null?"#0ea5e9":"#94a3b8",fontSize:11,fontWeight:700,cursor:"pointer",textAlign:"left"}}
+                      onClick={()=>setSelAth(null)}>Tous ({visibleAths.length})</button>
+                    {visibleAths.map(a=>{
+                      const best=getBestTime(getPerfFor(a.id).filter(p=>(p.distance_type||"2000m")===perfDist));
+                      const sel=selAth===a.id;
+                      return(
+                        <button key={a.id} onClick={()=>setSelAth(a.id)}
+                          style={{padding:"5px 8px",borderRadius:7,border:"none",background:sel?"#0ea5e930":"#1e293b",
+                            outline:sel?"2px solid #0ea5e9":"none",textAlign:"left",cursor:"pointer"}}>
+                          <div style={{fontSize:11,fontWeight:700,color:sel?"#0ea5e9":"#e2e8f0",whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{a.name}</div>
+                          {best&&<div style={{fontSize:9,color:sel?"#38bdf8":"#4ade80",marginTop:1}}>{best.time}</div>}
+                        </button>
+                      );
+                    })}
+                  </div>
+                )}
               </div>
             );
           })()}
@@ -1145,34 +1166,79 @@ export default function CoachSpace({ currentUser, onLogout }) {
           <div style={S.ph}><div><h1 style={S.ttl}>Comparer</h1><p style={S.sub}>2 à 4 athlètes</p></div>
             <div style={{display:"flex",gap:6}}>{"500m 1000m 2000m".split(" ").map(t=><button key={t} onClick={()=>setCompareType(t)} style={{padding:"6px 14px",borderRadius:8,border:`1px solid ${compareType===t?"#22d3ee":"#1e293b"}`,background:compareType===t?"#22d3ee20":"transparent",color:compareType===t?"#22d3ee":"#5a7a9a",fontSize:12,cursor:"pointer",fontWeight:compareType===t?700:400}}>{t}</button>)}</div>
           </div>
-          {/* Filtres compare */}
-          <div style={{display:"flex",gap:8,marginBottom:8,flexWrap:"wrap",alignItems:"center"}}>
-            <input placeholder="🔍 Rechercher..."
-              value={compareSearch} onChange={e=>setCompareSearch(e.target.value)}
-              style={{background:"#182030",border:"1px solid #334155",borderRadius:8,color:"#f1f5f9",padding:"7px 12px",fontSize:13,flex:1,minWidth:140}}/>
-          </div>
-          <div style={{display:"flex",gap:6,marginBottom:12,flexWrap:"wrap"}}>
-            {["Tous",...new Set(athletes.map(a=>a.category).filter(Boolean))].map(c=>(
-              <button key={c} onClick={()=>setCompareCat(c)}
-                style={{...S.fb,...(compareCat===c?S.fbon:{}),fontSize:11}}>{c}</button>
-            ))}
-          </div>
-          <div style={{display:"flex",gap:8,marginBottom:24,flexWrap:"wrap"}}>
-            {athletes
-              .filter(a=>{
-                const matchCat = compareCat==="Tous"||a.category===compareCat;
-                const matchSearch = !compareSearch||a.name.toLowerCase().includes(compareSearch.toLowerCase());
-                return matchCat&&matchSearch;
-              })
-              .map(a=>{
-                const on=compareIds.includes(a.id);
-                return(<button key={a.id} style={{...S.fb,...(on?{background:"#22d3ee20",border:"1px solid #22d3ee60",color:"#0ea5e9"}:{})}}
-                  onClick={()=>setCompareIds(prev=>prev.includes(a.id)?(prev.length>2?prev.filter(x=>x!==a.id):prev):prev.length<4?[...prev,a.id]:prev)}>
-                  {on?"✓ ":""}{a.name}
-                </button>);
-              })
-            }
-          </div>
+          {/* Sélectionnés */}
+          {compareIds.length>0&&(
+            <div style={{display:"flex",gap:6,flexWrap:"wrap",marginBottom:10}}>
+              {compareIds.map((id,i)=>{
+                const a=athletes.find(x=>x.id===id);if(!a)return null;
+                const col=["#22d3ee","#a78bfa","#f97316","#4ade80"][i]||"#22d3ee";
+                return(
+                  <div key={id} onClick={()=>setCompareIds(p=>p.filter(x=>x!==id))}
+                    style={{display:"flex",alignItems:"center",gap:5,background:col+"20",border:`1px solid ${col}50`,borderRadius:20,padding:"4px 12px",cursor:"pointer"}}>
+                    <span style={{color:col,fontSize:11,fontWeight:700}}>#{i+1}</span>
+                    <span style={{color:"#f1f5f9",fontSize:12,fontWeight:600}}>{a.name}</span>
+                    <span style={{color:col,fontSize:11}}>×</span>
+                  </div>
+                );
+              })}
+              {compareIds.length>=2&&<span style={{color:"#475569",fontSize:11,alignSelf:"center"}}>{4-compareIds.length} place{4-compareIds.length>1?"s":""} restante{4-compareIds.length>1?"s":""}</span>}
+            </div>
+          )}
+
+          {/* Filtre catégorie — obligatoire si aucun filtre actif */}
+          {compareCat==="Tous"&&compareIds.length===0?(
+            <div style={{marginBottom:16}}>
+              <div style={{color:"#64748b",fontSize:12,marginBottom:8}}>Quelle catégorie ?</div>
+              <div style={{display:"flex",gap:6,flexWrap:"wrap"}}>
+                {[...new Set(athletes.map(a=>a.category).filter(Boolean))].map(c=>(
+                  <button key={c} onClick={()=>setCompareCat(c)}
+                    style={{padding:"7px 14px",borderRadius:8,border:"1px solid #334155",background:"#1e293b",color:"#94a3b8",fontSize:12,fontWeight:600,cursor:"pointer"}}>
+                    {c} <span style={{color:"#475569",fontSize:10}}>({athletes.filter(a=>a.category===c).length})</span>
+                  </button>
+                ))}
+              </div>
+            </div>
+          ):(
+            <div style={{marginBottom:16}}>
+              <div style={{display:"flex",gap:6,alignItems:"center",marginBottom:8}}>
+                {compareCat!=="Tous"&&(
+                  <button onClick={()=>setCompareCat("Tous")}
+                    style={{background:"#22d3ee20",border:"1px solid #22d3ee40",borderRadius:6,color:"#22d3ee",fontSize:11,fontWeight:700,padding:"4px 8px",cursor:"pointer"}}>
+                    {compareCat} ×
+                  </button>
+                )}
+                <input placeholder="🔍 Nom..." value={compareSearch} onChange={e=>setCompareSearch(e.target.value)}
+                  style={{flex:1,background:"#182030",border:"1px solid #334155",borderRadius:7,color:"#f1f5f9",padding:"5px 10px",fontSize:12}}/>
+              </div>
+              <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:5,marginBottom:24}}>
+                {athletes
+                  .filter(a=>{
+                    const matchCat=compareCat==="Tous"||a.category===compareCat;
+                    const matchSearch=!compareSearch||a.name.toLowerCase().includes(compareSearch.toLowerCase());
+                    return matchCat&&matchSearch;
+                  })
+                  .map(a=>{
+                    const on=compareIds.includes(a.id);
+                    const idx=compareIds.indexOf(a.id);
+                    const col=["#22d3ee","#a78bfa","#f97316","#4ade80"][idx]||"#22d3ee";
+                    const full=compareIds.length>=4&&!on;
+                    const {last}=aStats(a);
+                    return(
+                      <button key={a.id}
+                        onClick={()=>!full&&setCompareIds(prev=>prev.includes(a.id)?(prev.length>2?prev.filter(x=>x!==a.id):prev):prev.length<4?[...prev,a.id]:prev)}
+                        style={{padding:"6px 8px",borderRadius:8,cursor:full?"not-allowed":"pointer",opacity:full?0.3:1,border:"none",
+                          background:on?col+"25":"#1e293b",outline:on?`2px solid ${col}`:"none",textAlign:"left"}}>
+                        <div style={{fontSize:11,fontWeight:700,color:on?col:"#e2e8f0",whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>
+                          {on&&<span style={{marginRight:3}}>#{idx+1}</span>}{a.name}
+                        </div>
+                        {last&&<div style={{fontSize:9,color:on?col:"#475569",marginTop:1}}>{last.watts}W</div>}
+                      </button>
+                    );
+                  })
+                }
+              </div>
+            </div>
+          )}
           {compareIds.length>=2&&(()=>{
             const cmp=compareIds.map(id=>{const a=athletes.find(x=>x.id===id);const perfs=getPerfFor(id).filter(p=>(p.distance_type||"2000m")===compareType),last=getLastPerf(perfs),best=getBestTime(perfs);return{...a,last,best,wpkg:best&&a.weight?(concept2WattsFast(best.time, best.distance_type||"2000m")/a.weight).toFixed(2):null,perfs};});
             const rows=[{label:`Meilleur ${compareType}`,fn:c=>c.best?.time??"--",bfn:c=>c.best?timeToSeconds(c.best.time):9999,lower:true,c:"#4ade80"},{label:"Puissance",fn:c=>c.best?`${concept2WattsFast(c.best.time, c.best.distance_type||"2000m")||0}W`:"--",bfn:c=>c.best?concept2WattsFast(c.best.time, c.best.distance_type||"2000m")||0:0,lower:false,c:"#0ea5e9"},{label:"W/kg",fn:c=>c.wpkg??"-",bfn:c=>parseFloat(c.wpkg)||0,lower:false,c:"#a78bfa"},{label:"Sessions",fn:c=>c.perfs.length,bfn:c=>c.perfs.length,lower:false,c:"#f97316"}];
