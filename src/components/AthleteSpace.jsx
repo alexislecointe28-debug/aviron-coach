@@ -428,6 +428,95 @@ export default function AthleteSpace({ currentUser, onLogout, managedSections=[]
               </div>
             }
 
+            {/* ═══ PROGRESSION MUSCU ═══ */}
+            {(()=>{
+              // Agréger les charges par exercice depuis session_completions
+              const muscuCompletions = completions
+                .filter(c => c.blocs_realises?.length)
+                .sort((a,b) => (a.completed_at||a.created_at) > (b.completed_at||b.created_at) ? 1 : -1);
+              
+              // Grouper par nom d'exercice
+              const exoMap = {};
+              muscuCompletions.forEach(c => {
+                (c.blocs_realises||[]).forEach(b => {
+                  if (!b.charge_kg && !b.rm_estime) return;
+                  const key = b.titre;
+                  if (!exoMap[key]) exoMap[key] = [];
+                  exoMap[key].push({
+                    date: c.completed_at||c.created_at,
+                    kg: b.charge_kg,
+                    rm: b.rm_estime,
+                    prevu: b.prevu,
+                  });
+                });
+              });
+
+              const exos = Object.entries(exoMap).filter(([,pts])=>pts.length>=1);
+              if (!exos.length) return null;
+
+              return(
+                <div style={{marginBottom:16}}>
+                  <div style={{color:"#f1f5f9",fontWeight:800,fontSize:15,marginBottom:12}}>💪 Progression muscu</div>
+                  <div style={{display:"grid",gridTemplateColumns:isMobile?"1fr":"1fr 1fr",gap:8}}>
+                    {exos.map(([nom, pts])=>{
+                      const last = pts[pts.length-1];
+                      const prev = pts[pts.length-2];
+                      const rmVals = pts.map(p=>p.rm||p.kg||0).filter(Boolean);
+                      const trend = prev ? (last.rm||last.kg||0) - (prev.rm||prev.kg||0) : 0;
+                      const trendCol = trend > 0 ? "#4ade80" : trend < 0 ? "#ef4444" : "#64748b";
+                      const maxRM = Math.max(...rmVals);
+                      const minRM = Math.min(...rmVals);
+                      const range = maxRM - minRM || 1;
+
+                      return(
+                        <div key={nom} style={{background:"#182030",border:"1px solid #a78bfa20",borderRadius:12,padding:"12px 14px"}}>
+                          <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:8}}>
+                            <div>
+                              <div style={{color:"#f1f5f9",fontWeight:700,fontSize:13}}>{nom}</div>
+                              {last.prevu&&<div style={{color:"#475569",fontSize:10}}>{last.prevu}</div>}
+                            </div>
+                            <div style={{textAlign:"right"}}>
+                              <div style={{color:"#a78bfa",fontWeight:900,fontSize:18,lineHeight:1}}>
+                                {last.rm ? `~${last.rm}kg` : `${last.kg}kg`}
+                              </div>
+                              <div style={{color:"#64748b",fontSize:10}}>1RM estimé</div>
+                            </div>
+                          </div>
+                          {/* Mini sparkline */}
+                          {rmVals.length > 1 && (
+                            <svg width="100%" height="32" style={{display:"block",marginBottom:6}}>
+                              {rmVals.map((v,i)=>{
+                                const x = i/(rmVals.length-1)*100+"%";
+                                const y = 28 - ((v-minRM)/range)*24;
+                                return i===0 ? null : (
+                                  <line key={i}
+                                    x1={(i-1)/(rmVals.length-1)*100+"%"} y1={28-((rmVals[i-1]-minRM)/range)*24}
+                                    x2={x} y2={y}
+                                    stroke="#a78bfa" strokeWidth="2" strokeLinecap="round"/>
+                                );
+                              })}
+                              {rmVals.map((v,i)=>{
+                                const x = i/(rmVals.length-1)*100;
+                                const y = 28 - ((v-minRM)/range)*24;
+                                const isLast = i===rmVals.length-1;
+                                return <circle key={i} cx={x+"%"} cy={y} r={isLast?4:2.5} fill={isLast?"#a78bfa":"#6d28d9"}/>;
+                              })}
+                            </svg>
+                          )}
+                          <div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+                            <span style={{color:"#475569",fontSize:11}}>{pts.length} session{pts.length>1?"s":""}</span>
+                            {prev&&<span style={{color:trendCol,fontSize:12,fontWeight:700}}>
+                              {trend>0?"↑":trend<0?"↓":"="} {Math.abs(trend)>0?Math.abs(trend)+"kg 1RM":"stable"}
+                            </span>}
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              );
+            })()}
+
             {/* ═══ STREAK + COMPARAISON ═══ */}
             <div style={{display:"grid",gridTemplateColumns:isMobile?"1fr":"1fr 1fr",gap:10}}>
 
@@ -1015,9 +1104,29 @@ function AthletePlanningView({ athlete, currentUser, isMobile, perfs=[] }) {
   async function saveCompletion() {
     if(!selSession||!athlete) return;
     const existing = getCompletion(selSession.id);
+    // Calculer blocs_realises avec 1RM estimé
+    const contenu = typeof selSession.contenu==="string"?JSON.parse(selSession.contenu||"{}"):selSession.contenu||{};
+    const blocs_realises = (contenu.blocs||[]).map((b,i)=>{
+      const charge_kg = parseFloat(noteForm.charges[i]);
+      // Parser les reps depuis le détail du bloc (ex: "4×6-8", "3×10")
+      const detailStr = b.detail||"";
+      const repsMatch = detailStr.match(/[×x](\d+(?:-\d+)?)/i);
+      const reps = repsMatch ? parseReps(repsMatch[1]) : null;
+      const rm = calc1RM(charge_kg, reps);
+      return {
+        titre: b.titre,
+        prevu: b.detail,
+        charge_kg: isNaN(charge_kg) ? null : charge_kg,
+        reps_realises: reps,
+        rm_estime: rm,
+        note: noteForm.charges[i]||null,
+      };
+    }).filter(b=>b.charge_kg||b.note);
+
     const payload = {
       note: +noteForm.note||null,
       commentaire: noteForm.commentaire,
+      blocs_realises: blocs_realises.length ? blocs_realises : undefined,
     };
     try {
       let res;
@@ -1322,12 +1431,25 @@ function AthletePlanningView({ athlete, currentUser, isMobile, perfs=[] }) {
                             <div style={{color:"#e2e8f0",fontWeight:600,fontSize:12}}>{b.titre}</div>
                             {b.detail&&<div style={{color:"#475569",fontSize:11,fontFamily:"monospace"}}>{b.detail}</div>}
                           </div>
-                          <input
-                            placeholder={isMuscu?"kg":"réalisé"}
-                            value={noteForm.charges[i]||""}
-                            onChange={e=>setNoteForm(f=>({...f,charges:{...f.charges,[i]:e.target.value}}))}
-                            style={{width:isMuscu?64:90,background:"#182030",border:`1px solid ${sc}40`,borderRadius:6,color:"#f1f5f9",padding:"5px 8px",fontSize:12,textAlign:"center"}}
-                          />
+                          <div style={{display:"flex",flexDirection:"column",alignItems:"flex-end",gap:2}}>
+                            <div style={{display:"flex",alignItems:"center",gap:4}}>
+                              <input
+                                placeholder={isMuscu?"kg":"réalisé"}
+                                value={noteForm.charges[i]||""}
+                                onChange={e=>setNoteForm(f=>({...f,charges:{...f.charges,[i]:e.target.value}}))}
+                                style={{width:isMuscu?56:80,background:"#182030",border:`1px solid ${sc}40`,borderRadius:6,color:"#f1f5f9",padding:"5px 8px",fontSize:12,textAlign:"center"}}
+                              />
+                              {isMuscu&&<span style={{color:"#475569",fontSize:11}}>kg</span>}
+                            </div>
+                            {isMuscu&&(()=>{
+                              const kg = parseFloat(noteForm.charges[i]);
+                              const detailStr = b.detail||"";
+                              const repsMatch = detailStr.match(/[×x](\d+(?:-\d+)?)/i);
+                              const reps = repsMatch ? parseReps(repsMatch[1]) : null;
+                              const rm = calc1RM(kg, reps);
+                              return rm ? <span style={{color:"#a78bfa",fontSize:10,fontWeight:700}}>1RM ~{rm}kg</span> : null;
+                            })()}
+                          </div>
                         </div>
                       );
                     })}
