@@ -1260,6 +1260,8 @@ function AthletePlanningView({ athlete, currentUser, isMobile, perfs=[], complet
   const [selSession, setSelSession] = useState(null);
   const [noteForm, setNoteForm]     = useState({ note:"", commentaire:"", charges:{} });
   const [showLibre, setShowLibre]   = useState(false);
+  const [analyseIA, setAnalyseIA]   = useState(null); // {loading, result, error, session}
+
   const [libreType, setLibreType]   = useState(null);
   const [libreForm, setLibreForm]   = useState({ titre:"", date:new Date().toISOString().split("T")[0], blocs:[], ressenti:null, commentaire:"" });
   const [libreSaving, setLibreSaving] = useState(false);
@@ -1369,6 +1371,59 @@ function AthletePlanningView({ athlete, currentUser, isMobile, perfs=[], complet
       setAiData(d=>({...d,[session.id]:{error:e.message}}));
     }
     setAiLoading(null);
+  }
+
+  async function callAnalyseIA(sessionData, blocs) {
+    setAnalyseIA({ loading: true, result: null, error: null, session: sessionData });
+    try {
+      const perfs2k = myPerfs.filter(p=>(p.distance_type||"2000m")==="2000m");
+      const best2k = getBestTime(perfs2k);
+      const lastW = perfs2k.length ? (concept2WattsFast(perfs2k[perfs2k.length-1].time, "2000m")) : null;
+      const blocsDesc = blocs.map((b,i) => {
+        const ivs = (b.intervalles||[]).map((iv,j) =>
+          "  Intervalle "+(j+1)+": split "+(iv.split||"?")+"/500m, cadence "+(iv.cadence||"?")+"spm, durée "+(iv.duree||"?")
+        ).join("\n");
+        return "Bloc "+(i+1)+": "+(b.format||b.titre||b.note||"")+"\n"+ivs;
+      }).join("\n");
+
+      const prompt = [
+        "Tu es coach aviron expert. Analyse cette séance pour l'athlète.\n",
+        "\nPROFIL ATHLÈTE:\n",
+        "- Nom: "+(athlete?.name||"")+"\n",
+        "- Catégorie: "+(athlete?.category||"")+"\n",
+        "- Âge: "+(athlete?.age||"?")+" ans\n",
+        "- Poids: "+(athlete?.weight||"?")+" kg\n",
+        "- Best 2000m: "+(best2k?.time||"inconnu")+"\n",
+        "- Watts: "+(lastW||"inconnu")+"W\n",
+        "\nSÉANCE RÉALISÉE:\n",
+        "- Type: "+(sessionData.type||"ERGO")+"\n",
+        "- Titre: "+(sessionData.titre||"Séance ergo")+"\n",
+        blocsDesc+"\n",
+        "\nANALYSE DEMANDÉE:\n",
+        "1. Zones d'intensité (B1/B2/Seuil/VO2max) ?\n",
+        "2. Cadence adaptée ?\n",
+        "3. Bonnes allures vs best 2k ?\n",
+        "4. Points positifs et axes d'amélioration\n",
+        "5. Recommandation prochaine séance\n",
+        "\nRéponds en français, concis et actionnable (max 200 mots)."
+      ].join("");
+
+
+      const res = await fetch("https://api.anthropic.com/v1/messages", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          model: "claude-sonnet-4-20250514",
+          max_tokens: 1000,
+          messages: [{ role: "user", content: prompt }]
+        })
+      });
+      const data = await res.json();
+      const text = data.content?.[0]?.text || "Pas de réponse";
+      setAnalyseIA({ loading: false, result: text, error: null, session: sessionData });
+    } catch(e) {
+      setAnalyseIA({ loading: false, result: null, error: e.message, session: sessionData });
+    }
   }
 
   async function saveSeanceLibre() {
@@ -1781,39 +1836,48 @@ function AthletePlanningView({ athlete, currentUser, isMobile, perfs=[], complet
                                   <div style={{color:"#475569",fontSize:9}}>1RM kg</div>
                                 </div>}
                               </div>
-                            ):(
-                              <div style={{display:"flex",gap:6,alignItems:"flex-end",marginTop:8}}>
-                                <div style={{flex:2}}>
-                                  <div style={{color:"#475569",fontSize:10,marginBottom:3}}>
-                                    {libreType==="ERGO"||libreType==="BATEAU"?"Format (ex: 3×6', 60'...)":"Détail"}
+                            ):(libreType==="ERGO"||libreType==="BATEAU"?(
+                              <div style={{marginTop:8}}>
+                                {/* Format global du bloc */}
+                                <input placeholder="ex: 3×6' r5', 60' B1, 4×(2k r5')"
+                                  value={b.format||""} onChange={e=>setLibreForm(f=>({...f,blocs:f.blocs.map((x,j)=>j===i?{...x,format:e.target.value}:x)}))}
+                                  style={{width:"100%",background:"#182030",border:`1px solid ${col}40`,borderRadius:7,color:"#f1f5f9",padding:"7px 10px",fontSize:13,boxSizing:"border-box",marginBottom:8}}/>
+                                {/* Intervalles détaillés */}
+                                {(b.intervalles||[]).map((iv,ii)=>(
+                                  <div key={ii} style={{display:"flex",gap:5,alignItems:"center",marginBottom:5,background:"#0f172a",borderRadius:7,padding:"6px 8px"}}>
+                                    <span style={{color:"#475569",fontSize:11,flexShrink:0,minWidth:20}}>#{ii+1}</span>
+                                    <div style={{flex:1}}>
+                                      <div style={{color:"#475569",fontSize:9,marginBottom:2}}>Split /500m</div>
+                                      <input placeholder="1:52" value={iv.split||""}
+                                        onChange={e=>setLibreForm(f=>({...f,blocs:f.blocs.map((x,j)=>j===i?{...x,intervalles:x.intervalles.map((v,k)=>k===ii?{...v,split:e.target.value}:v)}:x)}))}
+                                        style={{width:"100%",background:"#182030",border:`1px solid ${col}50`,borderRadius:6,color:"#f1f5f9",padding:"5px 7px",fontSize:13,textAlign:"center",boxSizing:"border-box"}}/>
+                                    </div>
+                                    <div style={{flex:1}}>
+                                      <div style={{color:"#475569",fontSize:9,marginBottom:2}}>Cadence</div>
+                                      <input type="number" placeholder="28" value={iv.cadence||""}
+                                        onChange={e=>setLibreForm(f=>({...f,blocs:f.blocs.map((x,j)=>j===i?{...x,intervalles:x.intervalles.map((v,k)=>k===ii?{...v,cadence:e.target.value}:v)}:x)}))}
+                                        style={{width:"100%",background:"#182030",border:"1px solid #334155",borderRadius:6,color:"#f1f5f9",padding:"5px 7px",fontSize:13,textAlign:"center",boxSizing:"border-box"}}/>
+                                    </div>
+                                    <div style={{flex:1}}>
+                                      <div style={{color:"#475569",fontSize:9,marginBottom:2}}>Durée</div>
+                                      <input placeholder="6'" value={iv.duree||""}
+                                        onChange={e=>setLibreForm(f=>({...f,blocs:f.blocs.map((x,j)=>j===i?{...x,intervalles:x.intervalles.map((v,k)=>k===ii?{...v,duree:e.target.value}:v)}:x)}))}
+                                        style={{width:"100%",background:"#182030",border:"1px solid #334155",borderRadius:6,color:"#f1f5f9",padding:"5px 7px",fontSize:12,textAlign:"center",boxSizing:"border-box"}}/>
+                                    </div>
+                                    <button onClick={()=>setLibreForm(f=>({...f,blocs:f.blocs.map((x,j)=>j===i?{...x,intervalles:x.intervalles.filter((_,k)=>k!==ii)}:x)}))}
+                                      style={{background:"none",border:"none",color:"#475569",fontSize:14,cursor:"pointer",padding:"0 2px",flexShrink:0}}>×</button>
                                   </div>
-                                  <input placeholder={libreType==="ERGO"||libreType==="BATEAU"?"ex: 3×6' r5', 60' B1":"ex: réalisé"}
-                                    value={b.format||""} onChange={e=>setLibreForm(f=>({...f,blocs:f.blocs.map((x,j)=>j===i?{...x,format:e.target.value}:x)}))}
-                                    style={{width:"100%",background:"#182030",border:`1px solid ${col}40`,borderRadius:7,color:"#f1f5f9",padding:"7px 10px",fontSize:13,boxSizing:"border-box"}}/>
-                                </div>
-                                {(libreType==="ERGO"||libreType==="BATEAU")&&(
-                                  <div style={{flex:1}}>
-                                    <div style={{color:"#475569",fontSize:10,marginBottom:3}}>Cadence (spm)</div>
-                                    <input type="number" placeholder="18"
-                                      value={b.cadence||""} onChange={e=>setLibreForm(f=>({...f,blocs:f.blocs.map((x,j)=>j===i?{...x,cadence:e.target.value}:x)}))}
-                                      style={{width:"100%",background:"#182030",border:`1px solid ${col}40`,borderRadius:7,color:"#f1f5f9",padding:"7px 8px",fontSize:14,textAlign:"center",boxSizing:"border-box"}}/>
-                                  </div>
-                                )}
-                                {(libreType==="ERGO"||libreType==="BATEAU")&&(
-                                  <div style={{flex:1}}>
-                                    <div style={{color:"#475569",fontSize:10,marginBottom:3}}>Allure /500m</div>
-                                    <input placeholder="1:52"
-                                      value={b.allure||""} onChange={e=>setLibreForm(f=>({...f,blocs:f.blocs.map((x,j)=>j===i?{...x,allure:e.target.value}:x)}))}
-                                      style={{width:"100%",background:"#182030",border:`1px solid ${col}40`,borderRadius:7,color:"#f1f5f9",padding:"7px 8px",fontSize:13,textAlign:"center",boxSizing:"border-box"}}/>
-                                  </div>
-                                )}
-                                {libreType!=="ERGO"&&libreType!=="BATEAU"&&(
-                                  <input placeholder="réalisé"
-                                    value={b.note||""} onChange={e=>setLibreForm(f=>({...f,blocs:f.blocs.map((x,j)=>j===i?{...x,note:e.target.value}:x)}))}
-                                    style={{flex:1,background:"#182030",border:`1px solid ${col}40`,borderRadius:7,color:"#f1f5f9",padding:"7px 10px",fontSize:13,boxSizing:"border-box"}}/>
-                                )}
+                                ))}
+                                <button onClick={()=>setLibreForm(f=>({...f,blocs:f.blocs.map((x,j)=>j===i?{...x,intervalles:[...(x.intervalles||[]),{split:"",cadence:"",duree:""}]}:x)}))}
+                                  style={{background:col+"10",border:`1px dashed ${col}40`,borderRadius:6,color:col,fontSize:11,fontWeight:700,padding:"5px 10px",cursor:"pointer",width:"100%"}}>
+                                  + Ajouter un intervalle (split + cadence)
+                                </button>
                               </div>
-                            )}
+                            ):(
+                              <input placeholder="réalisé"
+                                value={b.note||""} onChange={e=>setLibreForm(f=>({...f,blocs:f.blocs.map((x,j)=>j===i?{...x,note:e.target.value}:x)}))}
+                                style={{width:"100%",background:"#182030",border:`1px solid ${col}40`,borderRadius:7,color:"#f1f5f9",padding:"7px 10px",fontSize:13,boxSizing:"border-box",marginTop:8}}/>
+                            ))}
                           </div>
                         );
                       })}
@@ -1841,6 +1905,24 @@ function AthletePlanningView({ athlete, currentUser, isMobile, perfs=[], complet
                   <textarea placeholder="Commentaire libre..." value={libreForm.commentaire}
                     onChange={e=>setLibreForm(f=>({...f,commentaire:e.target.value}))}
                     style={{width:"100%",background:"#0f172a",border:"1px solid #334155",borderRadius:8,color:"#f1f5f9",padding:"9px 12px",fontSize:13,resize:"vertical",minHeight:60,boxSizing:"border-box",marginBottom:12}}/>
+
+                  {/* Analyse IA pour ergo/bateau */}
+                  {(libreType==="ERGO"||libreType==="BATEAU")&&libreForm.blocs.some(b=>b.intervalles?.length)&&(
+                    <button onClick={()=>callAnalyseIA({type:libreType,titre:libreForm.titre},libreForm.blocs)}
+                      disabled={analyseIA?.loading}
+                      style={{width:"100%",padding:"10px",borderRadius:10,border:`1px solid ${col}50`,background:col+"15",color:col,fontSize:13,fontWeight:700,cursor:"pointer",marginBottom:8,opacity:analyseIA?.loading?0.6:1}}>
+                      {analyseIA?.loading?"🤖 Analyse en cours...":"🤖 Analyser ma séance"}
+                    </button>
+                  )}
+
+                  {/* Résultat analyse IA */}
+                  {analyseIA?.result&&analyseIA?.session?.type===libreType&&(
+                    <div style={{background:"#0f172a",border:`1px solid ${col}30`,borderRadius:10,padding:"12px 14px",marginBottom:10,fontSize:12,color:"#94a3b8",lineHeight:1.6}}>
+                      <div style={{color:col,fontWeight:700,fontSize:12,marginBottom:6}}>🤖 Analyse IA</div>
+                      <div style={{whiteSpace:"pre-wrap"}}>{analyseIA.result}</div>
+                    </div>
+                  )}
+                  {analyseIA?.error&&<div style={{color:"#ef4444",fontSize:11,marginBottom:8}}>{analyseIA.error}</div>}
 
                   {/* Valider */}
                   <button onClick={saveSeanceLibre} disabled={libreSaving}
@@ -1944,6 +2026,24 @@ function AthletePlanningView({ athlete, currentUser, isMobile, perfs=[], complet
                 value={noteForm.commentaire} onChange={e=>setNoteForm(f=>({...f,commentaire:e.target.value}))}
                 placeholder="Comment s'est passée la séance ?"/>
             </div>
+            {/* Analyse IA pour ergo/bateau */}
+            {(selSession?.type_seance==="ERGO"||selSession?.type_seance==="BATEAU")&&(
+              <div style={{marginBottom:12}}>
+                <button onClick={()=>{
+                  const contenu=typeof selSession.contenu==="string"?JSON.parse(selSession.contenu||"{}"):selSession.contenu||{};
+                  callAnalyseIA({type:selSession.type_seance,titre:selSession.titre},(contenu.blocs||[]).map((b,i)=>({...b,note:noteForm.charges[i]||""})));
+                }} disabled={analyseIA?.loading}
+                  style={{width:"100%",padding:"9px",borderRadius:8,border:"1px solid #0ea5e940",background:"#0ea5e910",color:"#0ea5e9",fontSize:12,fontWeight:700,cursor:"pointer",marginBottom:analyseIA?.result?8:0,opacity:analyseIA?.loading?0.6:1}}>
+                  {analyseIA?.loading?"🤖 Analyse en cours...":"🤖 Analyser ma séance"}
+                </button>
+                {analyseIA?.result&&(
+                  <div style={{background:"#0f172a",border:"1px solid #0ea5e930",borderRadius:8,padding:"10px 12px",fontSize:11,color:"#94a3b8",lineHeight:1.6,maxHeight:200,overflowY:"auto"}}>
+                    <div style={{color:"#0ea5e9",fontWeight:700,fontSize:11,marginBottom:4}}>🤖 Analyse IA</div>
+                    <div style={{whiteSpace:"pre-wrap"}}>{analyseIA.result}</div>
+                  </div>
+                )}
+              </div>
+            )}
             <div style={{display:"flex",gap:10,justifyContent:"flex-end"}}>
               <button style={{padding:"9px 18px",borderRadius:8,border:"1px solid #334155",background:"transparent",color:"#64748b",cursor:"pointer"}} onClick={()=>setShowModal(false)}>Annuler</button>
               <button style={{padding:"9px 18px",borderRadius:8,border:"none",background:"#0ea5e9",color:"#fff",fontWeight:700,cursor:"pointer"}} onClick={saveCompletion}>{getCompletion(selSession?.id)?"Mettre à jour ✓":"Valider la séance ✓"}</button>
