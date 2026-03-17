@@ -96,6 +96,14 @@ export default function AthleteSpace({ currentUser, onLogout, managedSections=[]
     setNP({date:"",time:"",watts:"",spm:"",hr:"",rpe:"",distance:"",distance_type:"2000m"}); setShowAddPerf(false);
   }
 
+  // Charger les completions de l'athlète
+  useEffect(() => {
+    if (!athlete?.id) return;
+    api.getSessionCompletions(athlete.id)
+      .then(c => setCompletions(c||[]))
+      .catch(() => {});
+  }, [athlete?.id]);
+
   // Charge la semaine courante pour le dashboard
   useEffect(()=>{
     if(athlete) loadDashboardPlanning();
