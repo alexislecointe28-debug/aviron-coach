@@ -808,11 +808,19 @@ export default function AthleteSpace({ currentUser, onLogout, managedSections=[]
         {tab==="journal"&&(()=>{
           const TYPE_COL_J={MUSCU:"#f97316",ERGO:"#0ea5e9",BATEAU:"#06b6d4",PLIO:"#f59e0b",RECUP:"#10b981",AUTRE:"#64748b"};
           const TYPE_LBL_J={MUSCU:"Muscu",ERGO:"Ergo",BATEAU:"Bateau",PLIO:"Plio",RECUP:"Récup",AUTRE:"Autre"};
-          const entries=[...completions].sort((a,b)=>(b.completed_at||b.created_at)>(a.completed_at||a.created_at)?1:-1);
+          // Parser blocs_realises si c'est une string JSON
+          const parseBR = (br) => {
+            if (!br) return null;
+            if (typeof br === "string") { try { return JSON.parse(br); } catch { return null; } }
+            return br;
+          };
+          const entries=[...completions]
+            .map(e=>({...e, blocs_realises: parseBR(e.blocs_realises)}))
+            .sort((a,b)=>(b.completed_at||b.created_at)>(a.completed_at||a.created_at)?1:-1);
           const filtered=journalSearch?entries.filter(e=>{
             const blocs=Array.isArray(e.blocs_realises)?e.blocs_realises:(e.blocs_realises?.blocs||[]);
             const meta=e.blocs_realises?._meta||{};
-            const txt=[meta.titre,e.commentaire,...blocs.map(b=>b.titre+" "+(b.note||""))].join(" ").toLowerCase();
+            const txt=[meta.titre,e.commentaire,...blocs.map(b=>(b.titre||"")+" "+(b.note||""))].join(" ").toLowerCase();
             return txt.includes(journalSearch.toLowerCase());
           }):entries;
           const rpeData=entries.filter(e=>e.note).slice(0,20).reverse();
