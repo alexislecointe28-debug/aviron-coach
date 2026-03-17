@@ -1233,63 +1233,80 @@ export default function CoachSpace({ currentUser, onLogout }) {
               <div style={S.card}>
                 <FF label="Nom"><input style={S.inp} value={crewName} onChange={e=>setCrewName(e.target.value)}/></FF>
                 <FF label="Bateau"><div style={{display:"flex",gap:6,flexWrap:"wrap"}}>{Object.keys(CREW_SLOTS).map(b=><button key={b} style={{...S.fb,...(crewBoat===b?S.fbon:{})}} onClick={()=>{setCrewBoat(b);setNewCrewMembers([]);}}>{b}</button>)}</div></FF>
-                <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:8}}>
-                  <span style={{color:"#7a95b0",fontSize:12}}>Rameurs ({newCrewMembers.length}/{CREW_SLOTS[crewBoat]||4})</span>
-                  {newCrewMembers.length>0&&<button onClick={()=>setNewCrewMembers([])} style={{background:"none",border:"none",color:"#ef4444",fontSize:11,cursor:"pointer"}}>Effacer</button>}
-                </div>
-                {/* Sélectionnés en haut */}
+                {/* Sélectionnés */}
                 {newCrewMembers.length>0&&(
-                  <div style={{display:"flex",gap:6,flexWrap:"wrap",marginBottom:8,padding:"8px",background:"#0f172a",borderRadius:8,border:"1px solid #22d3ee30"}}>
-                    {newCrewMembers.map(id=>{const a=athletes.find(x=>x.id===id);if(!a)return null;return(
-                      <div key={id} style={{display:"flex",alignItems:"center",gap:4,background:"#22d3ee15",border:"1px solid #22d3ee40",borderRadius:6,padding:"3px 8px",cursor:"pointer"}} onClick={()=>setNewCrewMembers(p=>p.filter(x=>x!==id))}>
-                        <span style={{color:"#f1f5f9",fontSize:12,fontWeight:600}}>{a.name}</span>
-                        <span style={{color:"#22d3ee",fontSize:10}}>×</span>
-                      </div>
-                    );})}
+                  <div style={{marginBottom:10}}>
+                    <div style={{color:"#22d3ee",fontSize:11,fontWeight:700,marginBottom:5}}>
+                      ✓ Sélectionnés ({newCrewMembers.length}/{CREW_SLOTS[crewBoat]||4})
+                    </div>
+                    <div style={{display:"flex",gap:5,flexWrap:"wrap"}}>
+                      {newCrewMembers.map((id,pos)=>{
+                        const a=athletes.find(x=>x.id===id);if(!a)return null;
+                        return(
+                          <div key={id} onClick={()=>setNewCrewMembers(p=>p.filter(x=>x!==id))}
+                            style={{display:"flex",alignItems:"center",gap:5,background:"#22d3ee20",border:"1px solid #22d3ee50",borderRadius:20,padding:"4px 10px",cursor:"pointer"}}>
+                            <span style={{color:"#22d3ee",fontSize:10,fontWeight:700}}>#{pos+1}</span>
+                            <span style={{color:"#f1f5f9",fontSize:12,fontWeight:600}}>{a.name}</span>
+                            <span style={{color:"#22d3ee",fontSize:11}}>×</span>
+                          </div>
+                        );
+                      })}
+                    </div>
                   </div>
                 )}
-                {/* Recherche + filtre */}
-                <input placeholder="🔍 Rechercher..." value={crewSearch} onChange={e=>setCrewSearch(e.target.value)}
-                  style={{width:"100%",background:"#0f172a",border:"1px solid #334155",borderRadius:7,color:"#f1f5f9",padding:"6px 10px",fontSize:12,boxSizing:"border-box",marginBottom:6}}/>
-                <div style={{display:"flex",gap:4,flexWrap:"wrap",marginBottom:8}}>
-                  {["Tous",...new Set(athletes.map(a=>a.category).filter(Boolean))].map(c=>(
-                    <button key={c} onClick={()=>setCrewCatFilter(c)}
-                      style={{padding:"3px 8px",borderRadius:5,border:`1px solid ${crewCatFilter===c?"#22d3ee":"#334155"}`,background:crewCatFilter===c?"#22d3ee20":"transparent",color:crewCatFilter===c?"#22d3ee":"#64748b",fontSize:10,cursor:"pointer",fontWeight:crewCatFilter===c?700:400}}>
-                      {c}
-                    </button>
-                  ))}
-                </div>
-                {/* Grille chips */}
-                <div style={{display:"flex",flexWrap:"wrap",gap:5,maxHeight:200,overflowY:"auto",paddingRight:2}}>
-                  {athletes
-                    .filter(a=>{
-                      const matchCat=crewCatFilter==="Tous"||a.category===crewCatFilter;
-                      const matchSearch=!crewSearch||a.name.toLowerCase().includes(crewSearch.toLowerCase());
-                      return matchCat&&matchSearch;
-                    })
-                    .map(a=>{
-                      const sel=newCrewMembers.includes(a.id);
-                      const full=newCrewMembers.length>=(CREW_SLOTS[crewBoat]||4)&&!sel;
-                      const {last}=aStats(a);
-                      return(
-                        <button key={a.id}
-                          onClick={()=>!full&&setNewCrewMembers(prev=>prev.includes(a.id)?prev.filter(x=>x!==a.id):[...prev,a.id])}
-                          style={{
-                            display:"flex",flexDirection:"column",alignItems:"flex-start",
-                            padding:"5px 9px",borderRadius:8,cursor:full?"not-allowed":"pointer",
-                            opacity:full?0.35:1,border:"none",
-                            background:sel?"#22d3ee20":"#1e293b",
-                            outline:sel?"2px solid #22d3ee80":"2px solid transparent",
-                            transition:"all 0.1s",
-                          }}>
-                          <span style={{fontSize:11,fontWeight:700,color:sel?"#22d3ee":"#cbd5e1",lineHeight:1.2}}>{a.name.split(" ")[0]}</span>
-                          <span style={{fontSize:10,fontWeight:600,color:sel?"#22d3ee":"#94a3b8",lineHeight:1.2}}>{a.name.split(" ").slice(1).join(" ")}</span>
-                          {last&&<span style={{fontSize:9,color:sel?"#67e8f9":"#475569",marginTop:1}}>{last.watts}W</span>}
+
+                {/* Filtre obligatoire — catégorie d'abord */}
+                {crewCatFilter==="Tous"&&newCrewMembers.length===0?(
+                  <div>
+                    <div style={{color:"#64748b",fontSize:12,marginBottom:8}}>Quelle catégorie d'athlètes ?</div>
+                    <div style={{display:"flex",gap:6,flexWrap:"wrap"}}>
+                      {[...new Set(athletes.map(a=>a.category).filter(Boolean))].map(c=>(
+                        <button key={c} onClick={()=>setCrewCatFilter(c)}
+                          style={{padding:"7px 14px",borderRadius:8,border:"1px solid #334155",background:"#1e293b",color:"#94a3b8",fontSize:12,fontWeight:600,cursor:"pointer"}}>
+                          {c} <span style={{color:"#475569",fontSize:10}}>({athletes.filter(a=>a.category===c).length})</span>
                         </button>
-                      );
-                    })
-                  }
-                </div>
+                      ))}
+                    </div>
+                  </div>
+                ):(
+                  <div>
+                    {/* Header filtre actif + recherche */}
+                    <div style={{display:"flex",gap:6,alignItems:"center",marginBottom:8}}>
+                      <button onClick={()=>{setCrewCatFilter("Tous");setCrewSearch("");}}
+                        style={{background:"#22d3ee20",border:"1px solid #22d3ee40",borderRadius:6,color:"#22d3ee",fontSize:11,fontWeight:700,padding:"4px 8px",cursor:"pointer"}}>
+                        {crewCatFilter} ×
+                      </button>
+                      <input placeholder="🔍 Nom..." value={crewSearch} onChange={e=>setCrewSearch(e.target.value)}
+                        style={{flex:1,background:"#0f172a",border:"1px solid #334155",borderRadius:7,color:"#f1f5f9",padding:"5px 10px",fontSize:12}}/>
+                    </div>
+                    {/* Chips compacts */}
+                    <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:5}}>
+                      {athletes
+                        .filter(a=>{
+                          const matchCat=a.category===crewCatFilter;
+                          const matchSearch=!crewSearch||a.name.toLowerCase().includes(crewSearch.toLowerCase());
+                          return matchCat&&matchSearch;
+                        })
+                        .map(a=>{
+                          const sel=newCrewMembers.includes(a.id);
+                          const full=newCrewMembers.length>=(CREW_SLOTS[crewBoat]||4)&&!sel;
+                          const {last}=aStats(a);
+                          return(
+                            <button key={a.id}
+                              onClick={()=>!full&&setNewCrewMembers(prev=>prev.includes(a.id)?prev.filter(x=>x!==a.id):[...prev,a.id])}
+                              style={{padding:"6px 8px",borderRadius:8,cursor:full?"not-allowed":"pointer",opacity:full?0.3:1,border:"none",
+                                background:sel?"#22d3ee25":"#1e293b",outline:sel?"2px solid #22d3ee":"none",textAlign:"left"}}>
+                              <div style={{fontSize:11,fontWeight:700,color:sel?"#22d3ee":"#e2e8f0",whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>
+                                {a.name}
+                              </div>
+                              {last&&<div style={{fontSize:9,color:sel?"#67e8f9":"#475569",marginTop:1}}>{last.watts}W</div>}
+                            </button>
+                          );
+                        })
+                      }
+                    </div>
+                  </div>
+                )}
                 <button style={{...S.btnP,width:"100%",marginTop:12,opacity:!newCrewMembers.length?0.5:1}} onClick={saveNewCrew} disabled={!newCrewMembers.length}>Créer →</button>
               </div>
             </div>
