@@ -42,7 +42,7 @@ export default function AthleteSpace({ currentUser, onLogout, managedSections=[]
     } catch(e){ console.error("Load error:", e); }
     setLoading(false);
   },[currentUser.athlete_id]);
-  const [completions, setCompletions] = useState(extCompletions);
+  const [completions, setCompletions] = useState([]);
   const [morphoForm, setMorphoForm] = useState(null);
   const [morphoSaving, setMorphoSaving] = useState(false);
   const [morphoToast, setMorphoToast] = useState("");
