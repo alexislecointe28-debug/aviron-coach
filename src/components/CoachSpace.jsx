@@ -27,6 +27,11 @@ export default function CoachSpace({ currentUser, onLogout }) {
   const [toast,setToast]     = useState(null);
   const [selAth,setSelAth]   = useState(null);
   const [filterCat,setFilterCat] = useState("Tous");
+  const [perfSearch, setPerfSearch] = useState("");
+  const [perfCat, setPerfCat] = useState("Tous");
+  const [perfDist, setPerfDist] = useState("2000m");
+  const [compareSearch, setCompareSearch] = useState("");
+  const [compareCat, setCompareCat] = useState("Tous");
   const [rankMode,setRankMode] = useState("wpkg");
   const [dashDistType,setDashDistType] = useState("2000m");
   const [dashCatFilter,setDashCatFilter] = useState("Tous");
@@ -953,15 +958,72 @@ export default function CoachSpace({ currentUser, onLogout }) {
           );
         })()}
         {tab==="performances"&&(<div style={{...S.page,padding:isMobile?"16px 12px":"28px 32px"}}>
-          <div style={S.ph}><div><h1 style={S.ttl}>Performances</h1><p style={S.sub}>Vue globale</p></div><button style={S.btnP} onClick={()=>{setNP(p=>({...p,athleteId:selAth||""}));setShowAddPerf(true);}}>+ Ajouter</button></div>          <div style={{display:"flex",gap:8,marginBottom:20,flexWrap:"wrap"}}>
-            <button style={{...S.fb,...(selAth===null?S.fbon:{})}} onClick={()=>setSelAth(null)}>Tous</button>
-            {athletes.map(a=><button key={a.id} style={{...S.fb,...(selAth===a.id?S.fbon:{})}} onClick={()=>setSelAth(a.id)}>{a.name}</button>)}
+          <div style={S.ph}><div><h1 style={S.ttl}>Performances</h1><p style={S.sub}>{performances.length} entrées</p></div><button style={S.btnP} onClick={()=>{setNP(p=>({...p,athleteId:selAth||""}));setShowAddPerf(true);}}>+ Ajouter</button></div>
+
+          {/* Filtres */}
+          <div style={{display:"flex",gap:8,marginBottom:10,flexWrap:"wrap",alignItems:"center"}}>
+            {/* Recherche */}
+            <input placeholder="🔍 Rechercher un athlète..."
+              value={perfSearch} onChange={e=>{setPerfSearch(e.target.value);setSelAth(null);}}
+              style={{background:"#182030",border:"1px solid #334155",borderRadius:8,color:"#f1f5f9",padding:"7px 12px",fontSize:13,minWidth:180,flex:1}}/>
+            {/* Distance */}
+            {["2000m","1000m","500m"].map(d=>(
+              <button key={d} onClick={()=>setPerfDist(d)}
+                style={{...S.fb,...(perfDist===d?S.fbon:{}),flexShrink:0}}>{d}</button>
+            ))}
           </div>
-          {selAth&&(()=>{const a=athletes.find(x=>x.id===selAth);if(!a)return null;const perfs=getPerfFor(selAth),perfs2k=perfs.filter(p=>(p.distance_type||"2000m")==="2000m"),best=getBestTime(perfs2k),last=getLastPerf(perfs2k),wpkg=best&&a.weight?(concept2WattsFast(best.time,"2000m")/a.weight).toFixed(2):null;return(<div style={{...S.card,display:"flex",alignItems:"center",gap:16,marginBottom:16}}><div style={{...S.av,backgroundImage:a.photo_url?`url(${a.photo_url})`:"none",backgroundSize:"cover",backgroundPosition:"center"}}>{!a.photo_url&&a.avatar}</div><div style={{flex:1}}><div style={{fontSize:18,fontWeight:800,color:"#f1f5f9"}}>{a.name}</div><div style={{color:"#7a95b0",fontSize:13}}>{a.category} - {a.weight}kg</div></div><button style={{...S.actionBtn,color:"#0ea5e9",borderColor:"#22d3ee30"}} onClick={()=>setEditAth({...a})}>✏️ Edit</button><div style={{display:"flex",gap:10}}><div style={{background:"#4ade8015",border:"1px solid #4ade8030",borderRadius:10,padding:"10px 16px",textAlign:"center"}}><div style={{color:"#7a95b0",fontSize:10,textTransform:"uppercase",letterSpacing:1}}>Best {best?.distance_type||"2k"}</div><div style={{color:"#4ade80",fontWeight:900,fontSize:22}}>{best?.time??"-"}</div></div><div style={{background:"#a78bfa15",border:"1px solid #a78bfa30",borderRadius:10,padding:"10px 16px",textAlign:"center"}}><div style={{color:"#7a95b0",fontSize:10,textTransform:"uppercase",letterSpacing:1}}>W/kg</div><div style={{color:"#a78bfa",fontWeight:900,fontSize:22}}>{wpkg??"-"}</div></div></div></div>);})()}
+          {/* Catégories */}
+          <div style={{display:"flex",gap:6,marginBottom:16,flexWrap:"wrap"}}>
+            {["Tous",...new Set(athletes.map(a=>a.category).filter(Boolean))].map(c=>(
+              <button key={c} onClick={()=>{setPerfCat(c);setSelAth(null);}}
+                style={{...S.fb,...(perfCat===c?S.fbon:{}),fontSize:11}}>
+                {c}
+              </button>
+            ))}
+          </div>
+
+          {/* Athlète sélectionné dans la liste */}
+          {(()=>{
+            // Filtrer les athlètes selon search + catégorie
+            const visibleAths = athletes.filter(a=>{
+              const matchCat = perfCat==="Tous" || a.category===perfCat;
+              const matchSearch = !perfSearch || a.name.toLowerCase().includes(perfSearch.toLowerCase());
+              return matchCat && matchSearch;
+            });
+
+            return(
+              <div>
+                {/* Mini-cartes athlètes filtrées */}
+                <div style={{display:"flex",gap:6,marginBottom:16,flexWrap:"wrap"}}>
+                  <button style={{...S.fb,...(selAth===null?S.fbon:{})}} onClick={()=>setSelAth(null)}>Tous ({visibleAths.length})</button>
+                  {visibleAths.map(a=>{
+                    const best = getBestTime(getPerfFor(a.id).filter(p=>(p.distance_type||"2000m")===perfDist));
+                    return(
+                      <button key={a.id} style={{...S.fb,...(selAth===a.id?{background:"#0ea5e920",border:"1px solid #0ea5e960",color:"#0ea5e9"}:{})}}
+                        onClick={()=>setSelAth(a.id)}>
+                        {a.name}{best?<span style={{color:"#4ade80",fontSize:10,marginLeft:4}}>{best.time}</span>:null}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            );
+          })()}
+
+          {selAth&&(()=>{const a=athletes.find(x=>x.id===selAth);if(!a)return null;const perfs=getPerfFor(selAth),perfs2k=perfs.filter(p=>(p.distance_type||"2000m")===perfDist),best=getBestTime(perfs2k),last=getLastPerf(perfs2k),wpkg=best&&a.weight?(concept2WattsFast(best.time,"2000m")/a.weight).toFixed(2):null;return(<div style={{...S.card,display:"flex",alignItems:"center",gap:16,marginBottom:16}}><div style={{...S.av,backgroundImage:a.photo_url?`url(${a.photo_url})`:"none",backgroundSize:"cover",backgroundPosition:"center"}}>{!a.photo_url&&a.avatar}</div><div style={{flex:1}}><div style={{fontSize:18,fontWeight:800,color:"#f1f5f9"}}>{a.name}</div><div style={{color:"#7a95b0",fontSize:13}}>{a.category} - {a.weight}kg</div></div><button style={{...S.actionBtn,color:"#0ea5e9",borderColor:"#22d3ee30"}} onClick={()=>setEditAth({...a})}>✏️ Edit</button><div style={{display:"flex",gap:10}}><div style={{background:"#4ade8015",border:"1px solid #4ade8030",borderRadius:10,padding:"10px 16px",textAlign:"center"}}><div style={{color:"#7a95b0",fontSize:10,textTransform:"uppercase",letterSpacing:1}}>Best {perfDist}</div><div style={{color:"#4ade80",fontWeight:900,fontSize:22}}>{best?.time??"-"}</div></div><div style={{background:"#a78bfa15",border:"1px solid #a78bfa30",borderRadius:10,padding:"10px 16px",textAlign:"center"}}><div style={{color:"#7a95b0",fontSize:10,textTransform:"uppercase",letterSpacing:1}}>W/kg</div><div style={{color:"#a78bfa",fontWeight:900,fontSize:22}}>{wpkg??"-"}</div></div></div></div>);})()}
+
           <div style={{overflowX:"auto",borderRadius:12,border:"1px solid #1e293b"}}>
             <table style={{width:"100%",borderCollapse:"collapse",background:"#182030"}}>
               <thead><tr>{["Athlète","Date","Distance","Temps","Best","W/kg","Watts","FC","RPE","Km",""].map(h=><th key={h} style={S.th}>{h}</th>)}</tr></thead>
-              <tbody>{performances.filter(p=>selAth===null||p.athlete_id===selAth).sort((a,b)=>b.date.localeCompare(a.date)).map(p=>{const a=athletes.find(x=>x.id===p.athlete_id);const best=getBestTime(getPerfFor(p.athlete_id).filter(x=>(x.distance_type||"2000m")===(p.distance_type||"2000m")));return(<tr key={p.id} style={{borderBottom:"1px solid #1e293b"}}><td style={S.td}><div style={{display:"flex",alignItems:"center",gap:8}}><div style={{...S.av,width:28,height:28,fontSize:11}}>{a?.avatar}</div>{a?.name}</div></td><td style={{...S.td,color:"#7a95b0"}}>{p.date}</td><td style={{...S.td,color:"#7a95b0",fontSize:11}}><span style={{background:"#1e293b",padding:"2px 7px",borderRadius:5}}>{p.distance_type||"2000m"}</span></td><td style={{...S.td,color:"#0ea5e9",fontWeight:700}}>{p.time}</td><td style={{...S.td,color:"#4ade80",fontWeight:700}}>{best?.time??"-"}</td><td style={{...S.td,color:"#a78bfa",fontWeight:700}}>{a&&a.weight?((concept2WattsFast(p.time, p.distance_type||"2000m")||p.watts)/a.weight).toFixed(2):"--"}</td><td style={{...S.td,color:"#0ea5e9"}}>{concept2WattsFast(p.time, p.distance_type||"2000m")||p.watts}W</td><td style={{...S.td,color:"#ef4444"}}>{p.hr}</td><td style={S.td}><div style={{...S.badge,background:`hsl(${(10-p.rpe)*12},80%,40%)`,color:"#fff"}}>{p.rpe}/10</div></td><td style={{...S.td,color:"#f97316"}}>{p.distance}km</td><td style={S.td}><div style={{display:"flex",gap:4}}><button style={{...S.actionBtn,color:"#0ea5e9",borderColor:"#22d3ee30"}} onClick={()=>setEditPerf({...p})}>✏️</button><button style={{...S.actionBtn,color:"#ef4444",borderColor:"#ef444430"}} onClick={async()=>{await api.deletePerf(p.id);load();setToast({m:"Performance supprimée",t:"success"});}}>✕</button></div></td></tr>);})}
+              <tbody>{performances.filter(p=>{
+                  const a=athletes.find(x=>x.id===p.athlete_id);
+                  if(!a) return false;
+                  if((p.distance_type||"2000m")!==perfDist) return false;
+                  if(selAth!==null && p.athlete_id!==selAth) return false;
+                  if(perfCat!=="Tous" && a.category!==perfCat) return false;
+                  if(perfSearch && !a.name.toLowerCase().includes(perfSearch.toLowerCase())) return false;
+                  return true;
+                }).sort((a,b)=>b.date.localeCompare(a.date)).map(p=>{const a=athletes.find(x=>x.id===p.athlete_id);const best=getBestTime(getPerfFor(p.athlete_id).filter(x=>(x.distance_type||"2000m")===(p.distance_type||"2000m")));return(<tr key={p.id} style={{borderBottom:"1px solid #1e293b"}}><td style={S.td}><div style={{display:"flex",alignItems:"center",gap:8}}><div style={{...S.av,width:28,height:28,fontSize:11}}>{a?.avatar}</div>{a?.name}</div></td><td style={{...S.td,color:"#7a95b0"}}>{p.date}</td><td style={{...S.td,color:"#7a95b0",fontSize:11}}><span style={{background:"#1e293b",padding:"2px 7px",borderRadius:5}}>{p.distance_type||"2000m"}</span></td><td style={{...S.td,color:"#0ea5e9",fontWeight:700}}>{p.time}</td><td style={{...S.td,color:"#4ade80",fontWeight:700}}>{best?.time??"-"}</td><td style={{...S.td,color:"#a78bfa",fontWeight:700}}>{a&&a.weight?((concept2WattsFast(p.time, p.distance_type||"2000m")||p.watts)/a.weight).toFixed(2):"--"}</td><td style={{...S.td,color:"#0ea5e9"}}>{concept2WattsFast(p.time, p.distance_type||"2000m")||p.watts}W</td><td style={{...S.td,color:"#ef4444"}}>{p.hr}</td><td style={S.td}><div style={{...S.badge,background:`hsl(${(10-p.rpe)*12},80%,40%)`,color:"#fff"}}>{p.rpe}/10</div></td><td style={{...S.td,color:"#f97316"}}>{p.distance}km</td><td style={S.td}><div style={{display:"flex",gap:4}}><button style={{...S.actionBtn,color:"#0ea5e9",borderColor:"#22d3ee30"}} onClick={()=>setEditPerf({...p})}>✏️</button><button style={{...S.actionBtn,color:"#ef4444",borderColor:"#ef444430"}} onClick={async()=>{await api.deletePerf(p.id);load();setToast({m:"Performance supprimée",t:"success"});}}>✕</button></div></td></tr>);})}
               </tbody>
             </table>
           </div>
@@ -1079,7 +1141,34 @@ export default function CoachSpace({ currentUser, onLogout }) {
           <div style={S.ph}><div><h1 style={S.ttl}>Comparer</h1><p style={S.sub}>2 à 4 athlètes</p></div>
             <div style={{display:"flex",gap:6}}>{"500m 1000m 2000m".split(" ").map(t=><button key={t} onClick={()=>setCompareType(t)} style={{padding:"6px 14px",borderRadius:8,border:`1px solid ${compareType===t?"#22d3ee":"#1e293b"}`,background:compareType===t?"#22d3ee20":"transparent",color:compareType===t?"#22d3ee":"#5a7a9a",fontSize:12,cursor:"pointer",fontWeight:compareType===t?700:400}}>{t}</button>)}</div>
           </div>
-          <div style={{display:"flex",gap:8,marginBottom:24,flexWrap:"wrap"}}>{athletes.map(a=>{const on=compareIds.includes(a.id);return(<button key={a.id} style={{...S.fb,...(on?{background:"#22d3ee20",border:"1px solid #22d3ee60",color:"#0ea5e9"}:{})}} onClick={()=>setCompareIds(prev=>prev.includes(a.id)?(prev.length>2?prev.filter(x=>x!==a.id):prev):prev.length<4?[...prev,a.id]:prev)}>{on?"v ":""}{a.name}</button>);})}</div>
+          {/* Filtres compare */}
+          <div style={{display:"flex",gap:8,marginBottom:8,flexWrap:"wrap",alignItems:"center"}}>
+            <input placeholder="🔍 Rechercher..."
+              value={compareSearch} onChange={e=>setCompareSearch(e.target.value)}
+              style={{background:"#182030",border:"1px solid #334155",borderRadius:8,color:"#f1f5f9",padding:"7px 12px",fontSize:13,flex:1,minWidth:140}}/>
+          </div>
+          <div style={{display:"flex",gap:6,marginBottom:12,flexWrap:"wrap"}}>
+            {["Tous",...new Set(athletes.map(a=>a.category).filter(Boolean))].map(c=>(
+              <button key={c} onClick={()=>setCompareCat(c)}
+                style={{...S.fb,...(compareCat===c?S.fbon:{}),fontSize:11}}>{c}</button>
+            ))}
+          </div>
+          <div style={{display:"flex",gap:8,marginBottom:24,flexWrap:"wrap"}}>
+            {athletes
+              .filter(a=>{
+                const matchCat = compareCat==="Tous"||a.category===compareCat;
+                const matchSearch = !compareSearch||a.name.toLowerCase().includes(compareSearch.toLowerCase());
+                return matchCat&&matchSearch;
+              })
+              .map(a=>{
+                const on=compareIds.includes(a.id);
+                return(<button key={a.id} style={{...S.fb,...(on?{background:"#22d3ee20",border:"1px solid #22d3ee60",color:"#0ea5e9"}:{})}}
+                  onClick={()=>setCompareIds(prev=>prev.includes(a.id)?(prev.length>2?prev.filter(x=>x!==a.id):prev):prev.length<4?[...prev,a.id]:prev)}>
+                  {on?"✓ ":""}{a.name}
+                </button>);
+              })
+            }
+          </div>
           {compareIds.length>=2&&(()=>{
             const cmp=compareIds.map(id=>{const a=athletes.find(x=>x.id===id);const perfs=getPerfFor(id).filter(p=>(p.distance_type||"2000m")===compareType),last=getLastPerf(perfs),best=getBestTime(perfs);return{...a,last,best,wpkg:best&&a.weight?(concept2WattsFast(best.time, best.distance_type||"2000m")/a.weight).toFixed(2):null,perfs};});
             const rows=[{label:`Meilleur ${compareType}`,fn:c=>c.best?.time??"--",bfn:c=>c.best?timeToSeconds(c.best.time):9999,lower:true,c:"#4ade80"},{label:"Puissance",fn:c=>c.best?`${concept2WattsFast(c.best.time, c.best.distance_type||"2000m")||0}W`:"--",bfn:c=>c.best?concept2WattsFast(c.best.time, c.best.distance_type||"2000m")||0:0,lower:false,c:"#0ea5e9"},{label:"W/kg",fn:c=>c.wpkg??"-",bfn:c=>parseFloat(c.wpkg)||0,lower:false,c:"#a78bfa"},{label:"Sessions",fn:c=>c.perfs.length,bfn:c=>c.perfs.length,lower:false,c:"#f97316"}];
@@ -1496,7 +1585,9 @@ export default function CoachSpace({ currentUser, onLogout }) {
                 {/* Historique complet */}
                 {allSettings.length>0&&(<>
                   <div style={S.st}>~ Historique complet des réglages</div>
-                  <div style={{overflowX:"auto",borderRadius:12,border:"1px solid #1e293b"}}>
+          {selAth&&(()=>{const a=athletes.find(x=>x.id===selAth);if(!a)return null;const perfs=getPerfFor(selAth),perfs2k=perfs.filter(p=>(p.distance_type||"2000m")===perfDist),best=getBestTime(perfs2k),last=getLastPerf(perfs2k),wpkg=best&&a.weight?(concept2WattsFast(best.time,"2000m")/a.weight).toFixed(2):null;return(<div style={{...S.card,display:"flex",alignItems:"center",gap:16,marginBottom:16}}><div style={{...S.av,backgroundImage:a.photo_url?`url(${a.photo_url})`:"none",backgroundSize:"cover",backgroundPosition:"center"}}>{!a.photo_url&&a.avatar}</div><div style={{flex:1}}><div style={{fontSize:18,fontWeight:800,color:"#f1f5f9"}}>{a.name}</div><div style={{color:"#7a95b0",fontSize:13}}>{a.category} - {a.weight}kg</div></div><button style={{...S.actionBtn,color:"#0ea5e9",borderColor:"#22d3ee30"}} onClick={()=>setEditAth({...a})}>✏️ Edit</button><div style={{display:"flex",gap:10}}><div style={{background:"#4ade8015",border:"1px solid #4ade8030",borderRadius:10,padding:"10px 16px",textAlign:"center"}}><div style={{color:"#7a95b0",fontSize:10,textTransform:"uppercase",letterSpacing:1}}>Best {perfDist}</div><div style={{color:"#4ade80",fontWeight:900,fontSize:22}}>{best?.time??"-"}</div></div><div style={{background:"#a78bfa15",border:"1px solid #a78bfa30",borderRadius:10,padding:"10px 16px",textAlign:"center"}}><div style={{color:"#7a95b0",fontSize:10,textTransform:"uppercase",letterSpacing:1}}>W/kg</div><div style={{color:"#a78bfa",fontWeight:900,fontSize:22}}>{wpkg??"-"}</div></div></div></div>);})()}
+
+          <div style={{overflowX:"auto",borderRadius:12,border:"1px solid #1e293b"}}>
                     <table style={{width:"100%",borderCollapse:"collapse",background:"#182030"}}>
                       <thead><tr>{["Poste","Date","Réglé par","Entraxe","Long. Pelle","Levier int.","Pelle","Observations",""].map(h=><th key={h} style={S.th}>{h}</th>)}</tr></thead>
                       <tbody>
