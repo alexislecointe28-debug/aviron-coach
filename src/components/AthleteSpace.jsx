@@ -1267,6 +1267,8 @@ function AthletePlanningView({ athlete, currentUser, isMobile, perfs=[], complet
     };
     if (blocs_realises.length) payload.blocs_realises = blocs_realises;
     try {
+      console.log("[saveCompletion] payload:", JSON.stringify(payload));
+      console.log("[saveCompletion] session_id:", selSession.id, "athlete_id:", athlete?.id);
       let res;
       if(existing) {
         res = await api.updateCompletion(existing.id, payload);
@@ -1278,7 +1280,11 @@ function AthletePlanningView({ athlete, currentUser, isMobile, perfs=[], complet
       setToast("Séance validée ✓");
       setTimeout(()=>setToast(null),2500);
       setShowModal(false);
-    } catch(e) { setToast("Erreur"); setTimeout(()=>setToast(null),2500); }
+    } catch(e) {
+      console.error("[saveCompletion] ERREUR:", e.message);
+      setToast("Erreur: " + e.message.slice(0,80));
+      setTimeout(()=>setToast(null),5000);
+    }
   }
 
   async function removeCompletion(sessionId) {
