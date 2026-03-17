@@ -59,6 +59,7 @@ export default function AthleteSpace({ currentUser, onLogout, managedSections=[]
   const [morphoForm, setMorphoForm] = useState(null);
   const [morphoSaving, setMorphoSaving] = useState(false);
   const [morphoToast, setMorphoToast] = useState("");
+  const [journalSearch, setJournalSearch] = useState("");
 
   async function saveMorpho(athlete) {
     if (!athlete || !morphoForm) return;
@@ -1265,7 +1266,6 @@ function AthletePlanningView({ athlete, currentUser, isMobile, perfs=[], complet
   const [allSessions, setAllSessions] = useState({});
   // Sync completions depuis parent
   useEffect(() => { setCompletions(extCompletions); }, [extCompletions?.length]);
-  const [journalSearch, setJournalSearch] = useState("");
   const [aiSession, setAiSession]   = useState(null);
   const [expandedSessions, setExpandedSessions] = useState({});
   const today = ["Dimanche","Lundi","Mardi","Mercredi","Jeudi","Vendredi","Samedi"][new Date().getDay()];
