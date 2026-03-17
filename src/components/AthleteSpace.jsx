@@ -2,7 +2,6 @@ import { useState, useEffect, useCallback } from "react";
 import { ROLE_COLORS, ROLE_LABELS, ZONE_COLORS, TYPE_COLORS, S } from "../styles.js";
 import { api } from "../config/supabase.js";
 import { FF, Modal, Toast, Loader, Sparkline, StatPill } from "./ui.jsx";
-import MesSeances from "./MesSeances.jsx";
 import { timeToSeconds, secondsToTime, concept2WattsFast, getBestTime, getLastPerf, calcAgeFromDOB, suggestRigging, avg } from "../utils/rowing.js";
 
 export default function AthleteSpace({ currentUser, onLogout, managedSections=[] }) {
@@ -97,7 +96,7 @@ export default function AthleteSpace({ currentUser, onLogout, managedSections=[]
     setDashLoading(false);
   }
 
-  const NAV=[{id:"dashboard",label:"Mon espace",icon:"*"},{id:"stats",label:"Mes stats",icon:"*"},{id:"seances",label:"Mes séances",icon:"🏋️"},{id:"crew",label:"Mon équipage",icon:"~"},{id:"boats",label:"Mon bateau",icon:"~"},{id:"planning",label:"Mon planning",icon:"#"},...(managedSections.length>0?[{id:"section",label:"Ma section",icon:"👥"}]:[])];
+  const NAV=[{id:"dashboard",label:"Mon espace",icon:"*"},{id:"stats",label:"Mes stats",icon:"*"},{id:"crew",label:"Mon équipage",icon:"~"},{id:"boats",label:"Mon bateau",icon:"~"},{id:"planning",label:"Mon planning",icon:"#"},...(managedSections.length>0?[{id:"section",label:"Ma section",icon:"👥"}]:[])];
   if(loading) return <div style={{...S.root,alignItems:"center",justifyContent:"center"}}><Loader/></div>;
   if(!athlete) return <div style={{minHeight:"100vh",background:"#0f1923",display:"flex",alignItems:"center",justifyContent:"center",color:"#ef4444",fontFamily:"monospace"}}>Fiche athlète introuvable. Contacte ton coach.</div>;
 
@@ -476,7 +475,6 @@ export default function AthleteSpace({ currentUser, onLogout, managedSections=[]
 
           </div>);
         })()}
-        {tab==="seances"&&<MesSeances athlete={athlete} perfs={myPerfs} isMobile={isMobile}/>}
         {tab==="crew"&&(<div style={{...S.page,padding:isMobile?"16px 12px":"28px 32px"}}>
           <div style={S.ph}><div><h1 style={S.ttl}>Mon Équipage</h1><p style={S.sub}>Assigné par le coach</p></div></div>
           {!myCrew?<div style={{...S.card,textAlign:"center",padding:"40px",color:"#5a7a9a"}}>Aucun équipage assigné pour le moment.</div>:(<>
@@ -590,7 +588,7 @@ export default function AthleteSpace({ currentUser, onLogout, managedSections=[]
         <nav style={{position:"fixed",bottom:0,left:0,right:0,height:56,background:"#0f1923",borderTop:"1px solid #2d1b4e",display:"flex",zIndex:100}}>
           {NAV.map(n=>{
             const active=tab===n.id;
-            const ICONS={dashboard:"🏠",stats:"📊",seances:"🏋️",crew:"👥",boats:"⛵",planning:"📅",section:"🏅"};
+            const ICONS={dashboard:"🏠",stats:"📊",crew:"👥",boats:"⛵",planning:"📅",section:"🏅"};
             return(
               <button key={n.id} onClick={()=>setTab(n.id)}
                 style={{flex:1,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",gap:2,background:"none",border:"none",cursor:"pointer",color:active?"#a78bfa":"#4a6a8a",fontSize:10,fontWeight:active?700:500,borderTop:`2px solid ${active?"#a78bfa":"transparent"}`}}>
@@ -909,7 +907,8 @@ function AthletePlanningView({ athlete, currentUser, isMobile, perfs=[] }) {
   const [toast, setToast]           = useState(null);
   const [showModal, setShowModal]   = useState(false);
   const [selSession, setSelSession] = useState(null);
-  const [noteForm, setNoteForm]     = useState({ note:"", commentaire:"" });
+  const [noteForm, setNoteForm]     = useState({ note:"", commentaire:"", charges:{} });
+  const [showLibre, setShowLibre]   = useState(false);
   const [aiSession, setAiSession]   = useState(null);
   const [expandedSessions, setExpandedSessions] = useState({});
   const today = ["Dimanche","Lundi","Mardi","Mercredi","Jeudi","Vendredi","Samedi"][new Date().getDay()];
@@ -1255,7 +1254,40 @@ function AthletePlanningView({ athlete, currentUser, isMobile, perfs=[] }) {
         );
       })()}
 
-            {/* Modal validation */}
+            {/* Bouton séance libre flottant */}
+      <div style={{position:"fixed",bottom:isMobile?80:24,right:20,zIndex:50}}>
+        <button onClick={()=>setShowLibre(true)}
+          style={{background:"linear-gradient(135deg,#6366f1,#8b5cf6)",color:"#fff",border:"none",borderRadius:50,width:52,height:52,fontSize:22,cursor:"pointer",boxShadow:"0 4px 20px #6366f150",display:"flex",alignItems:"center",justifyContent:"center",fontWeight:800}}>
+          +
+        </button>
+      </div>
+
+      {/* Modal séance libre */}
+      {showLibre&&(
+        <div style={{position:"fixed",inset:0,background:"#00000090",display:"flex",alignItems:"flex-end",justifyContent:"center",zIndex:200}} onClick={e=>e.target===e.currentTarget&&setShowLibre(false)}>
+          <div style={{background:"#1e293b",border:"1px solid #334155",borderRadius:"16px 16px 0 0",padding:"24px 20px",width:"100%",maxWidth:480,maxHeight:"80vh",overflowY:"auto"}}>
+            <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:16}}>
+              <div>
+                <div style={{color:"#f1f5f9",fontWeight:800,fontSize:17}}>Séance libre</div>
+                <div style={{color:"#64748b",fontSize:12}}>Hors planning coach</div>
+              </div>
+              <button onClick={()=>setShowLibre(false)} style={{background:"none",border:"none",color:"#64748b",fontSize:22,cursor:"pointer"}}>×</button>
+            </div>
+            <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:8,marginBottom:16}}>
+              {[["ERGO","🚣","#0ea5e9"],["BATEAU","⛵","#06b6d4"],["MUSCU","💪","#f97316"],["PLIO","⚡","#f59e0b"],["RECUP","🔄","#10b981"],["AUTRE","📝","#94a3b8"]].map(([t,ic,col])=>(
+                <button key={t} onClick={()=>{setShowLibre(false);alert("Séance libre "+t+" — fonctionnalité bientôt disponible ici !");}}
+                  style={{background:col+"15",border:`1px solid ${col}40`,borderRadius:10,padding:"12px 8px",cursor:"pointer",display:"flex",flexDirection:"column",alignItems:"center",gap:4}}>
+                  <span style={{fontSize:20}}>{ic}</span>
+                  <span style={{color:col,fontSize:11,fontWeight:700}}>{t}</span>
+                </button>
+              ))}
+            </div>
+            <div style={{color:"#475569",fontSize:12,textAlign:"center",fontStyle:"italic"}}>Sélectionne un type pour saisir une séance libre</div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal validation */}
       {showModal&&selSession&&(
         <div style={{position:"fixed",inset:0,background:"#00000080",display:"flex",alignItems:"center",justifyContent:"center",zIndex:100}} onClick={e=>e.target===e.currentTarget&&setShowModal(false)}>
           <div style={{background:"#1a2744",border:"1px solid #2a3f5f",borderRadius:16,padding:28,width:420,maxWidth:"95vw"}}>
@@ -1263,26 +1295,64 @@ function AthletePlanningView({ athlete, currentUser, isMobile, perfs=[] }) {
               <h2 style={{color:"#f1f5f9",fontSize:18,fontWeight:800,margin:0}}>Séance effectuée ✓</h2>
               <button style={{background:"none",border:"none",color:"#7a95b0",cursor:"pointer",fontSize:20}} onClick={()=>setShowModal(false)}>×</button>
             </div>
-            <div style={{background:"#0f172a",borderRadius:8,padding:"10px 14px",marginBottom:20}}>
-              <div style={{color:"#94a3b8",fontSize:12,fontWeight:700}}>{TYPE_SEANCE_LABELS[selSession.type_seance]}</div>
-              <div style={{color:"#f1f5f9",fontWeight:700,marginTop:2}}>{selSession.titre}</div>
+            {/* Header séance */}
+            <div style={{background:"#0f172a",borderRadius:8,padding:"10px 14px",marginBottom:16}}>
+              <div style={{color:"#94a3b8",fontSize:11,fontWeight:700,textTransform:"uppercase",letterSpacing:1}}>{TYPE_SEANCE_LABELS[selSession.type_seance]}</div>
+              <div style={{color:"#f1f5f9",fontWeight:800,fontSize:15,marginTop:2}}>{selSession.titre}</div>
             </div>
-            <div style={{marginBottom:16}}>
+
+            {/* Réalisations par bloc */}
+            {(()=>{
+              const contenu = typeof selSession.contenu==="string"?JSON.parse(selSession.contenu||"{}"):selSession.contenu||{};
+              const blocs = contenu.blocs||[];
+              const isMuscu = selSession.type_seance==="MUSCU";
+              const isPlio = selSession.type_seance==="PLIO";
+              if(!blocs.length) return null;
+              return(
+                <div style={{marginBottom:16}}>
+                  <div style={{color:"#64748b",fontSize:10,fontWeight:700,textTransform:"uppercase",letterSpacing:1,marginBottom:8}}>
+                    {isMuscu?"Charges réalisées":isPlio?"Réalisations":"Réalisations"}
+                  </div>
+                  <div style={{display:"flex",flexDirection:"column",gap:6,maxHeight:200,overflowY:"auto"}}>
+                    {blocs.map((b,i)=>{
+                      const sc = selSession.type_seance==="MUSCU"?"#f97316":selSession.type_seance==="ERGO"?"#0ea5e9":selSession.type_seance==="BATEAU"?"#06b6d4":"#f59e0b";
+                      return(
+                        <div key={i} style={{display:"flex",alignItems:"center",gap:8,background:"#0f172a",borderRadius:8,padding:"7px 10px"}}>
+                          <div style={{flex:1,minWidth:0}}>
+                            <div style={{color:"#e2e8f0",fontWeight:600,fontSize:12}}>{b.titre}</div>
+                            {b.detail&&<div style={{color:"#475569",fontSize:11,fontFamily:"monospace"}}>{b.detail}</div>}
+                          </div>
+                          <input
+                            placeholder={isMuscu?"kg":"réalisé"}
+                            value={noteForm.charges[i]||""}
+                            onChange={e=>setNoteForm(f=>({...f,charges:{...f.charges,[i]:e.target.value}}))}
+                            style={{width:isMuscu?64:90,background:"#182030",border:`1px solid ${sc}40`,borderRadius:6,color:"#f1f5f9",padding:"5px 8px",fontSize:12,textAlign:"center"}}
+                          />
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              );
+            })()}
+
+            {/* Ressenti */}
+            <div style={{marginBottom:14}}>
               <label style={{display:"block",color:"#7a95b0",fontSize:11,textTransform:"uppercase",letterSpacing:1,marginBottom:8}}>Ressenti / 10</label>
-              <div style={{display:"flex",gap:6,flexWrap:"wrap"}}>
+              <div style={{display:"flex",gap:5,flexWrap:"wrap"}}>
                 {[1,2,3,4,5,6,7,8,9,10].map(n=>{
                   const active = +noteForm.note===n;
                   const col = n<=3?"#ef4444":n<=6?"#f59e0b":n<=8?"#0ea5e9":"#4ade80";
                   return <button key={n} onClick={()=>setNoteForm(f=>({...f,note:n}))}
-                    style={{width:36,height:36,borderRadius:8,border:`2px solid ${active?col:"#334155"}`,background:active?col+"30":"transparent",color:active?col:"#64748b",fontWeight:active?800:500,fontSize:14,cursor:"pointer"}}>
+                    style={{width:34,height:34,borderRadius:7,border:`2px solid ${active?col:"#334155"}`,background:active?col+"30":"transparent",color:active?col:"#64748b",fontWeight:active?800:500,fontSize:13,cursor:"pointer"}}>
                     {n}
                   </button>;
                 })}
               </div>
             </div>
-            <div style={{marginBottom:20}}>
-              <label style={{display:"block",color:"#7a95b0",fontSize:11,textTransform:"uppercase",letterSpacing:1,marginBottom:6}}>Commentaire (optionnel)</label>
-              <textarea style={{width:"100%",background:"#0f172a",border:"1px solid #334155",borderRadius:8,color:"#f1f5f9",padding:"10px 12px",fontSize:13,resize:"vertical",minHeight:70,boxSizing:"border-box"}}
+            <div style={{marginBottom:18}}>
+              <label style={{display:"block",color:"#7a95b0",fontSize:11,textTransform:"uppercase",letterSpacing:1,marginBottom:6}}>Commentaire</label>
+              <textarea style={{width:"100%",background:"#0f172a",border:"1px solid #334155",borderRadius:8,color:"#f1f5f9",padding:"9px 12px",fontSize:13,resize:"vertical",minHeight:60,boxSizing:"border-box"}}
                 value={noteForm.commentaire} onChange={e=>setNoteForm(f=>({...f,commentaire:e.target.value}))}
                 placeholder="Comment s'est passée la séance ?"/>
             </div>
