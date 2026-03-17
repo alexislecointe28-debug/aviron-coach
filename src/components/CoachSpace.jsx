@@ -1259,31 +1259,33 @@ export default function CoachSpace({ currentUser, onLogout }) {
                     </button>
                   ))}
                 </div>
-                {/* Liste filtrée */}
-                <div style={{display:"flex",flexDirection:"column",gap:4,maxHeight:220,overflowY:"auto"}}>
+                {/* Grille chips */}
+                <div style={{display:"flex",flexWrap:"wrap",gap:5,maxHeight:200,overflowY:"auto",paddingRight:2}}>
                   {athletes
                     .filter(a=>{
-                      const matchCat = crewCatFilter==="Tous"||a.category===crewCatFilter;
-                      const matchSearch = !crewSearch||a.name.toLowerCase().includes(crewSearch.toLowerCase());
+                      const matchCat=crewCatFilter==="Tous"||a.category===crewCatFilter;
+                      const matchSearch=!crewSearch||a.name.toLowerCase().includes(crewSearch.toLowerCase());
                       return matchCat&&matchSearch;
                     })
                     .map(a=>{
                       const sel=newCrewMembers.includes(a.id);
                       const full=newCrewMembers.length>=(CREW_SLOTS[crewBoat]||4)&&!sel;
                       const {last}=aStats(a);
-                      const ageCat=a.date_naissance?getAgeCatFromBirthYear(new Date(a.date_naissance).getFullYear()):getAgeCategory(a.age);
                       return(
-                        <div key={a.id} style={{display:"flex",alignItems:"center",gap:8,padding:"6px 10px",borderRadius:8,border:`1px solid ${sel?"#22d3ee44":"#263547"}`,background:sel?"#22d3ee08":"transparent",cursor:full?"not-allowed":"pointer",opacity:full?0.4:1}}
-                          onClick={()=>!full&&setNewCrewMembers(prev=>prev.includes(a.id)?prev.filter(x=>x!==a.id):[...prev,a.id])}>
-                          <div style={{width:15,height:15,borderRadius:"50%",border:`2px solid ${sel?"#0ea5e9":"#334155"}`,display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}>
-                            {sel&&<div style={{width:6,height:6,borderRadius:"50%",background:"#0ea5e9"}}/>}
-                          </div>
-                          <div style={{flex:1,minWidth:0}}>
-                            <div style={{fontSize:12,color:"#f1f5f9",fontWeight:600,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{a.name}</div>
-                            <div style={{fontSize:10,color:"#475569"}}>{ageCat} · {a.category}</div>
-                          </div>
-                          {last&&<div style={{color:"#0ea5e9",fontSize:11,flexShrink:0}}>{last.watts}W</div>}
-                        </div>
+                        <button key={a.id}
+                          onClick={()=>!full&&setNewCrewMembers(prev=>prev.includes(a.id)?prev.filter(x=>x!==a.id):[...prev,a.id])}
+                          style={{
+                            display:"flex",flexDirection:"column",alignItems:"flex-start",
+                            padding:"5px 9px",borderRadius:8,cursor:full?"not-allowed":"pointer",
+                            opacity:full?0.35:1,border:"none",
+                            background:sel?"#22d3ee20":"#1e293b",
+                            outline:sel?"2px solid #22d3ee80":"2px solid transparent",
+                            transition:"all 0.1s",
+                          }}>
+                          <span style={{fontSize:11,fontWeight:700,color:sel?"#22d3ee":"#cbd5e1",lineHeight:1.2}}>{a.name.split(" ")[0]}</span>
+                          <span style={{fontSize:10,fontWeight:600,color:sel?"#22d3ee":"#94a3b8",lineHeight:1.2}}>{a.name.split(" ").slice(1).join(" ")}</span>
+                          {last&&<span style={{fontSize:9,color:sel?"#67e8f9":"#475569",marginTop:1}}>{last.watts}W</span>}
+                        </button>
                       );
                     })
                   }
@@ -1345,32 +1347,35 @@ export default function CoachSpace({ currentUser, onLogout }) {
                     </button>
                   ))}
                 </div>
-                {athletes
-                  .filter(a=>{
-                    const matchCat=editCrewCatFilter==="Tous"||a.category===editCrewCatFilter;
-                    const matchSearch=!editCrewSearch||a.name.toLowerCase().includes(editCrewSearch.toLowerCase());
-                    return matchCat&&matchSearch;
-                  })
-                  .map(a=>{
-                    const sel=editCrewMembers.includes(a.id);
-                    const full=editCrewMembers.length>=(CREW_SLOTS[editCrew.boat]||4)&&!sel;
-                    const {last}=aStats(a);
-                    const ageCat=a.date_naissance?getAgeCatFromBirthYear(new Date(a.date_naissance).getFullYear()):getAgeCategory(a.age);
-                    return(
-                      <div key={a.id} style={{display:"flex",alignItems:"center",gap:8,padding:"6px 10px",borderRadius:8,border:"1px solid "+(sel?"#22d3ee44":"#263547"),background:sel?"#22d3ee08":"transparent",cursor:full?"not-allowed":"pointer",opacity:full?0.4:1,marginBottom:4}}
-                        onClick={()=>!full&&setEditCrewMembers(prev=>prev.includes(a.id)?prev.filter(x=>x!==a.id):[...prev,a.id])}>
-                        <div style={{width:15,height:15,borderRadius:"50%",border:"2px solid "+(sel?"#0ea5e9":"#334155"),display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}>
-                          {sel&&<div style={{width:6,height:6,borderRadius:"50%",background:"#0ea5e9"}}/>}
-                        </div>
-                        <div style={{flex:1,minWidth:0}}>
-                          <div style={{fontSize:12,color:"#f1f5f9",fontWeight:600,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{a.name}</div>
-                          <div style={{fontSize:10,color:"#475569"}}>{ageCat} · {a.category}</div>
-                        </div>
-                        {last&&<div style={{color:"#0ea5e9",fontSize:11,flexShrink:0}}>{last.watts}W</div>}
-                      </div>
-                    );
-                  })
-                }
+                <div style={{display:"flex",flexWrap:"wrap",gap:5,maxHeight:200,overflowY:"auto"}}>
+                  {athletes
+                    .filter(a=>{
+                      const matchCat=editCrewCatFilter==="Tous"||a.category===editCrewCatFilter;
+                      const matchSearch=!editCrewSearch||a.name.toLowerCase().includes(editCrewSearch.toLowerCase());
+                      return matchCat&&matchSearch;
+                    })
+                    .map(a=>{
+                      const sel=editCrewMembers.includes(a.id);
+                      const full=editCrewMembers.length>=(CREW_SLOTS[editCrew.boat]||4)&&!sel;
+                      const {last}=aStats(a);
+                      return(
+                        <button key={a.id}
+                          onClick={()=>!full&&setEditCrewMembers(prev=>prev.includes(a.id)?prev.filter(x=>x!==a.id):[...prev,a.id])}
+                          style={{
+                            display:"flex",flexDirection:"column",alignItems:"flex-start",
+                            padding:"5px 9px",borderRadius:8,cursor:full?"not-allowed":"pointer",
+                            opacity:full?0.35:1,border:"none",
+                            background:sel?"#22d3ee20":"#1e293b",
+                            outline:sel?"2px solid #22d3ee80":"2px solid transparent",
+                          }}>
+                          <span style={{fontSize:11,fontWeight:700,color:sel?"#22d3ee":"#cbd5e1",lineHeight:1.2}}>{a.name.split(" ")[0]}</span>
+                          <span style={{fontSize:10,color:sel?"#22d3ee":"#94a3b8",lineHeight:1.2}}>{a.name.split(" ").slice(1).join(" ")}</span>
+                          {last&&<span style={{fontSize:9,color:sel?"#67e8f9":"#475569",marginTop:1}}>{last.watts}W</span>}
+                        </button>
+                      );
+                    })
+                  }
+                </div>
             </div>
             <button style={{...S.btnP,width:"100%",marginTop:8}} onClick={saveEditCrew}>Enregistrer les modifications</button>
           </Modal>}
