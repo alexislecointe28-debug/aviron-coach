@@ -160,6 +160,121 @@ export default function PlanningSpace({ athletes, isMobile, currentUser }) {
     } catch(e) { showToast("Erreur sauvegarde","error"); }
   }
 
+  // ── Dupliquer un plan complet vers une nouvelle catégorie ──
+  async function duplicatePlan(plan) {
+    const newCat = window.prompt(`Dupliquer "${plan.name}" pour quelle catégorie ?`, "");
+    if (!newCat) return;
+    setDuplicating(plan.id);
+    try {
+      // Créer le nouveau plan
+      const newPlanRes = await api.createSeasonPlan({
+        name: plan.name + " — " + newCat,
+        category: newCat,
+        date_debut: plan.date_debut,
+        date_fin: plan.date_fin,
+        description: plan.description,
+      });
+      const newPlan = newPlanRes?.[0];
+      if (!newPlan) throw new Error("Création plan échouée");
+
+      // Copier les semaines
+      const weeks = await api.getPlanWeeks(plan.id);
+      for (const w of (weeks||[])) {
+        const newWeekRes = await api.createPlanWeek({
+          plan_id: newPlan.id,
+          num_semaine: w.num_semaine,
+          date_debut: w.date_debut,
+          objectif: w.objectif,
+          charge: w.charge,
+          type_semaine: w.type_semaine,
+          notes: w.notes,
+        });
+        const newWeek = newWeekRes?.[0];
+        if (!newWeek) continue;
+
+        // Copier les séances
+        const sessions = await api.getPlannedSessions(w.id);
+        for (const s of (sessions||[])) {
+          await api.createPlannedSession({
+            week_id: newWeek.id,
+            jour: s.jour,
+            type_seance: s.type_seance,
+            titre: s.titre,
+            contenu: s.contenu,
+            ordre: s.ordre,
+          });
+        }
+      }
+
+      const allPlans = await api.getSeasonPlans();
+      setPlans(allPlans||[]);
+      showToast(`Plan dupliqué pour ${newCat} ✓`);
+    } catch(e) {
+      showToast("Erreur duplication: " + e.message, "error");
+    }
+    setDuplicating(null);
+  }
+
+  // ── Assigner une séance/semaine à d'autres catégories ──
+  async function doAssign() {
+    if (!assignCats.length) return;
+    setAssigning(true);
+    try {
+      if (assignSession) {
+        // Chercher les semaines correspondantes pour chaque catégorie
+        const allPlans = plans.filter(p =>
+          assignCats.some(c => (p.category||"").split(",").map(s=>s.trim()).includes(c))
+        );
+        for (const p of allPlans) {
+          const weeks = await api.getPlanWeeks(p.id);
+          const targetWeek = weeks?.find(w => w.num_semaine === selWeek?.num_semaine);
+          if (targetWeek) {
+            await api.createPlannedSession({
+              week_id: targetWeek.id,
+              jour: assignSession.jour,
+              type_seance: assignSession.type_seance,
+              titre: assignSession.titre,
+              contenu: assignSession.contenu,
+              ordre: assignSession.ordre,
+            });
+          }
+        }
+        showToast(`Séance assignée à ${assignCats.join(", ")} ✓`);
+      } else if (assignWeek) {
+        // Dupliquer toute la semaine vers d'autres plans
+        const sessions = await api.getPlannedSessions(assignWeek.id);
+        const allPlans = plans.filter(p =>
+          p.id !== selPlan?.id &&
+          assignCats.some(c => (p.category||"").split(",").map(s=>s.trim()).includes(c))
+        );
+        for (const p of allPlans) {
+          const weeks = await api.getPlanWeeks(p.id);
+          const targetWeek = weeks?.find(w => w.num_semaine === assignWeek.num_semaine);
+          if (targetWeek) {
+            for (const s of (sessions||[])) {
+              await api.createPlannedSession({
+                week_id: targetWeek.id,
+                jour: s.jour,
+                type_seance: s.type_seance,
+                titre: s.titre,
+                contenu: s.contenu,
+                ordre: s.ordre,
+              });
+            }
+          }
+        }
+        showToast(`Semaine copiée vers ${assignCats.join(", ")} ✓`);
+      }
+    } catch(e) {
+      showToast("Erreur: " + e.message, "error");
+    }
+    setAssigning(false);
+    setShowAssignModal(false);
+    setAssignSession(null);
+    setAssignWeek(null);
+    setAssignCats([]);
+  }
+
   async function deletePlan(id) {
     if(!window.confirm("Supprimer ce plan ? Toutes les semaines et séances seront supprimées.")) return;
     try {
@@ -617,6 +732,9 @@ export default function PlanningSpace({ athletes, isMobile, currentUser }) {
                   </div>
                   <div style={{display:"flex",gap:6}}>
                     <button style={{...S.actionBtn,borderColor:"#334155",color:"#94a3b8",fontSize:11}} onClick={e=>{e.stopPropagation();setEditPlan({...p});setShowPlanModal(true);}}>✏️</button>
+                    <button style={{...S.actionBtn,borderColor:"#a78bfa30",color:"#a78bfa",fontSize:11,opacity:duplicating===p.id?0.5:1}} onClick={e=>{e.stopPropagation();duplicatePlan(p);}} disabled={!!duplicating} title="Dupliquer vers une autre catégorie">
+                      {duplicating===p.id?"...":"⎘"}
+                    </button>
                     <button style={{...S.actionBtn,borderColor:"#ef444430",color:"#ef4444",fontSize:11}} onClick={e=>{e.stopPropagation();deletePlan(p.id);}}>🗑</button>
                   </div>
                 </div>
