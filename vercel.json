@@ -1,0 +1,6 @@
+{
+  "rewrites": [
+    { "source": "/cadence", "destination": "/cadence.html" },
+    { "source": "/((?!api|cadence\\.html|assets|.*\\..*).+)", "destination": "/index.html" }
+  ]
+}
