@@ -1,0 +1,290 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, user-scalable=no">
+<title>Cadencemètre</title>
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Cadence">
+<meta name="theme-color" content="#0f172a">
+<link rel="apple-touch-icon" href="/icon-180.png">
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; user-select: none; }
+
+  body {
+    background: #0f172a;
+    color: #f1f5f9;
+    font-family: -apple-system, sans-serif;
+    height: 100dvh;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+
+  /* Header */
+  .header {
+    padding: env(safe-area-inset-top, 16px) 20px 12px;
+    padding-top: calc(env(safe-area-inset-top, 0px) + 16px);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+  .header h1 { font-size: 18px; font-weight: 800; color: #f1f5f9; }
+  .header p { font-size: 12px; color: #475569; margin-top: 1px; }
+  .reset-btn {
+    background: #1e293b; border: 1px solid #334155; border-radius: 8px;
+    color: #64748b; padding: 6px 12px; font-size: 12px; font-weight: 600;
+    cursor: pointer; font-family: inherit;
+  }
+
+  /* SPM display */
+  .spm-area {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    padding: 0 24px;
+  }
+
+  .spm-number {
+    font-size: clamp(96px, 28vw, 140px);
+    font-weight: 900;
+    line-height: 1;
+    letter-spacing: -4px;
+    transition: color 0.2s;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .spm-label {
+    font-size: 14px;
+    font-weight: 600;
+    color: #64748b;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+  }
+
+  .zone-badge {
+    margin-top: 4px;
+    padding: 5px 16px;
+    border-radius: 20px;
+    font-size: 13px;
+    font-weight: 700;
+    border: 1px solid;
+    transition: all 0.2s;
+  }
+
+  .taps-info {
+    font-size: 11px;
+    color: #334155;
+    margin-top: 4px;
+  }
+
+  /* Bouton tap */
+  .tap-btn {
+    margin: 0 20px;
+    margin-bottom: calc(env(safe-area-inset-bottom, 0px) + 20px);
+    height: clamp(100px, 22vw, 130px);
+    border-radius: 20px;
+    border: none;
+    font-size: 28px;
+    font-weight: 900;
+    font-family: inherit;
+    cursor: pointer;
+    transition: transform 0.05s, box-shadow 0.05s;
+    position: relative;
+    overflow: hidden;
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  .tap-btn:active {
+    transform: scale(0.97);
+  }
+
+  .tap-btn .ripple {
+    position: absolute;
+    border-radius: 50%;
+    transform: scale(0);
+    animation: ripple 0.4s linear;
+    background: rgba(255,255,255,0.2);
+  }
+
+  @keyframes ripple {
+    to { transform: scale(4); opacity: 0; }
+  }
+
+  /* Historique mini */
+  .history {
+    display: flex;
+    gap: 5px;
+    justify-content: center;
+    padding: 0 20px 12px;
+    flex-wrap: wrap;
+  }
+  .hist-item {
+    background: #1e293b;
+    border-radius: 6px;
+    padding: 3px 8px;
+    font-size: 11px;
+    font-weight: 700;
+    color: #64748b;
+    font-variant-numeric: tabular-nums;
+  }
+  .hist-item.active { color: #f1f5f9; background: #334155; }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div>
+    <h1>🎯 Cadencemètre</h1>
+    <p id="subtitle">Tape le bouton au rythme des coups</p>
+  </div>
+  <button class="reset-btn" onclick="reset()">Réinitialiser</button>
+</div>
+
+<div class="spm-area">
+  <div class="spm-number" id="spm-display">--</div>
+  <div class="spm-label">coups / min</div>
+  <div class="zone-badge" id="zone-badge" style="color:#475569;border-color:#334155;background:#1e293b">
+    Commence à taper
+  </div>
+  <div class="taps-info" id="taps-info"></div>
+</div>
+
+<div class="history" id="history"></div>
+
+<button class="tap-btn" id="tap-btn" onclick="tap(event)">
+  TAPE
+</button>
+
+<script>
+  const WINDOW = 5; // moyenne glissante sur 5 frappes
+  let taps = [];
+  let spmHistory = [];
+
+  const spmEl    = document.getElementById('spm-display');
+  const zoneEl   = document.getElementById('zone-badge');
+  const tapsEl   = document.getElementById('taps-info');
+  const histEl   = document.getElementById('history');
+  const subtitle = document.getElementById('subtitle');
+  const btn      = document.getElementById('tap-btn');
+
+  const ZONES = [
+    { max: 18,  label: 'Repos · < 18',     color: '#4ade80',  bg: '#4ade8020', border: '#4ade8040' },
+    { max: 22,  label: 'B1 · Endurance',   color: '#4ade80',  bg: '#4ade8020', border: '#4ade8040' },
+    { max: 26,  label: 'B2 · Soutenu',     color: '#0ea5e9',  bg: '#0ea5e920', border: '#0ea5e940' },
+    { max: 32,  label: 'Seuil',            color: '#f59e0b',  bg: '#f59e0b20', border: '#f59e0b40' },
+    { max: 999, label: 'Sprint · Compét',  color: '#ef4444',  bg: '#ef444420', border: '#ef444440' },
+  ];
+
+  function getZone(spm) {
+    return ZONES.find(z => spm < z.max) || ZONES[ZONES.length - 1];
+  }
+
+  function tap(e) {
+    const now = Date.now();
+    taps.push(now);
+
+    // Garder seulement les WINDOW+1 derniers
+    if (taps.length > WINDOW + 1) taps = taps.slice(-(WINDOW + 1));
+
+    // Calculer SPM sur la fenêtre glissante
+    if (taps.length >= 2) {
+      const recent = taps.slice(-Math.min(taps.length, WINDOW + 1));
+      const intervals = [];
+      for (let i = 1; i < recent.length; i++) {
+        intervals.push(recent[i] - recent[i-1]);
+      }
+      const avgInterval = intervals.reduce((a, b) => a + b, 0) / intervals.length;
+      const spm = Math.round(60000 / avgInterval);
+
+      // Mettre à jour l'affichage
+      const zone = getZone(spm);
+      spmEl.textContent = spm;
+      spmEl.style.color = zone.color;
+      btn.style.background = zone.color;
+      btn.style.boxShadow = `0 8px 40px ${zone.color}50`;
+      btn.style.color = '#0f172a';
+
+      zoneEl.textContent = zone.label;
+      zoneEl.style.color = zone.color;
+      zoneEl.style.background = zone.bg;
+      zoneEl.style.borderColor = zone.border;
+
+      tapsEl.textContent = `Moyenne sur ${intervals.length} coup${intervals.length > 1 ? 's' : ''}`;
+
+      // Historique
+      spmHistory.push(spm);
+      if (spmHistory.length > 8) spmHistory = spmHistory.slice(-8);
+      renderHistory();
+    }
+
+    // Ripple effect
+    ripple(e, btn);
+
+    // Vibration
+    if (navigator.vibrate) navigator.vibrate(30);
+  }
+
+  function ripple(e, btn) {
+    const circle = document.createElement('span');
+    const diameter = Math.max(btn.clientWidth, btn.clientHeight);
+    const radius = diameter / 2;
+    const rect = btn.getBoundingClientRect();
+    const x = (e.clientX || rect.left + rect.width/2) - rect.left - radius;
+    const y = (e.clientY || rect.top + rect.height/2) - rect.top - radius;
+    circle.style.cssText = `width:${diameter}px;height:${diameter}px;left:${x}px;top:${y}px;`;
+    circle.classList.add('ripple');
+    const old = btn.querySelector('.ripple');
+    if (old) old.remove();
+    btn.appendChild(circle);
+  }
+
+  function renderHistory() {
+    histEl.innerHTML = spmHistory.map((v, i) =>
+      `<div class="hist-item ${i === spmHistory.length - 1 ? 'active' : ''}">${v}</div>`
+    ).join('');
+  }
+
+  function reset() {
+    taps = [];
+    spmHistory = [];
+    spmEl.textContent = '--';
+    spmEl.style.color = '#f1f5f9';
+    zoneEl.textContent = 'Commence à taper';
+    zoneEl.style.color = '#475569';
+    zoneEl.style.background = '#1e293b';
+    zoneEl.style.borderColor = '#334155';
+    tapsEl.textContent = '';
+    histEl.innerHTML = '';
+    btn.style.background = '#1e293b';
+    btn.style.boxShadow = 'none';
+    btn.style.color = '#94a3b8';
+  }
+
+  // Init bouton
+  btn.style.background = '#1e293b';
+  btn.style.border = '1px solid #334155';
+  btn.style.color = '#94a3b8';
+
+  // Espace aussi déclencheur sur desktop
+  document.addEventListener('keydown', e => {
+    if (e.code === 'Space' || e.code === 'Enter') {
+      e.preventDefault();
+      tap({ clientX: window.innerWidth/2, clientY: window.innerHeight*0.8 });
+    }
+  });
+
+  // Empêcher double-tap zoom iOS
+  let lastTouch = 0;
+  btn.addEventListener('touchstart', e => {
+    const now = Date.now();
+    if (now - lastTouch < 300) e.preventDefault();
+    lastTouch = now;
+  }, { passive: false });
+</script>
+</body>
+</html>
