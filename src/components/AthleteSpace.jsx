@@ -42,6 +42,7 @@ export default function AthleteSpace({ currentUser, onLogout, managedSections=[]
     } catch(e){ console.error("Load error:", e); }
     setLoading(false);
   },[currentUser.athlete_id]);
+  const [completions, setCompletions] = useState(extCompletions);
   const [morphoForm, setMorphoForm] = useState(null);
   const [morphoSaving, setMorphoSaving] = useState(false);
   const [morphoToast, setMorphoToast] = useState("");
@@ -1103,7 +1104,7 @@ const JOURS = ["Lundi","Mardi","Mercredi","Jeudi","Vendredi","Samedi","Dimanche"
 const TYPE_SEANCE_COLORS = { MUSCU:"#f97316",ERGO:"#0ea5e9",BATEAU:"#22d3ee",RECUP:"#4ade80",REPOS:"#64748b",TEST:"#a78bfa",COMPETITION:"#e879f9" };
 const TYPE_SEANCE_LABELS = { MUSCU:"💪 Muscu",ERGO:"🚣 Ergo",BATEAU:"⛵ Bateau",RECUP:"🔄 Récup",REPOS:"😴 Repos",TEST:"📊 Test",COMPETITION:"🏆 Compét" };
 
-function AthletePlanningView({ athlete, currentUser, isMobile, perfs=[] }) {
+function AthletePlanningView({ athlete, currentUser, isMobile, perfs=[], completions:extCompletions=[], onCompletionsChange }) {
   const [weeks, setWeeks]           = useState([]);
   const [selWeek, setSelWeek]       = useState(null);
   const [sessions, setSessions]     = useState([]);
@@ -1115,6 +1116,8 @@ function AthletePlanningView({ athlete, currentUser, isMobile, perfs=[] }) {
   const [noteForm, setNoteForm]     = useState({ note:"", commentaire:"", charges:{} });
   const [showLibre, setShowLibre]   = useState(false);
   const [allSessions, setAllSessions] = useState({});
+  // Sync completions depuis parent
+  useEffect(() => { setCompletions(extCompletions); }, [extCompletions?.length]);
   const [journalSearch, setJournalSearch] = useState("");
   const [aiSession, setAiSession]   = useState(null);
   const [expandedSessions, setExpandedSessions] = useState({});
