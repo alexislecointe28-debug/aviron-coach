@@ -1252,13 +1252,16 @@ function AthletePlanningView({ athlete, currentUser, isMobile, perfs=[], complet
     if (!athlete || !libreType) return;
     setLibreSaving(true);
     try {
-      const meta = { date: libreForm.date, type_seance: libreType, titre: libreForm.titre || libreType };
+      const blocsAvecRM = libreForm.blocs.map(b => {
+        const rm = calc1RM(parseFloat(b.charge_kg), parseFloat(b.reps));
+        return { ...b, rm_estime: rm||null };
+      });
       await api.createAthleteSession({
         athlete_id: athlete.id,
         date: libreForm.date,
         type_seance: libreType,
         titre: libreForm.titre || libreType,
-        blocs: libreForm.blocs,
+        blocs: blocsAvecRM,
         ressenti: libreForm.ressenti,
         commentaire: libreForm.commentaire,
       });
@@ -1613,23 +1616,62 @@ function AthletePlanningView({ athlete, currentUser, isMobile, perfs=[], complet
 
                   {/* Blocs / contenu */}
                   <div style={{marginBottom:12}}>
-                    <div style={{color:"#64748b",fontSize:11,marginBottom:6}}>Contenu</div>
-                    <div style={{display:"flex",flexDirection:"column",gap:6}}>
-                      {libreForm.blocs.map((b,i)=>(
-                        <div key={i} style={{display:"flex",gap:6,alignItems:"center"}}>
-                          <input placeholder={isMuscu?"Exercice (ex: Back squat)":"Bloc (ex: 4×6' r5')"}
-                            value={b.titre||""} onChange={e=>setLibreForm(f=>({...f,blocs:f.blocs.map((x,j)=>j===i?{...x,titre:e.target.value}:x)}))}
-                            style={{flex:2,background:"#0f172a",border:"1px solid #334155",borderRadius:7,color:"#f1f5f9",padding:"7px 10px",fontSize:13}}/>
-                          <input placeholder={isMuscu?"kg":"réalisé"}
-                            value={b.note||""} onChange={e=>setLibreForm(f=>({...f,blocs:f.blocs.map((x,j)=>j===i?{...x,note:e.target.value}:x)}))}
-                            style={{flex:1,background:"#0f172a",border:`1px solid ${col}40`,borderRadius:7,color:"#f1f5f9",padding:"7px 10px",fontSize:13,textAlign:"center"}}/>
-                          <button onClick={()=>setLibreForm(f=>({...f,blocs:f.blocs.filter((_,j)=>j!==i)}))}
-                            style={{background:"none",border:"none",color:"#475569",fontSize:16,cursor:"pointer",padding:"0 4px"}}>×</button>
-                        </div>
-                      ))}
-                      <button onClick={()=>setLibreForm(f=>({...f,blocs:[...f.blocs,{titre:"",note:""}]}))}
-                        style={{background:col+"10",border:`1px dashed ${col}40`,borderRadius:8,color:col,fontSize:12,fontWeight:700,padding:"8px",cursor:"pointer"}}>
-                        + Ajouter un bloc
+                    <div style={{color:"#64748b",fontSize:11,marginBottom:8}}>Contenu</div>
+                    <div style={{display:"flex",flexDirection:"column",gap:8}}>
+                      {libreForm.blocs.map((b,i)=>{
+                        const rm1 = isMuscu ? calc1RM(parseFloat(b.charge_kg), parseFloat(b.reps)) : null;
+                        return(
+                          <div key={i} style={{background:"#0f172a",borderRadius:10,padding:"10px 12px",border:`1px solid ${col}20`}}>
+                            {/* Nom exercice */}
+                            <div style={{display:"flex",gap:6,alignItems:"center",marginBottom:isMuscu?8:0}}>
+                              <input placeholder={isMuscu?"Exercice (ex: Back squat)":"Bloc (ex: 4×6' r5')"}
+                                value={b.titre||""} onChange={e=>setLibreForm(f=>({...f,blocs:f.blocs.map((x,j)=>j===i?{...x,titre:e.target.value}:x)}))}
+                                style={{flex:1,background:"#182030",border:"1px solid #334155",borderRadius:7,color:"#f1f5f9",padding:"7px 10px",fontSize:13}}/>
+                              <button onClick={()=>setLibreForm(f=>({...f,blocs:f.blocs.filter((_,j)=>j!==i)}))}
+                                style={{background:"none",border:"none",color:"#475569",fontSize:16,cursor:"pointer",padding:"0 4px",flexShrink:0}}>×</button>
+                            </div>
+                            {/* Champs muscu : séries × reps × charge */}
+                            {isMuscu?(
+                              <div style={{display:"flex",gap:6,alignItems:"flex-end"}}>
+                                <div style={{flex:1}}>
+                                  <div style={{color:"#475569",fontSize:10,marginBottom:3}}>Séries</div>
+                                  <input type="number" min="1" placeholder="4"
+                                    value={b.series||""} onChange={e=>setLibreForm(f=>({...f,blocs:f.blocs.map((x,j)=>j===i?{...x,series:e.target.value}:x)}))}
+                                    style={{width:"100%",background:"#182030",border:"1px solid #334155",borderRadius:7,color:"#f1f5f9",padding:"7px 8px",fontSize:14,textAlign:"center",boxSizing:"border-box"}}/>
+                                </div>
+                                <div style={{color:"#475569",fontSize:16,paddingBottom:8}}>×</div>
+                                <div style={{flex:1}}>
+                                  <div style={{color:"#475569",fontSize:10,marginBottom:3}}>Reps</div>
+                                  <input type="number" min="1" placeholder="8"
+                                    value={b.reps||""} onChange={e=>setLibreForm(f=>({...f,blocs:f.blocs.map((x,j)=>j===i?{...x,reps:e.target.value}:x)}))}
+                                    style={{width:"100%",background:"#182030",border:"1px solid #334155",borderRadius:7,color:"#f1f5f9",padding:"7px 8px",fontSize:14,textAlign:"center",boxSizing:"border-box"}}/>
+                                </div>
+                                <div style={{color:"#475569",fontSize:16,paddingBottom:8}}>@</div>
+                                <div style={{flex:1}}>
+                                  <div style={{color:"#475569",fontSize:10,marginBottom:3}}>Charge (kg)</div>
+                                  <input type="number" min="0" placeholder="80"
+                                    value={b.charge_kg||""} onChange={e=>setLibreForm(f=>({...f,blocs:f.blocs.map((x,j)=>j===i?{...x,charge_kg:e.target.value}:x)}))}
+                                    style={{width:"100%",background:"#182030",border:`1px solid ${col}50`,borderRadius:7,color:"#f1f5f9",padding:"7px 8px",fontSize:14,textAlign:"center",boxSizing:"border-box"}}/>
+                                </div>
+                                {/* 1RM estimé */}
+                                {rm1&&(
+                                  <div style={{flexShrink:0,textAlign:"center",paddingBottom:4}}>
+                                    <div style={{color:"#a78bfa",fontWeight:900,fontSize:15}}>~{rm1}</div>
+                                    <div style={{color:"#475569",fontSize:9}}>1RM kg</div>
+                                  </div>
+                                )}
+                              </div>
+                            ):(
+                              <input placeholder="réalisé (ex: 1:52/500m, 26spm...)"
+                                value={b.note||""} onChange={e=>setLibreForm(f=>({...f,blocs:f.blocs.map((x,j)=>j===i?{...x,note:e.target.value}:x)}))}
+                                style={{width:"100%",background:"#182030",border:`1px solid ${col}40`,borderRadius:7,color:"#f1f5f9",padding:"7px 10px",fontSize:13,boxSizing:"border-box",marginTop:8}}/>
+                            )}
+                          </div>
+                        );
+                      })}
+                      <button onClick={()=>setLibreForm(f=>({...f,blocs:[...f.blocs,{titre:"",note:"",series:"",reps:"",charge_kg:""}]}))}
+                        style={{background:col+"10",border:`1px dashed ${col}40`,borderRadius:8,color:col,fontSize:12,fontWeight:700,padding:"10px",cursor:"pointer"}}>
+                        + {isMuscu?"Ajouter un exercice":"Ajouter un bloc"}
                       </button>
                     </div>
                   </div>
