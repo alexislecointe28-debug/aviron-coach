@@ -42,6 +42,32 @@ export default function AthleteSpace({ currentUser, onLogout, managedSections=[]
     } catch(e){ console.error("Load error:", e); }
     setLoading(false);
   },[currentUser.athlete_id]);
+  const [morphoForm, setMorphoForm] = useState(null);
+  const [morphoSaving, setMorphoSaving] = useState(false);
+  const [morphoToast, setMorphoToast] = useState("");
+
+  async function saveMorpho(athlete) {
+    if (!athlete || !morphoForm) return;
+    setMorphoSaving(true);
+    try {
+      await api.updateAthlete(athlete.id, {
+        taille: morphoForm.taille ? +morphoForm.taille : null,
+        envergure: morphoForm.envergure ? +morphoForm.envergure : null,
+        longueur_bras: morphoForm.longueur_bras ? +morphoForm.longueur_bras : null,
+        largeur_epaules: morphoForm.largeur_epaules ? +morphoForm.largeur_epaules : null,
+        taille_assise: morphoForm.taille_assise ? +morphoForm.taille_assise : null,
+        weight: morphoForm.weight ? +morphoForm.weight : null,
+      });
+      setMorphoForm(null);
+      setMorphoToast("✅ Mesures enregistrées !");
+      setTimeout(() => setMorphoToast(""), 3000);
+    } catch(e) {
+      setMorphoToast("❌ Erreur lors de la sauvegarde");
+      setTimeout(() => setMorphoToast(""), 3000);
+    }
+    setMorphoSaving(false);
+  }
+
   useEffect(()=>{ load(); },[]);
   useEffect(()=>{
     const handler=()=>setIsMobile(window.innerWidth<768);
@@ -664,7 +690,7 @@ export default function AthleteSpace({ currentUser, onLogout, managedSections=[]
                     style={{flex:1,padding:"10px",borderRadius:8,border:"1px solid #334155",background:"transparent",color:"#64748b",fontSize:13,cursor:"pointer"}}>
                     Annuler
                   </button>
-                  <button onClick={saveMorpho} disabled={morphoSaving}
+                  <button onClick={()=>saveMorpho(athlete)} disabled={morphoSaving}
                     style={{flex:2,padding:"10px",borderRadius:8,border:"none",background:"#0ea5e9",color:"#fff",fontSize:13,fontWeight:700,cursor:"pointer",opacity:morphoSaving?0.6:1}}>
                     {morphoSaving?"Enregistrement...":"💾 Enregistrer mes mesures"}
                   </button>
@@ -1088,9 +1114,6 @@ function AthletePlanningView({ athlete, currentUser, isMobile, perfs=[] }) {
   const [selSession, setSelSession] = useState(null);
   const [noteForm, setNoteForm]     = useState({ note:"", commentaire:"", charges:{} });
   const [showLibre, setShowLibre]   = useState(false);
-  const [morphoForm, setMorphoForm] = useState(null); // null = fermé, {} = ouvert
-  const [morphoSaving, setMorphoSaving] = useState(false);
-  const [morphoToast, setMorphoToast] = useState("");
   const [allSessions, setAllSessions] = useState({});
   const [journalSearch, setJournalSearch] = useState("");
   const [aiSession, setAiSession]   = useState(null);
@@ -1196,30 +1219,6 @@ function AthletePlanningView({ athlete, currentUser, isMobile, perfs=[] }) {
       setAiData(d=>({...d,[session.id]:{error:e.message}}));
     }
     setAiLoading(null);
-  }
-
-  async function saveMorpho() {
-    if (!athlete || !morphoForm) return;
-    setMorphoSaving(true);
-    try {
-      await api.updateAthlete(athlete.id, {
-        taille: morphoForm.taille ? +morphoForm.taille : null,
-        envergure: morphoForm.envergure ? +morphoForm.envergure : null,
-        longueur_bras: morphoForm.longueur_bras ? +morphoForm.longueur_bras : null,
-        largeur_epaules: morphoForm.largeur_epaules ? +morphoForm.largeur_epaules : null,
-        taille_assise: morphoForm.taille_assise ? +morphoForm.taille_assise : null,
-        weight: morphoForm.weight ? +morphoForm.weight : null,
-      });
-      setMorphoForm(null);
-      setMorphoToast("✅ Mesures enregistrées !");
-      setTimeout(() => setMorphoToast(""), 3000);
-      // Recharger le profil athlète
-      if (onRefresh) onRefresh();
-    } catch(e) {
-      setMorphoToast("❌ Erreur lors de la sauvegarde");
-      setTimeout(() => setMorphoToast(""), 3000);
-    }
-    setMorphoSaving(false);
   }
 
   function openNote(session) {
