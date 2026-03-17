@@ -1344,8 +1344,8 @@ function AthletePlanningView({ athlete, currentUser, isMobile, perfs=[] }) {
                       {s.type_seance!=="REPOS"&&(
                         <div style={{padding:"0 18px 16px",display:"flex",gap:10}}>
                           <button onClick={()=>openNote(s)}
-                            style={{flex:2,padding:"12px",borderRadius:10,border:`1px solid ${done?"#4ade8050":"#334155"}`,background:done?"#4ade8020":"#1e293b",color:done?"#4ade80":"#94a3b8",fontSize:13,fontWeight:700,cursor:"pointer"}}>
-                            {done?"✓ Modifier":"Marquer comme fait"}
+                            style={{flex:2,padding:"12px",borderRadius:10,border:`1px solid ${done?"#4ade8050":sc+"40"}`,background:done?"#4ade8020":sc+"15",color:done?"#4ade80":sc,fontSize:13,fontWeight:700,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",gap:6}}>
+                            {done?<>✓ <span style={{fontSize:12}}>Modifier</span></>:<>{s.type_seance==="MUSCU"||s.type_seance==="PLIO"?"💪":"📝"} <span>Saisir mes réalisations</span></>}
                           </button>
                           <button onClick={()=>aiSession===s.id&&aiData[s.id]?setAiSession(null):callPlanningAI(s)}
                             disabled={aiLoading===s.id}
@@ -1401,7 +1401,7 @@ function AthletePlanningView({ athlete, currentUser, isMobile, perfs=[] }) {
         <div style={{position:"fixed",inset:0,background:"#00000080",display:"flex",alignItems:"center",justifyContent:"center",zIndex:100}} onClick={e=>e.target===e.currentTarget&&setShowModal(false)}>
           <div style={{background:"#1a2744",border:"1px solid #2a3f5f",borderRadius:16,padding:28,width:420,maxWidth:"95vw"}}>
             <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:20}}>
-              <h2 style={{color:"#f1f5f9",fontSize:18,fontWeight:800,margin:0}}>Séance effectuée ✓</h2>
+              <h2 style={{color:"#f1f5f9",fontSize:18,fontWeight:800,margin:0}}>{done?"Modifier mes réalisations ✓":"Saisir mes réalisations"}</h2>
               <button style={{background:"none",border:"none",color:"#7a95b0",cursor:"pointer",fontSize:20}} onClick={()=>setShowModal(false)}>×</button>
             </div>
             {/* Header séance */}
@@ -1480,7 +1480,7 @@ function AthletePlanningView({ athlete, currentUser, isMobile, perfs=[] }) {
             </div>
             <div style={{display:"flex",gap:10,justifyContent:"flex-end"}}>
               <button style={{padding:"9px 18px",borderRadius:8,border:"1px solid #334155",background:"transparent",color:"#64748b",cursor:"pointer"}} onClick={()=>setShowModal(false)}>Annuler</button>
-              <button style={{padding:"9px 18px",borderRadius:8,border:"none",background:"#0ea5e9",color:"#fff",fontWeight:700,cursor:"pointer"}} onClick={saveCompletion}>Valider</button>
+              <button style={{padding:"9px 18px",borderRadius:8,border:"none",background:"#0ea5e9",color:"#fff",fontWeight:700,cursor:"pointer"}} onClick={saveCompletion}>{done?"Mettre à jour ✓":"Valider la séance ✓"}</button>
             </div>
           </div>
         </div>
