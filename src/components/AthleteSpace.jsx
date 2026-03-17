@@ -1136,6 +1136,9 @@ function AthletePlanningView({ athlete, currentUser, isMobile, perfs=[], complet
   const [selSession, setSelSession] = useState(null);
   const [noteForm, setNoteForm]     = useState({ note:"", commentaire:"", charges:{} });
   const [showLibre, setShowLibre]   = useState(false);
+  const [libreType, setLibreType]   = useState(null);
+  const [libreForm, setLibreForm]   = useState({ titre:"", date:new Date().toISOString().split("T")[0], blocs:[], ressenti:null, commentaire:"" });
+  const [libreSaving, setLibreSaving] = useState(false);
   const [allSessions, setAllSessions] = useState({});
   // Sync completions depuis parent
   useEffect(() => { setCompletions(extCompletions); }, [extCompletions?.length]);
@@ -1243,6 +1246,32 @@ function AthletePlanningView({ athlete, currentUser, isMobile, perfs=[], complet
       setAiData(d=>({...d,[session.id]:{error:e.message}}));
     }
     setAiLoading(null);
+  }
+
+  async function saveSeanceLibre() {
+    if (!athlete || !libreType) return;
+    setLibreSaving(true);
+    try {
+      const meta = { date: libreForm.date, type_seance: libreType, titre: libreForm.titre || libreType };
+      await api.createAthleteSession({
+        athlete_id: athlete.id,
+        date: libreForm.date,
+        type_seance: libreType,
+        titre: libreForm.titre || libreType,
+        blocs: libreForm.blocs,
+        ressenti: libreForm.ressenti,
+        commentaire: libreForm.commentaire,
+      });
+      setShowLibre(false);
+      setLibreType(null);
+      setLibreForm({ titre:"", date:new Date().toISOString().split("T")[0], blocs:[], ressenti:null, commentaire:"" });
+      setToast("Séance enregistrée ✓");
+      setTimeout(()=>setToast(null), 2500);
+    } catch(e) {
+      setToast("Erreur: " + e.message.slice(0,60));
+      setTimeout(()=>setToast(null), 3000);
+    }
+    setLibreSaving(false);
   }
 
   function openNote(session) {
@@ -1530,25 +1559,107 @@ function AthletePlanningView({ athlete, currentUser, isMobile, perfs=[], complet
 
       {/* Modal séance libre */}
       {showLibre&&(
-        <div style={{position:"fixed",inset:0,background:"#00000090",display:"flex",alignItems:"flex-end",justifyContent:"center",zIndex:200}} onClick={e=>e.target===e.currentTarget&&setShowLibre(false)}>
-          <div style={{background:"#1e293b",border:"1px solid #334155",borderRadius:"16px 16px 0 0",padding:"24px 20px",width:"100%",maxWidth:480,maxHeight:"80vh",overflowY:"auto"}}>
+        <div style={{position:"fixed",inset:0,background:"#00000090",display:"flex",alignItems:"flex-end",justifyContent:"center",zIndex:200}} onClick={e=>e.target===e.currentTarget&&(setShowLibre(false),setLibreType(null))}>
+          <div style={{background:"#1e293b",border:"1px solid #334155",borderRadius:"16px 16px 0 0",padding:"20px",width:"100%",maxWidth:520,maxHeight:"90vh",overflowY:"auto"}}>
+            
+            {/* Header */}
             <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:16}}>
               <div>
-                <div style={{color:"#f1f5f9",fontWeight:800,fontSize:17}}>Séance libre</div>
+                <div style={{color:"#f1f5f9",fontWeight:800,fontSize:17}}>
+                  {libreType ? `Séance ${libreType}` : "Séance libre"}
+                </div>
                 <div style={{color:"#64748b",fontSize:12}}>Hors planning coach</div>
               </div>
-              <button onClick={()=>setShowLibre(false)} style={{background:"none",border:"none",color:"#64748b",fontSize:22,cursor:"pointer"}}>×</button>
+              <button onClick={()=>{setShowLibre(false);setLibreType(null);}} style={{background:"none",border:"none",color:"#64748b",fontSize:22,cursor:"pointer"}}>×</button>
             </div>
-            <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:8,marginBottom:16}}>
-              {[["ERGO","🚣","#0ea5e9"],["BATEAU","⛵","#06b6d4"],["MUSCU","💪","#f97316"],["PLIO","⚡","#f59e0b"],["RECUP","🔄","#10b981"],["AUTRE","📝","#94a3b8"]].map(([t,ic,col])=>(
-                <button key={t} onClick={()=>{setShowLibre(false);alert("Séance libre "+t+" — fonctionnalité bientôt disponible ici !");}}
-                  style={{background:col+"15",border:`1px solid ${col}40`,borderRadius:10,padding:"12px 8px",cursor:"pointer",display:"flex",flexDirection:"column",alignItems:"center",gap:4}}>
-                  <span style={{fontSize:20}}>{ic}</span>
-                  <span style={{color:col,fontSize:11,fontWeight:700}}>{t}</span>
-                </button>
-              ))}
-            </div>
-            <div style={{color:"#475569",fontSize:12,textAlign:"center",fontStyle:"italic"}}>Sélectionne un type pour saisir une séance libre</div>
+
+            {/* Étape 1 : choix du type */}
+            {!libreType&&(
+              <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:8}}>
+                {[["ERGO","🚣","#0ea5e9"],["BATEAU","⛵","#06b6d4"],["MUSCU","💪","#f97316"],["PLIO","⚡","#f59e0b"],["RECUP","🔄","#10b981"],["AUTRE","📝","#94a3b8"]].map(([t,ic,col])=>(
+                  <button key={t} onClick={()=>setLibreType(t)}
+                    style={{background:col+"15",border:`1px solid ${col}40`,borderRadius:10,padding:"14px 8px",cursor:"pointer",display:"flex",flexDirection:"column",alignItems:"center",gap:6}}>
+                    <span style={{fontSize:24}}>{ic}</span>
+                    <span style={{color:col,fontSize:12,fontWeight:700}}>{t}</span>
+                  </button>
+                ))}
+              </div>
+            )}
+
+            {/* Étape 2 : formulaire */}
+            {libreType&&(()=>{
+              const col = {ERGO:"#0ea5e9",BATEAU:"#06b6d4",MUSCU:"#f97316",PLIO:"#f59e0b",RECUP:"#10b981",AUTRE:"#94a3b8"}[libreType]||"#64748b";
+              const isMuscu = libreType==="MUSCU"||libreType==="PLIO";
+              return(
+                <div>
+                  {/* Bouton retour type */}
+                  <button onClick={()=>setLibreType(null)} style={{background:"none",border:"none",color:"#64748b",fontSize:12,cursor:"pointer",marginBottom:12,padding:0}}>← Changer de type</button>
+
+                  {/* Date + Titre */}
+                  <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10,marginBottom:12}}>
+                    <div>
+                      <label style={{color:"#64748b",fontSize:11,display:"block",marginBottom:4}}>Date</label>
+                      <input type="date" value={libreForm.date}
+                        onChange={e=>setLibreForm(f=>({...f,date:e.target.value}))}
+                        style={{width:"100%",background:"#0f172a",border:"1px solid #334155",borderRadius:8,color:"#f1f5f9",padding:"8px 10px",fontSize:13,boxSizing:"border-box"}}/>
+                    </div>
+                    <div>
+                      <label style={{color:"#64748b",fontSize:11,display:"block",marginBottom:4}}>Titre (optionnel)</label>
+                      <input placeholder={`ex: ${libreType} du matin`} value={libreForm.titre}
+                        onChange={e=>setLibreForm(f=>({...f,titre:e.target.value}))}
+                        style={{width:"100%",background:"#0f172a",border:"1px solid #334155",borderRadius:8,color:"#f1f5f9",padding:"8px 10px",fontSize:13,boxSizing:"border-box"}}/>
+                    </div>
+                  </div>
+
+                  {/* Blocs / contenu */}
+                  <div style={{marginBottom:12}}>
+                    <div style={{color:"#64748b",fontSize:11,marginBottom:6}}>Contenu</div>
+                    <div style={{display:"flex",flexDirection:"column",gap:6}}>
+                      {libreForm.blocs.map((b,i)=>(
+                        <div key={i} style={{display:"flex",gap:6,alignItems:"center"}}>
+                          <input placeholder={isMuscu?"Exercice (ex: Back squat)":"Bloc (ex: 4×6' r5')"}
+                            value={b.titre||""} onChange={e=>setLibreForm(f=>({...f,blocs:f.blocs.map((x,j)=>j===i?{...x,titre:e.target.value}:x)}))}
+                            style={{flex:2,background:"#0f172a",border:"1px solid #334155",borderRadius:7,color:"#f1f5f9",padding:"7px 10px",fontSize:13}}/>
+                          <input placeholder={isMuscu?"kg":"réalisé"}
+                            value={b.note||""} onChange={e=>setLibreForm(f=>({...f,blocs:f.blocs.map((x,j)=>j===i?{...x,note:e.target.value}:x)}))}
+                            style={{flex:1,background:"#0f172a",border:`1px solid ${col}40`,borderRadius:7,color:"#f1f5f9",padding:"7px 10px",fontSize:13,textAlign:"center"}}/>
+                          <button onClick={()=>setLibreForm(f=>({...f,blocs:f.blocs.filter((_,j)=>j!==i)}))}
+                            style={{background:"none",border:"none",color:"#475569",fontSize:16,cursor:"pointer",padding:"0 4px"}}>×</button>
+                        </div>
+                      ))}
+                      <button onClick={()=>setLibreForm(f=>({...f,blocs:[...f.blocs,{titre:"",note:""}]}))}
+                        style={{background:col+"10",border:`1px dashed ${col}40`,borderRadius:8,color:col,fontSize:12,fontWeight:700,padding:"8px",cursor:"pointer"}}>
+                        + Ajouter un bloc
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Ressenti */}
+                  <div style={{marginBottom:12}}>
+                    <label style={{color:"#64748b",fontSize:11,display:"block",marginBottom:6}}>Ressenti / 10</label>
+                    <div style={{display:"flex",gap:5,flexWrap:"wrap"}}>
+                      {[1,2,3,4,5,6,7,8,9,10].map(n=>{
+                        const active = libreForm.ressenti===n;
+                        const c = n<=3?"#ef4444":n<=6?"#f59e0b":n<=8?"#0ea5e9":"#4ade80";
+                        return <button key={n} onClick={()=>setLibreForm(f=>({...f,ressenti:n}))}
+                          style={{width:32,height:32,borderRadius:7,border:`2px solid ${active?c:"#334155"}`,background:active?c+"30":"transparent",color:active?c:"#64748b",fontWeight:active?800:500,fontSize:13,cursor:"pointer"}}>{n}</button>;
+                      })}
+                    </div>
+                  </div>
+
+                  {/* Commentaire */}
+                  <textarea placeholder="Commentaire libre..." value={libreForm.commentaire}
+                    onChange={e=>setLibreForm(f=>({...f,commentaire:e.target.value}))}
+                    style={{width:"100%",background:"#0f172a",border:"1px solid #334155",borderRadius:8,color:"#f1f5f9",padding:"9px 12px",fontSize:13,resize:"vertical",minHeight:60,boxSizing:"border-box",marginBottom:12}}/>
+
+                  {/* Valider */}
+                  <button onClick={saveSeanceLibre} disabled={libreSaving}
+                    style={{width:"100%",padding:"12px",borderRadius:10,border:"none",background:col,color:"#fff",fontSize:14,fontWeight:800,cursor:"pointer",opacity:libreSaving?0.6:1}}>
+                    {libreSaving?"Enregistrement...":"💾 Enregistrer la séance"}
+                  </button>
+                </div>
+              );
+            })()}
           </div>
         </div>
       )}
