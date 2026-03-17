@@ -105,3 +105,10 @@ self.addEventListener('notificationclick', e => {
     e.waitUntil(clients.openWindow(e.notification.data.url));
   }
 });
+
+// ── Message depuis l'app pour forcer la mise à jour ──
+self.addEventListener('message', e => {
+  if (e.data?.type === 'SKIP_WAITING') {
+    self.skipWaiting();
+  }
+});
