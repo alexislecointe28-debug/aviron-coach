@@ -1097,7 +1097,7 @@ function AthletePlanningView({ athlete, currentUser, isMobile, perfs=[] }) {
   function openNote(session) {
     const existing = getCompletion(session.id);
     setSelSession(session);
-    setNoteForm({ note: existing?.note||"", commentaire: existing?.commentaire||"" });
+    setNoteForm({ note: existing?.note||"", commentaire: existing?.commentaire||"", charges: existing?.blocs_realises?.reduce((acc,b,i)=>({...acc,[i]:b.charge_kg||b.note||""}),{}) || {} });
     setShowModal(true);
   }
 
