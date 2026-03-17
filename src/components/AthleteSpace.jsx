@@ -4,6 +4,19 @@ import { api } from "../config/supabase.js";
 import { FF, Modal, Toast, Loader, Sparkline, StatPill } from "./ui.jsx";
 import { timeToSeconds, secondsToTime, concept2WattsFast, getBestTime, getLastPerf, calcAgeFromDOB, suggestRigging, avg } from "../utils/rowing.js";
 
+// Formule d'Epley : 1RM estimé
+function calc1RM(kg, reps) {
+  if (!kg || !reps || reps <= 0) return null;
+  if (reps === 1) return kg;
+  return Math.round(kg * (1 + reps / 30));
+}
+// Parser les reps depuis "6-8", "10", "4 à 6"
+function parseReps(str) {
+  if (!str) return null;
+  const n = parseFloat(String(str).replace(',', '.').match(/[\d.]+/)?.[0]);
+  return isNaN(n) ? null : n;
+}
+
 export default function AthleteSpace({ currentUser, onLogout, managedSections=[] }) {
   const [tab,setTab]   = useState("dashboard");
   const [isMobile, setIsMobile] = useState(()=>window.innerWidth<768);
