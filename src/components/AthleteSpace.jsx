@@ -581,7 +581,97 @@ export default function AthleteSpace({ currentUser, onLogout, managedSections=[]
           </>)}
         </div>)}
         {tab==="boats"&&(<div style={{...S.page,padding:isMobile?"16px 12px":"28px 32px"}}>
-          <div style={S.ph}><div><h1 style={S.ttl}>Mon Bateau</h1><p style={S.sub}>Réglages de ton poste</p></div></div>
+          {morphoToast&&<div style={{position:"fixed",bottom:24,right:24,background:"#0f172a",border:"1px solid #334155",color:"#f1f5f9",padding:"12px 20px",borderRadius:10,fontSize:13,fontWeight:700,zIndex:200}}>{morphoToast}</div>}
+          <div style={S.ph}>
+            <div><h1 style={S.ttl}>Mon Bateau</h1><p style={S.sub}>Réglages de ton poste</p></div>
+          </div>
+
+          {/* ── Section mesures morpho ── */}
+          <div style={{background:"#182030",border:"1px solid #334155",borderRadius:14,padding:"16px 18px",marginBottom:20}}>
+            <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:morphoForm?16:0}}>
+              <div>
+                <div style={{color:"#f1f5f9",fontWeight:800,fontSize:15}}>📐 Mes mesures</div>
+                <div style={{color:"#64748b",fontSize:12,marginTop:2}}>Utilisées pour calculer tes réglages</div>
+              </div>
+              {!morphoForm&&(
+                <button onClick={()=>setMorphoForm({
+                  taille: athlete?.taille||"",
+                  envergure: athlete?.envergure||"",
+                  longueur_bras: athlete?.longueur_bras||"",
+                  largeur_epaules: athlete?.largeur_epaules||"",
+                  taille_assise: athlete?.taille_assise||"",
+                  weight: athlete?.weight||"",
+                })}
+                  style={{background:"#0ea5e915",border:"1px solid #0ea5e940",color:"#0ea5e9",borderRadius:8,padding:"7px 14px",fontSize:12,fontWeight:700,cursor:"pointer"}}>
+                  {(athlete?.taille||athlete?.envergure)?"✏️ Modifier":"+ Saisir"}
+                </button>
+              )}
+            </div>
+
+            {/* Affichage des mesures existantes */}
+            {!morphoForm&&(athlete?.taille||athlete?.envergure||athlete?.longueur_bras||athlete?.weight)?(
+              <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:8,marginTop:12}}>
+                {[
+                  {label:"Taille",val:athlete?.taille,unit:"cm",icon:"📏"},
+                  {label:"Poids",val:athlete?.weight,unit:"kg",icon:"⚖️"},
+                  {label:"Envergure",val:athlete?.envergure,unit:"cm",icon:"↔️"},
+                  {label:"Long. bras",val:athlete?.longueur_bras,unit:"cm",icon:"💪"},
+                  {label:"Larg. épaules",val:athlete?.largeur_epaules,unit:"cm",icon:"🏊"},
+                  {label:"Taille assise",val:athlete?.taille_assise,unit:"cm",icon:"🪑"},
+                ].map((m,i)=>(
+                  <div key={i} style={{background:"#0f172a",borderRadius:8,padding:"8px 10px",textAlign:"center"}}>
+                    <div style={{fontSize:16,marginBottom:2}}>{m.icon}</div>
+                    <div style={{color:"#f1f5f9",fontWeight:800,fontSize:15}}>{m.val||"—"}{m.val?<span style={{fontSize:10,color:"#475569",marginLeft:2}}>{m.unit}</span>:""}</div>
+                    <div style={{color:"#64748b",fontSize:10}}>{m.label}</div>
+                  </div>
+                ))}
+              </div>
+            ):!morphoForm&&(
+              <div style={{color:"#475569",fontSize:13,marginTop:8,fontStyle:"italic"}}>
+                Aucune mesure renseignée — le coach en a besoin pour régler ton bateau 👆
+              </div>
+            )}
+
+            {/* Formulaire de saisie */}
+            {morphoForm&&(
+              <div>
+                <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10,marginBottom:14}}>
+                  {[
+                    {key:"taille",label:"Taille",unit:"cm",icon:"📏",placeholder:"ex: 180"},
+                    {key:"weight",label:"Poids",unit:"kg",icon:"⚖️",placeholder:"ex: 75"},
+                    {key:"envergure",label:"Envergure",unit:"cm",icon:"↔️",placeholder:"ex: 186",help:"Bras écartés, bout à bout"},
+                    {key:"longueur_bras",label:"Long. de bras",unit:"cm",icon:"💪",placeholder:"ex: 48",help:"Coude → bout des doigts"},
+                    {key:"largeur_epaules",label:"Larg. épaules",unit:"cm",icon:"🏊",placeholder:"ex: 44"},
+                    {key:"taille_assise",label:"Taille assise",unit:"cm",icon:"🪑",placeholder:"ex: 92",help:"Siège → sommet du crâne"},
+                  ].map(({key,label,unit,icon,placeholder,help})=>(
+                    <div key={key}>
+                      <label style={{display:"block",color:"#94a3b8",fontSize:11,fontWeight:600,marginBottom:4}}>
+                        {icon} {label} <span style={{color:"#475569"}}>({unit})</span>
+                      </label>
+                      {help&&<div style={{color:"#475569",fontSize:10,marginBottom:3,fontStyle:"italic"}}>{help}</div>}
+                      <input
+                        type="number"
+                        value={morphoForm[key]||""}
+                        onChange={e=>setMorphoForm(f=>({...f,[key]:e.target.value}))}
+                        placeholder={placeholder}
+                        style={{width:"100%",background:"#0f172a",border:"1px solid #334155",borderRadius:8,color:"#f1f5f9",padding:"9px 12px",fontSize:14,boxSizing:"border-box"}}
+                      />
+                    </div>
+                  ))}
+                </div>
+                <div style={{display:"flex",gap:8}}>
+                  <button onClick={()=>setMorphoForm(null)}
+                    style={{flex:1,padding:"10px",borderRadius:8,border:"1px solid #334155",background:"transparent",color:"#64748b",fontSize:13,cursor:"pointer"}}>
+                    Annuler
+                  </button>
+                  <button onClick={saveMorpho} disabled={morphoSaving}
+                    style={{flex:2,padding:"10px",borderRadius:8,border:"none",background:"#0ea5e9",color:"#fff",fontSize:13,fontWeight:700,cursor:"pointer",opacity:morphoSaving?0.6:1}}>
+                    {morphoSaving?"Enregistrement...":"💾 Enregistrer mes mesures"}
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
           {(()=>{
             if(!myCrew) return <div style={{...S.card,textAlign:"center",padding:"40px",color:"#5a7a9a"}}>Aucun équipage assigné.</div>;
             // Trouver le bateau lié à l'équipage de l'athlète
@@ -998,6 +1088,9 @@ function AthletePlanningView({ athlete, currentUser, isMobile, perfs=[] }) {
   const [selSession, setSelSession] = useState(null);
   const [noteForm, setNoteForm]     = useState({ note:"", commentaire:"", charges:{} });
   const [showLibre, setShowLibre]   = useState(false);
+  const [morphoForm, setMorphoForm] = useState(null); // null = fermé, {} = ouvert
+  const [morphoSaving, setMorphoSaving] = useState(false);
+  const [morphoToast, setMorphoToast] = useState("");
   const [allSessions, setAllSessions] = useState({});
   const [journalSearch, setJournalSearch] = useState("");
   const [aiSession, setAiSession]   = useState(null);
@@ -1103,6 +1196,30 @@ function AthletePlanningView({ athlete, currentUser, isMobile, perfs=[] }) {
       setAiData(d=>({...d,[session.id]:{error:e.message}}));
     }
     setAiLoading(null);
+  }
+
+  async function saveMorpho() {
+    if (!athlete || !morphoForm) return;
+    setMorphoSaving(true);
+    try {
+      await api.updateAthlete(athlete.id, {
+        taille: morphoForm.taille ? +morphoForm.taille : null,
+        envergure: morphoForm.envergure ? +morphoForm.envergure : null,
+        longueur_bras: morphoForm.longueur_bras ? +morphoForm.longueur_bras : null,
+        largeur_epaules: morphoForm.largeur_epaules ? +morphoForm.largeur_epaules : null,
+        taille_assise: morphoForm.taille_assise ? +morphoForm.taille_assise : null,
+        weight: morphoForm.weight ? +morphoForm.weight : null,
+      });
+      setMorphoForm(null);
+      setMorphoToast("✅ Mesures enregistrées !");
+      setTimeout(() => setMorphoToast(""), 3000);
+      // Recharger le profil athlète
+      if (onRefresh) onRefresh();
+    } catch(e) {
+      setMorphoToast("❌ Erreur lors de la sauvegarde");
+      setTimeout(() => setMorphoToast(""), 3000);
+    }
+    setMorphoSaving(false);
   }
 
   function openNote(session) {
