@@ -805,6 +805,121 @@ export default function AthleteSpace({ currentUser, onLogout, managedSections=[]
             isMobile={isMobile}
           />
         )}
+        {tab==="journal"&&(()=>{
+          const TYPE_COL_J={MUSCU:"#f97316",ERGO:"#0ea5e9",BATEAU:"#06b6d4",PLIO:"#f59e0b",RECUP:"#10b981",AUTRE:"#64748b"};
+          const TYPE_LBL_J={MUSCU:"Muscu",ERGO:"Ergo",BATEAU:"Bateau",PLIO:"Plio",RECUP:"Récup",AUTRE:"Autre"};
+          const entries=[...completions].sort((a,b)=>(b.completed_at||b.created_at)>(a.completed_at||a.created_at)?1:-1);
+          const filtered=journalSearch?entries.filter(e=>{
+            const blocs=Array.isArray(e.blocs_realises)?e.blocs_realises:(e.blocs_realises?.blocs||[]);
+            const meta=e.blocs_realises?._meta||{};
+            const txt=[meta.titre,e.commentaire,...blocs.map(b=>b.titre+" "+(b.note||""))].join(" ").toLowerCase();
+            return txt.includes(journalSearch.toLowerCase());
+          }):entries;
+          const rpeData=entries.filter(e=>e.note).slice(0,20).reverse();
+          const typeCount={};
+          entries.forEach(e=>{const t=e.blocs_realises?._meta?.type_seance||"AUTRE";typeCount[t]=(typeCount[t]||0)+1;});
+          return(
+            <div style={{padding:isMobile?"16px 12px":"28px 32px"}}>
+              <h1 style={{color:"#f1f5f9",fontSize:22,fontWeight:900,margin:"0 0 4px"}}>📓 Journal</h1>
+              <p style={{color:"#64748b",fontSize:13,marginBottom:20}}>{entries.length} séance{entries.length>1?"s":""} enregistrée{entries.length>1?"s":""}</p>
+              {entries.length===0&&(
+                <div style={{background:"#182030",borderRadius:12,padding:"40px 24px",textAlign:"center",border:"1px dashed #334155"}}>
+                  <div style={{fontSize:40,marginBottom:12}}>📓</div>
+                  <div style={{color:"#f1f5f9",fontWeight:700,fontSize:15,marginBottom:6}}>Aucune séance encore</div>
+                  <div style={{color:"#475569",fontSize:13}}>Valide une séance du planning ou ajoute une séance libre via le ＋</div>
+                </div>
+              )}
+              {entries.length>0&&<>
+                <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8,marginBottom:12}}>
+                  {[{label:"Séances",val:entries.length,col:"#0ea5e9"},{label:"RPE moyen",val:entries.filter(e=>e.note).length?(entries.filter(e=>e.note).reduce((s,e)=>s+(+e.note),0)/entries.filter(e=>e.note).length).toFixed(1)+"/10":"—",col:"#f59e0b"}].map((s,i)=>(
+                    <div key={i} style={{background:"#182030",borderRadius:10,padding:"12px 14px",border:`1px solid ${s.col}20`}}>
+                      <div style={{color:"#64748b",fontSize:10,textTransform:"uppercase",letterSpacing:1,marginBottom:4}}>{s.label}</div>
+                      <div style={{color:s.col,fontWeight:900,fontSize:20}}>{s.val}</div>
+                    </div>
+                  ))}
+                </div>
+                {rpeData.length>1&&(
+                  <div style={{background:"#182030",borderRadius:12,padding:"14px 16px",marginBottom:12,border:"1px solid #f59e0b20"}}>
+                    <div style={{color:"#f1f5f9",fontWeight:700,fontSize:13,marginBottom:10}}>📈 Ressenti dans le temps</div>
+                    <svg width="100%" height="56" style={{overflow:"visible"}}>
+                      {rpeData.map((e,i)=>{
+                        const x=i/(rpeData.length-1)*100+"%",y=48-(+e.note/10)*40;
+                        const col=+e.note<=3?"#ef4444":+e.note<=6?"#f59e0b":+e.note<=8?"#0ea5e9":"#4ade80";
+                        const px=i>0?(i-1)/(rpeData.length-1)*100+"%":null,py=i>0?48-(+rpeData[i-1].note/10)*40:null;
+                        return(<g key={i}>{i>0&&<line x1={px} y1={py} x2={x} y2={y} stroke="#334155" strokeWidth="1.5"/>}<circle cx={x} cy={y} r="4" fill={col}/>{i===rpeData.length-1&&<text x={x} y={y-8} textAnchor="middle" fontSize="9" fill={col} fontWeight="700">{e.note}/10</text>}</g>);
+                      })}
+                    </svg>
+                  </div>
+                )}
+                {Object.keys(typeCount).length>0&&(
+                  <div style={{background:"#182030",borderRadius:12,padding:"12px 16px",marginBottom:12,border:"1px solid #334155"}}>
+                    <div style={{display:"flex",gap:3,height:14,borderRadius:4,overflow:"hidden",marginBottom:6}}>
+                      {Object.entries(typeCount).sort((a,b)=>b[1]-a[1]).map(([t,n])=>(<div key={t} style={{flex:n,background:TYPE_COL_J[t]||"#64748b"}}/>))}
+                    </div>
+                    <div style={{display:"flex",gap:8,flexWrap:"wrap"}}>
+                      {Object.entries(typeCount).sort((a,b)=>b[1]-a[1]).map(([t,n])=>(
+                        <div key={t} style={{display:"flex",alignItems:"center",gap:3,fontSize:11}}>
+                          <div style={{width:7,height:7,borderRadius:2,background:TYPE_COL_J[t]||"#64748b"}}/>
+                          <span style={{color:"#94a3b8"}}>{TYPE_LBL_J[t]||t} <b style={{color:"#f1f5f9"}}>{n}</b></span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+                <input placeholder="🔍 Rechercher..." value={journalSearch} onChange={e=>setJournalSearch(e.target.value)}
+                  style={{width:"100%",background:"#182030",border:"1px solid #334155",borderRadius:10,color:"#f1f5f9",padding:"10px 14px",fontSize:13,boxSizing:"border-box",marginBottom:12}}/>
+                <div style={{display:"flex",flexDirection:"column",gap:8}}>
+                  {filtered.map((e,idx)=>{
+                    const meta=e.blocs_realises?._meta||{};
+                    const blocs=Array.isArray(e.blocs_realises)?e.blocs_realises:(e.blocs_realises?.blocs||[]);
+                    const typeSeance=meta.type_seance||"AUTRE";
+                    const col=TYPE_COL_J[typeSeance]||"#64748b";
+                    const lbl=TYPE_LBL_J[typeSeance]||typeSeance;
+                    const titre=meta.titre||"Séance libre";
+                    const date=new Date(e.completed_at||e.created_at);
+                    const rpe=e.note;
+                    const rpeCol=rpe<=3?"#ef4444":rpe<=6?"#f59e0b":rpe<=8?"#0ea5e9":"#4ade80";
+                    return(
+                      <div key={idx} style={{background:"#182030",borderRadius:12,overflow:"hidden",border:`1px solid ${col}20`}}>
+                        <div style={{display:"flex",alignItems:"center",gap:10,padding:"10px 14px",background:col+"10",borderBottom:`1px solid ${col}20`}}>
+                          <div style={{flex:1,minWidth:0}}>
+                            <div style={{display:"flex",alignItems:"center",gap:6,marginBottom:2,flexWrap:"wrap"}}>
+                              <span style={{color:col,fontSize:10,fontWeight:800,textTransform:"uppercase",letterSpacing:1}}>{lbl}</span>
+                              <span style={{color:"#475569",fontSize:10}}>·</span>
+                              <span style={{color:"#64748b",fontSize:10}}>{date.toLocaleDateString("fr-FR",{weekday:"short",day:"numeric",month:"short"})}</span>
+                            </div>
+                            <div style={{color:"#f1f5f9",fontWeight:700,fontSize:14,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{titre}</div>
+                          </div>
+                          {rpe&&<div style={{background:rpeCol+"20",border:`1px solid ${rpeCol}40`,borderRadius:8,padding:"4px 10px",textAlign:"center",flexShrink:0}}>
+                            <div style={{color:rpeCol,fontWeight:900,fontSize:16,lineHeight:1}}>{rpe}</div>
+                            <div style={{color:"#475569",fontSize:8,textTransform:"uppercase"}}>RPE</div>
+                          </div>}
+                        </div>
+                        {(blocs.length>0||e.commentaire)&&(
+                          <div style={{padding:"10px 14px"}}>
+                            {blocs.length>0&&(
+                              <div style={{display:"flex",flexDirection:"column",gap:3,marginBottom:e.commentaire?8:0}}>
+                                {blocs.map((b,i)=>(<div key={i} style={{display:"flex",alignItems:"baseline",gap:6,fontSize:12}}>
+                                  <span style={{color:col,fontWeight:700,flexShrink:0}}>▸</span>
+                                  <span style={{color:"#94a3b8",fontWeight:600}}>{b.titre}</span>
+                                  {b.series&&b.reps&&<span style={{color:"#64748b"}}>{b.series}×{b.reps}</span>}
+                                  {b.charge_kg&&<span style={{color:"#f1f5f9",fontFamily:"monospace"}}>{b.charge_kg}kg</span>}
+                                  {b.rm_estime&&<span style={{color:"#a78bfa",fontSize:11}}>~{b.rm_estime}kg 1RM</span>}
+                                  {b.note&&!b.charge_kg&&<span style={{color:"#f1f5f9",fontFamily:"monospace"}}>{b.note}</span>}
+                                </div>))}
+                              </div>
+                            )}
+                            {e.commentaire&&<div style={{background:"#0f172a",borderRadius:8,padding:"7px 10px",fontSize:12,color:"#94a3b8",fontStyle:"italic",borderLeft:`3px solid ${col}40`}}>"{e.commentaire}"</div>}
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              </>}
+            </div>
+          );
+        })()}
         {tab==="planning"&&(<div style={{...S.page,padding:0}}>
           <AthletePlanningView athlete={athlete} currentUser={currentUser} isMobile={isMobile} perfs={myPerfs}/>
         </div>)}
