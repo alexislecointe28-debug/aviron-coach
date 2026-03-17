@@ -5,17 +5,45 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
     <title>AvironCoach</title>
 
-    <!-- PWA -->
+    <!-- PWA Manifest -->
     <link rel="manifest" href="/manifest.json" />
-    <meta name="theme-color" content="#0f1923" />
+
+    <!-- Theme -->
+    <meta name="theme-color" content="#0369a1" />
+    <meta name="background-color" content="#0f172a" />
+
+    <!-- Android -->
     <meta name="mobile-web-app-capable" content="yes" />
+
+    <!-- iOS -->
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
     <meta name="apple-mobile-web-app-title" content="AvironCoach" />
-    <link rel="apple-touch-icon" href="/icon-192.png" />
+
+    <!-- Apple icons -->
+    <link rel="apple-touch-icon" href="/icon-180.png" />
+    <link rel="apple-touch-icon" sizes="152x152" href="/icon-152.png" />
+    <link rel="apple-touch-icon" sizes="180x180" href="/icon-180.png" />
+    <link rel="apple-touch-icon" sizes="167x167" href="/icon-180.png" />
+
+    <!-- Apple splash screens -->
+    <link rel="apple-touch-startup-image" href="/splash-iphone-12.png"
+          media="(device-width: 390px) and (device-height: 844px) and (-webkit-device-pixel-ratio: 3)" />
+    <link rel="apple-touch-startup-image" href="/splash-iphone-x.png"
+          media="(device-width: 375px) and (device-height: 812px) and (-webkit-device-pixel-ratio: 3)" />
+    <link rel="apple-touch-startup-image" href="/splash-iphone-8.png"
+          media="(device-width: 375px) and (device-height: 667px) and (-webkit-device-pixel-ratio: 2)" />
 
     <!-- Favicon -->
-    <link rel="icon" type="image/png" href="/icon-192.png" />
+    <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32.png" />
+    <link rel="icon" type="image/png" sizes="16x16" href="/favicon-16.png" />
+
+    <!-- SEO / Meta -->
+    <meta name="description" content="Application de coaching aviron — plannings, performances, équipages" />
+    <meta name="application-name" content="AvironCoach" />
+
+    <!-- Couleur barre de statut iOS -->
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
   </head>
   <body>
     <div id="root"></div>
@@ -23,9 +51,20 @@
     <script>
       if ('serviceWorker' in navigator) {
         window.addEventListener('load', () => {
-          navigator.serviceWorker.register('/sw.js')
-            .then(r => console.log('SW registered', r.scope))
-            .catch(e => console.error('SW error', e));
+          navigator.serviceWorker.register('/sw.js', { scope: '/' })
+            .then(r => {
+              console.log('[PWA] Service Worker enregistré', r.scope);
+              // Vérifier les mises à jour
+              r.addEventListener('updatefound', () => {
+                const newWorker = r.installing;
+                newWorker.addEventListener('statechange', () => {
+                  if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
+                    console.log('[PWA] Nouvelle version disponible');
+                  }
+                });
+              });
+            })
+            .catch(e => console.error('[PWA] Erreur SW:', e));
         });
       }
     </script>

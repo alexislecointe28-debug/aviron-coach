@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AvironCoach — Hors ligne</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: -apple-system, sans-serif;
+    background: #0f172a;
+    color: #f1f5f9;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    min-height: 100vh;
+    text-align: center;
+    padding: 24px;
+  }
+  img { width: 80px; height: 80px; border-radius: 20px; margin-bottom: 24px; }
+  h1 { font-size: 22px; font-weight: 800; margin-bottom: 8px; }
+  p { color: #64748b; font-size: 15px; margin-bottom: 32px; line-height: 1.5; }
+  button {
+    background: #0369a1; color: white; border: none;
+    border-radius: 12px; padding: 14px 28px;
+    font-size: 16px; font-weight: 700; cursor: pointer;
+  }
+  .wave { font-size: 48px; margin-bottom: 16px; }
+</style>
+</head>
+<body>
+  <div class="wave">🚣</div>
+  <img src="/icon-192.png" alt="AvironCoach">
+  <h1>Pas de connexion</h1>
+  <p>Tu es hors ligne.<br>Reconnecte-toi pour accéder à ton planning et tes performances.</p>
+  <button onclick="location.reload()">🔄 Réessayer</button>
+</body>
+</html>
