@@ -1401,7 +1401,7 @@ function AthletePlanningView({ athlete, currentUser, isMobile, perfs=[] }) {
         <div style={{position:"fixed",inset:0,background:"#00000080",display:"flex",alignItems:"center",justifyContent:"center",zIndex:100}} onClick={e=>e.target===e.currentTarget&&setShowModal(false)}>
           <div style={{background:"#1a2744",border:"1px solid #2a3f5f",borderRadius:16,padding:28,width:420,maxWidth:"95vw"}}>
             <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:20}}>
-              <h2 style={{color:"#f1f5f9",fontSize:18,fontWeight:800,margin:0}}>{done?"Modifier mes réalisations ✓":"Saisir mes réalisations"}</h2>
+              <h2 style={{color:"#f1f5f9",fontSize:18,fontWeight:800,margin:0}}>{getCompletion(selSession?.id)?"Modifier mes réalisations ✓":"Saisir mes réalisations"}</h2>
               <button style={{background:"none",border:"none",color:"#7a95b0",cursor:"pointer",fontSize:20}} onClick={()=>setShowModal(false)}>×</button>
             </div>
             {/* Header séance */}
@@ -1480,7 +1480,7 @@ function AthletePlanningView({ athlete, currentUser, isMobile, perfs=[] }) {
             </div>
             <div style={{display:"flex",gap:10,justifyContent:"flex-end"}}>
               <button style={{padding:"9px 18px",borderRadius:8,border:"1px solid #334155",background:"transparent",color:"#64748b",cursor:"pointer"}} onClick={()=>setShowModal(false)}>Annuler</button>
-              <button style={{padding:"9px 18px",borderRadius:8,border:"none",background:"#0ea5e9",color:"#fff",fontWeight:700,cursor:"pointer"}} onClick={saveCompletion}>{done?"Mettre à jour ✓":"Valider la séance ✓"}</button>
+              <button style={{padding:"9px 18px",borderRadius:8,border:"none",background:"#0ea5e9",color:"#fff",fontWeight:700,cursor:"pointer"}} onClick={saveCompletion}>{getCompletion(selSession?.id)?"Mettre à jour ✓":"Valider la séance ✓"}</button>
             </div>
           </div>
         </div>
