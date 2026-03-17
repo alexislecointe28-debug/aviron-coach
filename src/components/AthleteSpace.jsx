@@ -1434,7 +1434,15 @@ function AthletePlanningView({ athlete, currentUser, isMobile, perfs=[] }) {
                           <div style={{display:"flex",flexDirection:"column",alignItems:"flex-end",gap:2}}>
                             <div style={{display:"flex",alignItems:"center",gap:4}}>
                               <input
-                                placeholder={isMuscu?"kg":"réalisé"}
+                                placeholder={(()=>{
+                                const t = (b.titre||"").toLowerCase();
+                                if(isMuscu) return "kg";
+                                if(t.includes("échauff")||t.includes("recup")||t.includes("récup")) return "ex: 2km, 10min";
+                                if(t.includes("cadence")||t.includes("spm")) return "ex: 26 spm";
+                                if(t.includes("format")||t.includes("x ")) return "ex: 1:52/500m";
+                                if(t.includes("allure")) return "ex: 1:54";
+                                return "réalisé";
+                              })()}
                                 value={noteForm.charges[i]||""}
                                 onChange={e=>setNoteForm(f=>({...f,charges:{...f.charges,[i]:e.target.value}}))}
                                 style={{width:isMuscu?56:80,background:"#182030",border:`1px solid ${sc}40`,borderRadius:6,color:"#f1f5f9",padding:"5px 8px",fontSize:12,textAlign:"center"}}
