@@ -1,4 +1,4 @@
-const SW_VERSION = 'v7';
+const SW_VERSION = 'v8';
 const CACHE_STATIC = `aviron-static-${SW_VERSION}`;
 const CACHE_DYNAMIC = `aviron-dynamic-${SW_VERSION}`;
 
