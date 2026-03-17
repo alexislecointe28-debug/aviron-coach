@@ -1259,13 +1259,13 @@ function AthletePlanningView({ athlete, currentUser, isMobile, perfs=[], complet
         rm_estime: rm,
         note: noteForm.charges[i]||null,
       };
-    }).filter(b=>b.charge_kg||b.note);
+    }).filter(b=>b.charge_kg!=null||b.note);
 
     const payload = {
       note: +noteForm.note||null,
-      commentaire: noteForm.commentaire,
-      blocs_realises: blocs_realises.length ? blocs_realises : undefined,
+      commentaire: noteForm.commentaire||"",
     };
+    if (blocs_realises.length) payload.blocs_realises = blocs_realises;
     try {
       let res;
       if(existing) {
