@@ -173,6 +173,7 @@ export const api = {
   deletePlanWeek:      (id)        => sb(`plan_weeks?id=eq.${id}`, { method:"DELETE", prefer:"" }),
 
   // Planning — Sessions
+  getPlannedSession:   (id)       => sb(`planned_sessions?id=eq.${id}&limit=1`).then(r=>r?.[0]),
   getPlannedSessions:  (weekId)    => sb(`planned_sessions?week_id=eq.${weekId}&order=ordre,created_at`),
   createPlannedSession:(data)      => sb("planned_sessions", { method:"POST", body:JSON.stringify(data) }),
   updatePlannedSession:(id, data)  => { const {id:_,...d}=data; return sb(`planned_sessions?id=eq.${id}`, { method:"PATCH", body:JSON.stringify(d) }); },

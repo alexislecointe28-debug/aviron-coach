@@ -96,7 +96,7 @@ export default function AthleteSpace({ currentUser, onLogout, managedSections=[]
     setDashLoading(false);
   }
 
-  const NAV=[{id:"dashboard",label:"Mon espace",icon:"*"},{id:"stats",label:"Mes stats",icon:"*"},{id:"crew",label:"Mon équipage",icon:"~"},{id:"boats",label:"Mon bateau",icon:"~"},{id:"planning",label:"Mon planning",icon:"#"},...(managedSections.length>0?[{id:"section",label:"Ma section",icon:"👥"}]:[])];
+  const NAV=[{id:"dashboard",label:"Mon espace",icon:"*"},{id:"stats",label:"Mes stats",icon:"*"},{id:"crew",label:"Mon équipage",icon:"~"},{id:"boats",label:"Mon bateau",icon:"~"},{id:"planning",label:"Mon planning",icon:"#"},{id:"journal",label:"Journal",icon:"📓"},...(managedSections.length>0?[{id:"section",label:"Ma section",icon:"👥"}]:[])];
   if(loading) return <div style={{...S.root,alignItems:"center",justifyContent:"center"}}><Loader/></div>;
   if(!athlete) return <div style={{minHeight:"100vh",background:"#0f1923",display:"flex",alignItems:"center",justifyContent:"center",color:"#ef4444",fontFamily:"monospace"}}>Fiche athlète introuvable. Contacte ton coach.</div>;
 
@@ -677,7 +677,7 @@ export default function AthleteSpace({ currentUser, onLogout, managedSections=[]
         <nav style={{position:"fixed",bottom:0,left:0,right:0,height:56,background:"#0f1923",borderTop:"1px solid #2d1b4e",display:"flex",zIndex:100}}>
           {NAV.map(n=>{
             const active=tab===n.id;
-            const ICONS={dashboard:"🏠",stats:"📊",crew:"👥",boats:"⛵",planning:"📅",section:"🏅"};
+            const ICONS={dashboard:"🏠",stats:"📊",crew:"👥",boats:"⛵",planning:"📅",journal:"📓",section:"🏅"};
             return(
               <button key={n.id} onClick={()=>setTab(n.id)}
                 style={{flex:1,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",gap:2,background:"none",border:"none",cursor:"pointer",color:active?"#a78bfa":"#4a6a8a",fontSize:10,fontWeight:active?700:500,borderTop:`2px solid ${active?"#a78bfa":"transparent"}`}}>
@@ -998,6 +998,8 @@ function AthletePlanningView({ athlete, currentUser, isMobile, perfs=[] }) {
   const [selSession, setSelSession] = useState(null);
   const [noteForm, setNoteForm]     = useState({ note:"", commentaire:"", charges:{} });
   const [showLibre, setShowLibre]   = useState(false);
+  const [allSessions, setAllSessions] = useState({});
+  const [journalSearch, setJournalSearch] = useState("");
   const [aiSession, setAiSession]   = useState(null);
   const [expandedSessions, setExpandedSessions] = useState({});
   const today = ["Dimanche","Lundi","Mardi","Mercredi","Jeudi","Vendredi","Samedi"][new Date().getDay()];
@@ -1054,6 +1056,15 @@ function AthletePlanningView({ athlete, currentUser, isMobile, perfs=[] }) {
       // Load completions for this athlete
       const comps = await api.getSessionCompletions(athlete.id).catch(()=>[]);
       setCompletions(comps||[]);
+      // Indexer les sessions par id pour le journal
+      if(comps?.length) {
+        const sessionIds = [...new Set(comps.map(c=>c.session_id).filter(Boolean))];
+        const sessionMap = {};
+        await Promise.all(sessionIds.map(id =>
+          api.getPlannedSession(id).then(s=>{ if(s) sessionMap[id]=s; }).catch(()=>{})
+        ));
+        setAllSessions(sessionMap);
+      }
     } catch(e) { console.error(e); }
     setLoading(false);
   }
