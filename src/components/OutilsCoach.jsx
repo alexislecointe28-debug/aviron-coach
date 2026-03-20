@@ -83,7 +83,7 @@ export default function OutilsCoach({
 //  CADENCEMÈTRE
 // ══════════════════════════════════════
 function Cadencemetre({ taps, setTaps, spm, setSpm, active, setActive, isMobile, S }) {
-  const WINDOW = 5; // nb de frappes pour la moyenne glissante
+  const WINDOW = 3; // nb de frappes pour la moyenne glissante
 
   function handleTap() {
     const now = Date.now();
