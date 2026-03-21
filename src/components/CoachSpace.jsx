@@ -1399,6 +1399,35 @@ export default function CoachSpace({ currentUser, onLogout }) {
                       {avgWatts&&<span style={{color:"#0ea5e9"}}>⌀ {avgWatts}W</span>}
                     </div>
                     <div style={{display:"flex",gap:6,flexWrap:"wrap"}}>{members.map(a=>{const{last,watts,wpkg}=aStats(a);const ageA=a.date_naissance?calcRealAge(a.date_naissance):a.age;return(<div key={a.id} style={{background:"#263547",borderRadius:8,padding:"5px 10px",display:"flex",alignItems:"center",gap:8}}><div style={{...S.av,width:26,height:26,fontSize:10}}>{a.avatar}</div><div><div style={{color:"#f1f5f9",fontSize:12,fontWeight:600}}>{a.name.split(" ")[0]}{ageA?<span style={{color:"#64748b",fontSize:10,marginLeft:4}}>{ageA}ans</span>:""}</div>{last&&<div style={{color:"#0ea5e9",fontSize:10}}>{watts||0}W · {wpkg}W/kg</div>}</div></div>);})}</div>
+                  {/* Bateau physique assigné */}
+                  {(()=>{
+                    const linkedBoat = boatCrews.find(bc=>bc.crew_id===cr.id);
+                    const boat = linkedBoat ? boats.find(b=>b.id===linkedBoat.boat_id) : null;
+                    const compatibleBoats = boats.filter(b=>b.seats===getCrewMembersFor(cr.id).length || true);
+                    return(
+                      <div style={{marginTop:10,paddingTop:10,borderTop:"1px solid #1e293b"}}>
+                        <div style={{display:"flex",alignItems:"center",gap:8,flexWrap:"wrap"}}>
+                          <span style={{color:"#475569",fontSize:11}}>Bateau :</span>
+                          {boat
+                            ? <div style={{display:"flex",alignItems:"center",gap:6}}>
+                                <span style={{color:"#22d3ee",fontWeight:700,fontSize:12}}>🛶 {boat.name}</span>
+                                <button onClick={()=>toggleBoatCrew(boat.id,cr.id)}
+                                  style={{background:"none",border:"none",color:"#ef4444",fontSize:11,cursor:"pointer",padding:"0 4px"}}>× Délier</button>
+                              </div>
+                            : <span style={{color:"#334155",fontSize:11,fontStyle:"italic"}}>Aucun bateau assigné</span>
+                          }
+                          <select
+                            onChange={e=>{if(e.target.value){toggleBoatCrew(+e.target.value,cr.id);e.target.value="";}}}
+                            style={{background:"#1e293b",border:"1px solid #334155",borderRadius:7,color:"#94a3b8",padding:"3px 8px",fontSize:11,cursor:"pointer"}}>
+                            <option value="">+ Assigner un bateau</option>
+                            {boats.map(b=>(
+                              <option key={b.id} value={b.id}>{b.name} ({b.seats}x)</option>
+                            ))}
+                          </select>
+                        </div>
+                      </div>
+                    );
+                  })()}
                   </>);
                 })()}
               </div>)}
