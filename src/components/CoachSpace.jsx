@@ -1748,7 +1748,14 @@ export default function CoachSpace({ currentUser, onLogout }) {
                       <div style={{color:"#c084fc",fontWeight:800,fontSize:14}}>✨ Suggestion IA — {aiRiggingAll.bateau}</div>
                       <button style={{background:"none",border:"none",color:"#64748b",cursor:"pointer",fontSize:18}} onClick={()=>setAIRiggingAll(null)}>×</button>
                     </div>
-                    {aiRiggingAll.synthese&&<div style={{color:"#94a3b8",fontSize:12,marginBottom:14,fontStyle:"italic",borderLeft:"2px solid #a855f740",paddingLeft:10}}>{aiRiggingAll.synthese}</div>}
+                    {aiRiggingAll.synthese&&(
+                      <details style={{marginBottom:14}}>
+                        <summary style={{color:"#a78bfa",fontSize:12,cursor:"pointer",fontWeight:600,listStyle:"none"}}>
+                          💡 Voir la synthèse IA
+                        </summary>
+                        <div style={{color:"#94a3b8",fontSize:12,marginTop:6,fontStyle:"italic",borderLeft:"2px solid #a855f740",paddingLeft:10}}>{aiRiggingAll.synthese}</div>
+                      </details>
+                    )}
                     <div style={{display:"flex",flexDirection:"column",gap:10}}>
                       {(aiRiggingAll.postes||[]).map((p,i)=>(
                         <div key={i} style={{background:"#0f192360",borderRadius:8,padding:"10px 14px"}}>
@@ -1769,7 +1776,12 @@ export default function CoachSpace({ currentUser, onLogout }) {
                               </div>
                             ))}
                           </div>
-                          {p.notes&&<div style={{color:"#64748b",fontSize:11,fontStyle:"italic"}}>💡 {p.notes}</div>}
+                          {p.notes&&(
+                            <details style={{marginTop:4}}>
+                              <summary style={{color:"#64748b",fontSize:11,cursor:"pointer",listStyle:"none"}}>💡 Note</summary>
+                              <div style={{color:"#64748b",fontSize:11,fontStyle:"italic",marginTop:3}}>{p.notes}</div>
+                            </details>
+                          )}
                         </div>
                       ))}
                     </div>
@@ -1807,7 +1819,14 @@ export default function CoachSpace({ currentUser, onLogout }) {
                                 <td style={{...S.td,color:"#a78bfa"}}>{s.longueur_pedale?`${s.longueur_pedale} cm`:"--"}</td>
                                 <td style={{...S.td,color:"#f59e0b"}}>{s.levier_interieur?`${s.levier_interieur} cm`:"--"}</td>
                                 <td style={S.td}>{s.numero_pelle?`N°${s.numero_pelle}${s.type_pelle?" · "+s.type_pelle:""}`:s.type_pelle||"--"}</td>
-                                <td style={{...S.td,color:"#a8bfd4",maxWidth:200}}>{s.observations||"--"}</td>
+                                <td style={{...S.td}}>
+                                  {s.observations && s.observations.length > 30
+                                    ? <span title={s.observations} style={{cursor:"help",color:"#64748b",fontSize:13}}>
+                                        💬 <span style={{textDecoration:"underline dotted",color:"#475569"}}>{s.observations.slice(0,25)}…</span>
+                                      </span>
+                                    : <span style={{color:"#a8bfd4"}}>{s.observations||"--"}</span>
+                                  }
+                                </td>
                               </>
                             )}
                           </tr>
