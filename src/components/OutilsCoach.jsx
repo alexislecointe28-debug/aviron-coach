@@ -184,6 +184,7 @@ function ChronoHandicap({ crewsConfig, setCrewsConfig, running, setRunning, star
   const [newCrewId, setNewCrewId] = useState("");
   const [newCrewName, setNewCrewName] = useState("");
   const [newDelay, setNewDelay] = useState(0);
+  const [dragCrewIdx, setDragCrewIdx] = useState(null);
 
   function fmt(ms) {
     if (ms < 0) return "--:--.-";
