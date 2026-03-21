@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { LineChart, Line, XAxis, YAxis, Tooltip, Legend, ResponsiveContainer } from "recharts";
 import { TYPE_COLORS, CMP_COLORS, AGE_CAT_COLORS, AGE_CAT_GROUPS, BLADE_TYPES, CREW_SLOTS, S } from "../styles.js";
 import { api } from "../config/supabase.js";
@@ -64,6 +64,7 @@ export default function CoachSpace({ currentUser, onLogout }) {
   const [selBoatDetail,setSelBoatDetail] = useState(null);
   // Boats states
   const [selBoat,setSelBoat]   = useState(null);
+  const boatDetailRef = useRef(null);
   const [boatFilter,setBoatFilter] = useState(null);
   // ═══ OUTILS ═══
   const [outiTab,setOutiTab]   = useState("cadence");
@@ -1531,7 +1532,7 @@ export default function CoachSpace({ currentUser, onLogout }) {
                     <span style={{...S.badge,background:b.type==="couple"?"#22d3ee15":"#a78bfa15",color:b.type==="couple"?"#0ea5e9":"#a78bfa",border:`1px solid ${b.type==="couple"?"#22d3ee30":"#a78bfa30"}`,flexShrink:0,display:isOpen?"inline":"none"}}>{b.type==="couple"?"Couple":"Pointe"}</span>
                     <div style={{display:"flex",gap:4,flexShrink:0}} onClick={e=>e.stopPropagation()}>
                       <button style={{...S.actionBtn,color:"#f59e0b",borderColor:"#f59e0b30",fontSize:11}} title="Réglages & pelles"
-                        onClick={e=>{e.stopPropagation();setBoatOpen(p=>({...p,[b.id]:true}));setSelBoat(b.id);}}>🔧</button>
+                        onClick={e=>{e.stopPropagation();setBoatOpen(p=>({...p,[b.id]:true}));setSelBoat(b.id);setTimeout(()=>boatDetailRef.current?.scrollIntoView({behavior:"smooth",block:"start"}),150);}}>🔧</button>
                       <button style={{...S.actionBtn,color:"#0ea5e9",borderColor:"#22d3ee30"}} onClick={e=>{e.stopPropagation();setEditBoat({...b});}}>✏️</button>
                       <button style={{...S.actionBtn,color:"#ef4444",borderColor:"#ef444430"}} onClick={e=>{e.stopPropagation();deleteBoat(b.id);}}>🗑️</button>
                     </div>
@@ -1557,7 +1558,11 @@ export default function CoachSpace({ currentUser, onLogout }) {
                     {(()=>{const st=getBoatStats(b.id);if(!st)return null;return(<div style={{display:"flex",gap:8,flexWrap:"wrap",marginBottom:8}}>{st.avgWatts&&<span style={{...S.badge,background:"#22d3ee15",color:"#0ea5e9",border:"1px solid #22d3ee30"}}>{st.avgWatts}W moy.</span>}{st.avgWeight&&<span style={{...S.badge,background:"#a78bfa15",color:"#a78bfa",border:"1px solid #a78bfa30"}}>{st.avgWeight}kg moy.</span>}{st.avgTime&&<span style={{...S.badge,background:"#4ade8015",color:"#4ade80",border:"1px solid #4ade8030"}}>{st.avgTime} moy. 2k</span>}</div>);})()}
                     <div style={{display:"flex",gap:8,marginTop:8}}>
                       <button style={{...S.btnP,flex:1,fontSize:12,padding:"7px",background:"#0ea5e920",color:"#0ea5e9",border:"1px solid #0ea5e940"}}
-                        onClick={()=>setSelBoat(selBoat===b.id?null:b.id)}>
+                        onClick={()=>{
+                          const newVal = selBoat===b.id?null:b.id;
+                          setSelBoat(newVal);
+                          if(newVal) setTimeout(()=>boatDetailRef.current?.scrollIntoView({behavior:"smooth",block:"start"}),100);
+                        }}>
                         {selBoat===b.id?"▲ Masquer":"🔧 Réglages & pelles"}
                       </button>
                     </div>
@@ -1569,6 +1574,7 @@ export default function CoachSpace({ currentUser, onLogout }) {
           </div>
 
           {/* Détail bateau sélectionné */}
+          <div ref={boatDetailRef}/>
           {selBoat&&(()=>{
             const boat=boats.find(b=>b.id===selBoat); if(!boat) return null;
             const postes=getLatestSettingPerPoste(selBoat);
@@ -1625,7 +1631,11 @@ export default function CoachSpace({ currentUser, onLogout }) {
                         <button style={S.btnP} onClick={()=>setShowAddPaddle(true)}>+ Ajouter une pelle</button>
                       </div>
                       {boatPaddles.length===0 && !showAddPaddle && (
-                        <div style={{...S.card,textAlign:"center",color:"#5a7a9a",padding:24}}>Aucune pelle associée à ce bateau.</div>
+                        <div style={{...S.card,textAlign:"center",padding:24,border:"1px dashed #334155",cursor:"pointer"}} onClick={()=>setShowAddPaddle(true)}>
+                          <div style={{fontSize:28,marginBottom:8}}>🚣</div>
+                          <div style={{color:"#f1f5f9",fontWeight:700,marginBottom:4}}>Aucune pelle associée</div>
+                          <div style={{color:"#0ea5e9",fontSize:13,fontWeight:600}}>+ Cliquer pour ajouter les premières pelles</div>
+                        </div>
                       )}
                       {boatPaddles.length>0 && (
                         <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(220px,1fr))",gap:10}}>
