@@ -1530,6 +1530,8 @@ export default function CoachSpace({ currentUser, onLogout }) {
                     {cat&&<span style={{...S.badge,background:"#22d3ee15",color:"#0ea5e9",border:"1px solid #22d3ee30",flexShrink:0}}>{cat}</span>}
                     <span style={{...S.badge,background:b.type==="couple"?"#22d3ee15":"#a78bfa15",color:b.type==="couple"?"#0ea5e9":"#a78bfa",border:`1px solid ${b.type==="couple"?"#22d3ee30":"#a78bfa30"}`,flexShrink:0,display:isOpen?"inline":"none"}}>{b.type==="couple"?"Couple":"Pointe"}</span>
                     <div style={{display:"flex",gap:4,flexShrink:0}} onClick={e=>e.stopPropagation()}>
+                      <button style={{...S.actionBtn,color:"#f59e0b",borderColor:"#f59e0b30",fontSize:11}} title="Réglages & pelles"
+                        onClick={e=>{e.stopPropagation();setBoatOpen(p=>({...p,[b.id]:true}));setSelBoat(b.id);}}>🔧</button>
                       <button style={{...S.actionBtn,color:"#0ea5e9",borderColor:"#22d3ee30"}} onClick={e=>{e.stopPropagation();setEditBoat({...b});}}>✏️</button>
                       <button style={{...S.actionBtn,color:"#ef4444",borderColor:"#ef444430"}} onClick={e=>{e.stopPropagation();deleteBoat(b.id);}}>🗑️</button>
                     </div>
@@ -1553,7 +1555,12 @@ export default function CoachSpace({ currentUser, onLogout }) {
                     {lastSetting&&<div style={{color:"#5a7a9a",fontSize:11,marginBottom:8}}>Dernier réglage : {lastSetting.date_reglage} - {lastSetting.regle_par}</div>}
                     {b.notes&&<div style={{background:"#1e293b50",borderRadius:6,padding:"6px 10px",fontSize:12,color:"#a8bfd4",marginBottom:8}}>{b.notes}</div>}
                     {(()=>{const st=getBoatStats(b.id);if(!st)return null;return(<div style={{display:"flex",gap:8,flexWrap:"wrap",marginBottom:8}}>{st.avgWatts&&<span style={{...S.badge,background:"#22d3ee15",color:"#0ea5e9",border:"1px solid #22d3ee30"}}>{st.avgWatts}W moy.</span>}{st.avgWeight&&<span style={{...S.badge,background:"#a78bfa15",color:"#a78bfa",border:"1px solid #a78bfa30"}}>{st.avgWeight}kg moy.</span>}{st.avgTime&&<span style={{...S.badge,background:"#4ade8015",color:"#4ade80",border:"1px solid #4ade8030"}}>{st.avgTime} moy. 2k</span>}</div>);})()}
-                    <button style={{...S.btnP,width:"100%",fontSize:12,padding:"6px"}} onClick={()=>setSelBoat(selBoat===b.id?null:b.id)}>{selBoat===b.id?"▲ Masquer réglages":"▼ Voir réglages & pelles"}</button>
+                    <div style={{display:"flex",gap:8,marginTop:8}}>
+                      <button style={{...S.btnP,flex:1,fontSize:12,padding:"7px",background:"#0ea5e920",color:"#0ea5e9",border:"1px solid #0ea5e940"}}
+                        onClick={()=>setSelBoat(selBoat===b.id?null:b.id)}>
+                        {selBoat===b.id?"▲ Masquer":"🔧 Réglages & pelles"}
+                      </button>
+                    </div>
                   </div>}
                 </div>
               );
