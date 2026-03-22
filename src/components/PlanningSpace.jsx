@@ -75,6 +75,12 @@ export default function PlanningSpace({ athletes, isMobile, currentUser }) {
 
   // Modals
   const [showPlanModal,      setShowPlanModal]      = useState(false);
+  const [duplicating,        setDuplicating]        = useState(null);
+  const [showAssignModal,    setShowAssignModal]    = useState(false);
+  const [assignSession,      setAssignSession]      = useState(null);
+  const [assignWeek,         setAssignWeek]         = useState(null);
+  const [assignCats,         setAssignCats]         = useState([]);
+  const [assigning,          setAssigning]          = useState(false);
   const [showWeekModal,      setShowWeekModal]      = useState(false);
   const [showSessionModal,   setShowSessionModal]   = useState(false);
   const [showTplModal,       setShowTplModal]       = useState(false);
