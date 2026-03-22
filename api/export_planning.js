@@ -68,7 +68,7 @@ body{font-family:'Inter',sans-serif;background:#cbd5e1;padding:0}
 .ph-objectif{font-size:8px;color:#475569;font-style:italic}
 
 /* Grille jours */
-.grid{display:grid;grid-template-columns:repeat(7,1fr);border-bottom:1px solid #e2e8f0}
+.grid{display:grid;grid-template-columns:repeat(7,1fr);border-bottom:1px solid #e2e8f0;align-items:start}
 
 .day{display:flex;flex-direction:column;border-right:1px solid #e2e8f0;min-height:0}
 .day:last-child{border-right:none}
@@ -80,7 +80,7 @@ body{font-family:'Inter',sans-serif;background:#cbd5e1;padding:0}
 .day-rest{display:flex;align-items:center;justify-content:center;flex:1;color:#e2e8f0;font-size:10px}
 
 /* Carte séance */
-.card{border-radius:6px;overflow:hidden;border:1px solid}
+.card{border-radius:6px;overflow:hidden;border:1px solid;break-inside:avoid}
 .card-top{padding:4px 6px 3px;display:flex;align-items:center;justify-content:space-between}
 .card-badge{font-size:6.5px;font-weight:800;letter-spacing:.8px}
 .card-dur{font-size:6.5px;font-weight:500;font-family:'JetBrains Mono',monospace;opacity:.7}
@@ -129,7 +129,9 @@ function buildPage(sem) {
     const head = `<div class="day-head"><div class="day-name">${JOURS_SHORT[ji]}</div></div>`;
     if (!ss.length) return `<div class="day">${head}<div class="day-body"><div class="day-rest">—</div></div></div>`;
 
-    const cards = ss.map(s => {
+    // Trier par ordre pour respecter l'ordre coach (ex: Muscu avant Plio)
+    const ssSorted = [...ss].sort((a,b) => (a.ordre||0) - (b.ordre||0));
+    const cards = ssSorted.map(s => {
       const c = parseContenu(s);
       const col = TYPE_COLOR[s.type_seance] || "#64748b";
       const lbl = TYPE_LABEL[s.type_seance] || s.type_seance;
@@ -138,14 +140,14 @@ function buildPage(sem) {
       const topBg = col + "18";
       const borderCol = col + "40";
 
-      const blocsHtml = blocs.slice(0,6).map(b =>
+      const blocsHtml = blocs.slice(0,5).map(b =>
         `<div class="bloc">
           <div class="bloc-dot" style="background:${col}"></div>
           <div><span class="bloc-text">${b.titre}</span>${b.detail?`<span class="bloc-detail"> ${b.detail}</span>`:""}</div>
         </div>`
       ).join("");
 
-      const more = blocs.length > 6 ? `<div class="more">+${blocs.length-6} blocs</div>` : "";
+      const more = blocs.length > 5 ? `<div class="more">+${blocs.length-6} blocs</div>` : "";
 
       return `<div class="card" style="border-color:${borderCol}">
         <div class="card-top" style="background:${topBg}">
