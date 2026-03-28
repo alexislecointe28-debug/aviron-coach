@@ -1,6 +1,16 @@
 {
   "rewrites": [
-    { "source": "/cadence", "destination": "/cadence.html" },
-    { "source": "/((?!api|cadence\\.html|assets|.*\\..*).+)", "destination": "/index.html" }
+    {
+      "source": "/speedcoach",
+      "destination": "/speedcoach.html"
+    },
+    {
+      "source": "/cadence",
+      "destination": "/cadence.html"
+    },
+    {
+      "source": "/((?!api|cadence\\.html|assets|.*\\..*).+)",
+      "destination": "/index.html"
+    }
   ]
 }

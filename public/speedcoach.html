@@ -1,0 +1,221 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, user-scalable=no">
+<title>SpeedCoach</title>
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="SpeedCoach">
+<meta name="theme-color" content="#0f172a">
+<link rel="apple-touch-icon" href="/icon-speedcoach-180.png">
+<link rel="manifest" href="/manifest-speedcoach.json">
+<style>
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent;user-select:none}
+body{background:#0f172a;color:#f1f5f9;font-family:-apple-system,sans-serif;height:100dvh;display:flex;flex-direction:column;overflow:hidden}
+.hdr{display:flex;align-items:center;justify-content:space-between;padding:calc(env(safe-area-inset-top,0px) + 12px) 16px 10px;background:#0f172a;border-bottom:1px solid #334155;flex-shrink:0}
+.hdr h1{font-size:16px;font-weight:800}
+.dot{width:8px;height:8px;border-radius:50%;background:#475569;flex-shrink:0;transition:background .3s}
+.dot.fix{background:#4ade80;box-shadow:0 0 8px #4ade80}
+.dot.search{background:#f59e0b;animation:pulse 1s infinite}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.4}}
+.btn{border:none;border-radius:10px;padding:8px 18px;font-size:14px;font-weight:800;cursor:pointer;font-family:inherit}
+.btn-go{background:#4ade80;color:#0f172a}
+.btn-stop{background:#ef4444;color:#fff}
+.btn-sm{background:#1e293b;color:#64748b;border:1px solid #334155;border-radius:10px;padding:8px 14px;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit}
+.metrics{flex:1;display:flex;flex-direction:column;padding:10px 12px;gap:8px;overflow:hidden}
+.big{background:#182030;border-radius:16px;padding:14px 18px;display:flex;flex-direction:column;align-items:center;justify-content:center;border:2px solid transparent;transition:border-color .3s;flex:1.2}
+.big.on{border-color:#0ea5e930}
+.bv{font-size:clamp(48px,15vw,76px);font-weight:900;line-height:1;letter-spacing:-2px;font-variant-numeric:tabular-nums;transition:color .3s}
+.bu{font-size:12px;color:#64748b;font-weight:600;margin-top:4px;letter-spacing:1px}
+.bs{font-size:10px;color:#475569;margin-top:2px}
+.g4{display:grid;grid-template-columns:1fr 1fr;gap:8px;flex:1}
+.m{background:#182030;border-radius:12px;padding:10px 14px;display:flex;flex-direction:column}
+.mv{font-size:clamp(24px,7vw,36px);font-weight:900;line-height:1;font-variant-numeric:tabular-nums;transition:color .3s}
+.ml{font-size:9px;color:#64748b;font-weight:600;letter-spacing:1px;text-transform:uppercase;margin-top:4px}
+.lap-bar{background:#182030;border-radius:12px;padding:8px 12px;display:flex;gap:8px;align-items:center;flex-shrink:0}
+.lap-btn{background:#1e293b;border:1px solid #334155;border-radius:8px;color:#64748b;padding:6px 12px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;flex-shrink:0}
+.laps{display:flex;gap:5px;overflow-x:auto;flex:1;scrollbar-width:none}
+.laps::-webkit-scrollbar{display:none}
+.lc{background:#1e293b;border:1px solid #334155;border-radius:6px;padding:3px 8px;font-size:10px;color:#f1f5f9;white-space:nowrap;flex-shrink:0;font-variant-numeric:tabular-nums}
+.lc.b{border-color:#4ade80;color:#4ade80}
+.lc.w{border-color:#ef4444;color:#ef4444}
+.safe{height:env(safe-area-inset-bottom,0px);flex-shrink:0}
+</style>
+</head>
+<body>
+<div class="hdr">
+  <div style="display:flex;align-items:center;gap:8px">
+    <div class="dot" id="dot"></div>
+    <div>
+      <h1>⚡ SpeedCoach</h1>
+      <div id="gs" style="font-size:10px;color:#64748b">En attente GPS...</div>
+    </div>
+  </div>
+  <div style="display:flex;gap:8px">
+    <button class="btn-sm" onclick="resetAll()">↺</button>
+    <button class="btn btn-go" id="bm" onclick="toggle()">▶ Start</button>
+  </div>
+</div>
+
+<div class="metrics">
+  <div class="big" id="sc">
+    <div class="bv" id="sv" style="color:#0ea5e9">—:——</div>
+    <div class="bu">/ 500m</div>
+    <div class="bs" id="ss">GPS inactif</div>
+  </div>
+  <div class="g4">
+    <div class="m">
+      <div class="mv" id="dv" style="color:#4ade80">0.00</div>
+      <div class="ml">Distance km</div>
+    </div>
+    <div class="m">
+      <div class="mv" id="tv" style="color:#f1f5f9">0:00</div>
+      <div class="ml">Temps</div>
+    </div>
+    <div class="m" id="sm" onclick="tap()" style="cursor:pointer">
+      <div class="mv" id="spmv" style="color:#a78bfa">—</div>
+      <div class="ml">SPM · Tap</div>
+    </div>
+    <div class="m">
+      <div class="mv" id="wv" style="color:#f97316">—</div>
+      <div class="ml">Watts est.</div>
+    </div>
+  </div>
+  <div class="lap-bar">
+    <button class="lap-btn" id="lb" onclick="lap()" disabled>⊕ Lap</button>
+    <div class="laps" id="ls"><span style="color:#475569;font-size:10px">Aucun lap</span></div>
+  </div>
+</div>
+<div class="safe"></div>
+
+<script>
+let running=false,startT=null,elapsed=0,interval=null,watchId=null;
+let distM=0,lastPos=null,laps=[],lapD=0,lapT=0;
+let speedMs=null,acc=null;
+let taps=[];
+
+function splitStr(v){
+  if(!v||v<0.1)return null;
+  const s=500/v,m=Math.floor(s/60),ss=Math.floor(s%60),d=Math.floor((s%1)*10);
+  return m+':'+String(ss).padStart(2,'0')+'.'+d;
+}
+function watts(split){
+  if(!split||split==='—:——')return null;
+  const p=split.split(':'),sec=parseInt(p[0])*60+parseFloat(p[1]);
+  if(!sec)return null;
+  return Math.round(2.80/Math.pow(sec/500,3));
+}
+function fmtT(ms){const s=Math.floor(ms/1000),m=Math.floor(s/60);return m+':'+String(s%60).padStart(2,'0')}
+function dist(a,b,c,d){
+  const R=6371000,dLat=(c-a)*Math.PI/180,dLon=(d-b)*Math.PI/180;
+  const x=Math.sin(dLat/2)**2+Math.cos(a*Math.PI/180)*Math.cos(c*Math.PI/180)*Math.sin(dLon/2)**2;
+  return R*2*Math.atan2(Math.sqrt(x),Math.sqrt(1-x));
+}
+function splitColor(sec){return sec<110?'#ef4444':sec<130?'#f97316':sec<150?'#f59e0b':sec<180?'#0ea5e9':'#4ade80'}
+
+function startGPS(){
+  if(!navigator.geolocation){document.getElementById('gs').textContent='GPS indisponible';return}
+  document.getElementById('dot').className='dot search';
+  watchId=navigator.geolocation.watchPosition(pos=>{
+    const{latitude:lat,longitude:lon,speed,accuracy}=pos.coords;
+    acc=accuracy;
+    document.getElementById('dot').className='dot fix';
+    document.getElementById('gs').textContent='GPS ±'+Math.round(accuracy)+'m';
+    if(speed!==null&&speed>=0)speedMs=speed;
+    if(running&&lastPos){const d=dist(lastPos.lat,lastPos.lon,lat,lon);if(d<100)distM+=d}
+    lastPos={lat,lon};
+    updateDisplay();
+  },e=>{
+    document.getElementById('dot').className='dot';
+    document.getElementById('gs').textContent='GPS: '+e.message;
+  },{enableHighAccuracy:true,maximumAge:0,timeout:15000});
+}
+
+function toggle(){
+  if(!running){
+    running=true;startT=Date.now()-elapsed;lapT=Date.now();lapD=distM;
+    document.getElementById('bm').textContent='⏸ Pause';
+    document.getElementById('bm').className='btn btn-stop';
+    document.getElementById('lb').disabled=false;
+    document.getElementById('sc').classList.add('on');
+    interval=setInterval(()=>{elapsed=Date.now()-startT;document.getElementById('tv').textContent=fmtT(elapsed)},200);
+  }else{
+    running=false;clearInterval(interval);elapsed=Date.now()-startT;
+    document.getElementById('bm').textContent='▶ Reprendre';
+    document.getElementById('bm').className='btn btn-go';
+    document.getElementById('sc').classList.remove('on');
+  }
+}
+
+function resetAll(){
+  running=false;clearInterval(interval);elapsed=0;distM=0;lastPos=null;
+  laps=[];lapD=0;lapT=0;speedMs=null;taps=[];
+  document.getElementById('bm').textContent='▶ Start';
+  document.getElementById('bm').className='btn btn-go';
+  document.getElementById('lb').disabled=true;
+  document.getElementById('sc').classList.remove('on');
+  ['sv','dv','tv','spmv','wv'].forEach(id=>{
+    const el=document.getElementById(id);
+    el.textContent=id==='dv'?'0.00':id==='tv'?'0:00':'—';
+  });
+  document.getElementById('sv').textContent='—:——';
+  document.getElementById('ls').innerHTML='<span style="color:#475569;font-size:10px">Aucun lap</span>';
+}
+
+function lap(){
+  if(!running)return;
+  const now=Date.now(),ld=distM-lapD,lt=now-lapT;
+  const ls=ld>5?splitStr(ld/(lt/1000)):null;
+  laps.push({n:laps.length+1,dist:ld,time:lt,split:ls});
+  lapD=distM;lapT=now;
+  renderLaps();
+  if(navigator.vibrate)navigator.vibrate([50,30,50]);
+}
+
+function renderLaps(){
+  const el=document.getElementById('ls');
+  if(!laps.length){el.innerHTML='<span style="color:#475569;font-size:10px">Aucun lap</span>';return}
+  const secs=laps.filter(l=>l.split).map(l=>{const p=l.split.split(':');return parseInt(p[0])*60+parseFloat(p[1])});
+  const best=secs.length?Math.min(...secs):null,worst=secs.length?Math.max(...secs):null;
+  el.innerHTML=[...laps].reverse().map(l=>{
+    if(!l.split)return'<div class="lc">L'+l.n+' —:——</div>';
+    const p=l.split.split(':'),s=parseInt(p[0])*60+parseFloat(p[1]);
+    return'<div class="lc'+(s===best?' b':s===worst?' w':'')+'">#'+l.n+' '+l.split+'</div>';
+  }).join('');
+}
+
+function tap(){
+  const now=Date.now();taps.push(now);
+  if(taps.length>4)taps=taps.slice(-4);
+  if(taps.length>=2){
+    const ivs=[];for(let i=1;i<taps.length;i++)ivs.push(taps[i]-taps[i-1]);
+    const spm=Math.round(60000/(ivs.reduce((a,b)=>a+b,0)/ivs.length));
+    document.getElementById('spmv').textContent=spm;
+    document.getElementById('spmv').style.color=spm<20?'#4ade80':spm<28?'#a78bfa':'#f97316';
+  }
+  if(navigator.vibrate)navigator.vibrate(20);
+}
+
+function updateDisplay(){
+  const sp=speedMs!==null?splitStr(speedMs):null;
+  const sv=document.getElementById('sv');
+  if(sp){
+    sv.textContent=sp;
+    const p=sp.split(':'),sec=parseInt(p[0])*60+parseFloat(p[1]);
+    sv.style.color=splitColor(sec);
+    document.getElementById('ss').textContent=(speedMs*3.6).toFixed(1)+' km/h · ±'+Math.round(acc||0)+'m';
+    const w=watts(sp);
+    if(w){document.getElementById('wv').textContent=w+'W';document.getElementById('wv').style.color=w>200?'#ef4444':w>150?'#f97316':'#f59e0b'}
+  }else{
+    sv.textContent='—:——';sv.style.color='#0ea5e9';
+    document.getElementById('ss').textContent='En attente vitesse...';
+  }
+  document.getElementById('dv').textContent=(distM/1000).toFixed(2);
+}
+
+startGPS();
+document.addEventListener('keydown',e=>{if(e.code==='Space'){e.preventDefault();tap()}});
+</script>
+</body>
+</html>
