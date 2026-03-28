@@ -1,0 +1,518 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, user-scalable=no">
+<title>Minuteur Aviron</title>
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Timer">
+<meta name="theme-color" content="#0f172a">
+<link rel="apple-touch-icon" href="/icon-timer-180.png">
+<link rel="manifest" href="/manifest-timer.json">
+<style>
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent;user-select:none}
+body{background:#0f172a;color:#f1f5f9;font-family:-apple-system,sans-serif;height:100dvh;display:flex;flex-direction:column;overflow:hidden}
+
+/* Header */
+.hdr{display:flex;align-items:center;justify-content:space-between;padding:calc(env(safe-area-inset-top,0px)+12px) 16px 10px;border-bottom:1px solid #1e293b;flex-shrink:0}
+.hdr h1{font-size:16px;font-weight:800}
+.hdr-sub{font-size:10px;color:#475569;margin-top:1px}
+
+/* Tabs */
+.tabs{display:flex;border-bottom:1px solid #1e293b;flex-shrink:0}
+.tab{flex:1;padding:10px;font-size:13px;font-weight:600;color:#64748b;background:none;border:none;cursor:pointer;border-bottom:2px solid transparent;font-family:inherit}
+.tab.on{color:#0ea5e9;border-bottom-color:#0ea5e9}
+
+/* ── VUE TIMER ── */
+#view-timer{flex:1;display:flex;flex-direction:column;overflow:hidden}
+
+/* Anneau de progression */
+.ring-wrap{display:flex;flex-direction:column;align-items:center;justify-content:center;padding:16px;flex-shrink:0}
+.ring-outer{position:relative;width:220px;height:220px}
+.ring-outer svg{transform:rotate(-90deg)}
+.ring-bg{fill:none;stroke:#1e293b;stroke-width:16}
+.ring-fg{fill:none;stroke-width:16;stroke-linecap:round;transition:stroke-dashoffset .3s, stroke .3s}
+.ring-center{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:10px}
+.ring-time{font-size:52px;font-weight:900;letter-spacing:-2px;line-height:1;font-variant-numeric:tabular-nums}
+.ring-label{font-size:11px;color:#64748b;font-weight:600;text-transform:uppercase;letter-spacing:1px;margin-top:4px}
+.ring-phase{font-size:13px;font-weight:700;margin-top:4px}
+
+/* Infos séquence */
+.seq-info{padding:0 16px 10px;flex-shrink:0}
+.seq-cur{background:#1e293b;border-radius:12px;padding:10px 14px;margin-bottom:8px}
+.seq-cur-label{font-size:10px;color:#64748b;font-weight:700;text-transform:uppercase;letter-spacing:1px;margin-bottom:4px}
+.seq-cur-name{font-size:15px;font-weight:800;color:#f1f5f9}
+.seq-cur-meta{font-size:12px;color:#64748b;margin-top:2px}
+.seq-next{background:#0f172a;border:1px solid #1e293b;border-radius:10px;padding:8px 12px;display:flex;align-items:center;gap:8px}
+.seq-next-lbl{font-size:10px;color:#334155;font-weight:700;flex-shrink:0}
+.seq-next-txt{font-size:12px;color:#475569;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+
+/* Progression steps */
+.steps-scroll{padding:0 16px;overflow-x:auto;scrollbar-width:none;flex-shrink:0;margin-bottom:8px}
+.steps-scroll::-webkit-scrollbar{display:none}
+.steps-row{display:flex;gap:4px;min-width:max-content}
+.step{width:28px;height:6px;border-radius:3px;background:#1e293b;transition:background .2s,transform .2s;flex-shrink:0}
+.step.done{background:#4ade80}
+.step.cur{background:#0ea5e9;transform:scaleY(1.5)}
+.step.rest{background:#475569}
+
+/* Contrôles */
+.controls{padding:0 16px;display:flex;gap:10px;flex-shrink:0;margin-bottom:8px}
+.btn-big{flex:1;padding:16px;border-radius:14px;border:none;font-size:17px;font-weight:800;cursor:pointer;font-family:inherit;transition:transform .1s}
+.btn-big:active{transform:scale(.97)}
+.btn-play{background:#0ea5e9;color:#fff}
+.btn-stop{background:#ef4444;color:#fff}
+.btn-skip{background:#1e293b;color:#94a3b8;border:1px solid #334155}
+.btn-reset-sm{background:#1e293b;color:#64748b;border:1px solid #334155;border-radius:10px;padding:10px 16px;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit}
+
+/* ── VUE BUILDER ── */
+#view-builder{flex:1;overflow-y:auto;padding:14px 16px;display:none}
+.section-title{font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:1px;margin-bottom:8px}
+.bloc-card{background:#1e293b;border-radius:12px;padding:12px 14px;margin-bottom:8px;border-left:3px solid #334155}
+.bloc-card.work{border-left-color:#0ea5e9}
+.bloc-card.rest{border-left-color:#f59e0b}
+.bloc-row{display:flex;gap:8px;align-items:center;margin-bottom:6px}
+.bloc-row:last-child{margin-bottom:0}
+.inp{background:#0f172a;border:1px solid #334155;border-radius:8px;color:#f1f5f9;padding:8px 10px;font-size:14px;font-family:inherit;width:100%}
+.inp:focus{outline:none;border-color:#0ea5e9}
+.lbl{font-size:11px;color:#64748b;font-weight:600;margin-bottom:4px;display:block}
+.btn-add{width:100%;padding:12px;border-radius:10px;background:#0ea5e910;border:1px dashed #0ea5e940;color:#0ea5e9;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit;margin-bottom:8px}
+.btn-start-session{width:100%;padding:14px;border-radius:12px;background:#0ea5e9;color:#fff;border:none;font-size:16px;font-weight:800;cursor:pointer;font-family:inherit;margin-top:4px}
+.btn-del{background:none;border:none;color:#ef4444;font-size:16px;cursor:pointer;padding:0;flex-shrink:0}
+
+/* Templates */
+.tmpl-grid{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-bottom:12px}
+.tmpl{background:#1e293b;border-radius:10px;padding:10px 12px;cursor:pointer;border:1px solid #334155;text-align:left}
+.tmpl:active{background:#334155}
+.tmpl-name{font-size:12px;font-weight:700;color:#f1f5f9}
+.tmpl-desc{font-size:10px;color:#64748b;margin-top:2px}
+
+.safe{height:env(safe-area-inset-bottom,0px);flex-shrink:0}
+</style>
+</head>
+<body>
+
+<div class="hdr">
+  <div>
+    <h1>⏱ Minuteur Aviron</h1>
+    <div class="hdr-sub" id="session-name">Aucune séance configurée</div>
+  </div>
+  <button class="btn-reset-sm" onclick="goBuilder()">✏️ Éditer</button>
+</div>
+
+<div class="tabs">
+  <button class="tab on" id="tab-timer" onclick="showTab('timer')">⏱ Timer</button>
+  <button class="tab" id="tab-builder" onclick="showTab('builder')">🔧 Séance</button>
+</div>
+
+<!-- ── VUE TIMER ── -->
+<div id="view-timer">
+  <div class="ring-wrap">
+    <div class="ring-outer">
+      <svg width="220" height="220" viewBox="0 0 220 220">
+        <circle class="ring-bg" cx="110" cy="110" r="96"/>
+        <circle class="ring-fg" id="ring" cx="110" cy="110" r="96" stroke="#0ea5e9"
+          stroke-dasharray="603" stroke-dashoffset="603"/>
+      </svg>
+      <div class="ring-center">
+        <div class="ring-time" id="ring-time" style="color:#0ea5e9">--:--</div>
+        <div class="ring-label" id="ring-label">Prêt</div>
+        <div class="ring-phase" id="ring-phase"></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="seq-info">
+    <div class="seq-cur">
+      <div class="seq-cur-label">En cours</div>
+      <div class="seq-cur-name" id="cur-name">—</div>
+      <div class="seq-cur-meta" id="cur-meta"></div>
+    </div>
+    <div class="seq-next">
+      <div class="seq-next-lbl">Suivant →</div>
+      <div class="seq-next-txt" id="next-txt">—</div>
+    </div>
+  </div>
+
+  <div class="steps-scroll">
+    <div class="steps-row" id="steps-row"></div>
+  </div>
+
+  <div class="controls">
+    <button class="btn-big btn-play" id="btn-play" onclick="togglePlay()">▶ Démarrer</button>
+    <button class="btn-big btn-skip" onclick="skipStep()">⏭ Skip</button>
+  </div>
+</div>
+
+<!-- ── VUE BUILDER ── -->
+<div id="view-builder">
+  <div class="section-title">Templates rapides</div>
+  <div class="tmpl-grid">
+    <div class="tmpl" onclick="loadTemplate('b1_60')">
+      <div class="tmpl-name">B1 continu 60'</div>
+      <div class="tmpl-desc">60' cad. 18 · FC Z1</div>
+    </div>
+    <div class="tmpl" onclick="loadTemplate('frac_4x6')">
+      <div class="tmpl-name">4 × 6' r5'</div>
+      <div class="tmpl-desc">Seuil, cad. max</div>
+    </div>
+    <div class="tmpl" onclick="loadTemplate('vitesse_10x250')">
+      <div class="tmpl-name">10 × 250m ~1'45</div>
+      <div class="tmpl-desc">Vitesse, r1'</div>
+    </div>
+    <div class="tmpl" onclick="loadTemplate('pyramide')">
+      <div class="tmpl-name">Pyramide</div>
+      <div class="tmpl-desc">1k+500+500 × 3</div>
+    </div>
+    <div class="tmpl" onclick="loadTemplate('recup')">
+      <div class="tmpl-name">Récup active</div>
+      <div class="tmpl-desc">40' cad. libre Z1</div>
+    </div>
+    <div class="tmpl" onclick="loadTemplate('custom')">
+      <div class="tmpl-name">+ Personnalisé</div>
+      <div class="tmpl-desc">Créer manuellement</div>
+    </div>
+  </div>
+
+  <div class="section-title" id="blocs-title">Blocs de séance</div>
+  <div id="blocs-list"></div>
+  <button class="btn-add" onclick="addBloc()">+ Ajouter un bloc</button>
+
+  <div style="margin-top:4px">
+    <label class="lbl">Nom de la séance</label>
+    <input class="inp" id="session-title" placeholder="ex: 3×(1k+500+500)" value="Ma séance"/>
+  </div>
+
+  <button class="btn-start-session" onclick="buildAndStart()">▶ Lancer la séance</button>
+</div>
+
+<div class="safe"></div>
+
+<script>
+// ── État ──
+let sequence = []; // [{name, durS, type:'work'|'rest'|'info', color, cad, intensity}]
+let curIdx = 0;
+let remaining = 0;
+let running = false;
+let interval = null;
+let blocs = []; // config builder
+
+// ── AudioContext pour bips ──
+let ctx = null;
+function beep(freq=880, dur=0.15, vol=0.3){
+  try{
+    if(!ctx) ctx = new (window.AudioContext||window.webkitAudioContext)();
+    const o=ctx.createOscillator(), g=ctx.createGain();
+    o.connect(g); g.connect(ctx.destination);
+    o.frequency.value=freq; g.gain.value=vol;
+    o.start(); g.gain.setTargetAtTime(0,ctx.currentTime+dur,0.01); o.stop(ctx.currentTime+dur+0.1);
+  }catch(e){}
+}
+function longBeep(){beep(660,0.4,0.4)}
+function tripleBeep(){beep(880,0.1);setTimeout(()=>beep(880,0.1),180);setTimeout(()=>beep(1100,0.3),360)}
+
+// ── Tabs ──
+function showTab(t){
+  document.getElementById('view-timer').style.display = t==='timer'?'flex':'none';
+  document.getElementById('view-builder').style.display = t==='builder'?'block':'none';
+  document.getElementById('tab-timer').classList.toggle('on', t==='timer');
+  document.getElementById('tab-builder').classList.toggle('on', t==='builder');
+}
+function goBuilder(){showTab('builder')}
+
+// ── Formatage ──
+function fmtS(s){
+  if(s<0)s=0;
+  const m=Math.floor(s/60), ss=s%60;
+  return m+':'+String(ss).padStart(2,'0');
+}
+
+// ── Builder ──
+function addBloc(data){
+  const b = data || {name:'', durMin:6, durSec:0, reps:1, restMin:1, restSec:0, type:'work', cad:'', intensity:''};
+  blocs.push(b);
+  renderBlocs();
+}
+
+function renderBlocs(){
+  const list = document.getElementById('blocs-list');
+  list.innerHTML = blocs.map((b,i)=>`
+    <div class="bloc-card ${b.type}">
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px">
+        <select class="inp" style="flex:1" onchange="blocs[${i}].type=this.value;renderBlocs()">
+          <option value="work" ${b.type==='work'?'selected':''}>🔵 Travail</option>
+          <option value="rest" ${b.type==='rest'?'selected':''}>🟡 Récup / Repos</option>
+        </select>
+        <button class="btn-del" onclick="blocs.splice(${i},1);renderBlocs()">✕</button>
+      </div>
+      <div class="bloc-row">
+        <div style="flex:2">
+          <label class="lbl">Nom</label>
+          <input class="inp" value="${b.name}" placeholder="ex: Travail 1000m" oninput="blocs[${i}].name=this.value"/>
+        </div>
+        <div style="flex:1">
+          <label class="lbl">Répétitions</label>
+          <input class="inp" type="number" min="1" value="${b.reps}" oninput="blocs[${i}].reps=+this.value||1"/>
+        </div>
+      </div>
+      <div class="bloc-row">
+        <div style="flex:1">
+          <label class="lbl">Durée min</label>
+          <input class="inp" type="number" min="0" value="${b.durMin}" oninput="blocs[${i}].durMin=+this.value||0"/>
+        </div>
+        <div style="flex:1">
+          <label class="lbl">Durée sec</label>
+          <input class="inp" type="number" min="0" max="59" value="${b.durSec}" oninput="blocs[${i}].durSec=+this.value||0"/>
+        </div>
+        ${b.type==='work'?`
+        <div style="flex:1">
+          <label class="lbl">Repos min</label>
+          <input class="inp" type="number" min="0" value="${b.restMin}" oninput="blocs[${i}].restMin=+this.value||0"/>
+        </div>
+        <div style="flex:1">
+          <label class="lbl">Repos sec</label>
+          <input class="inp" type="number" min="0" max="59" value="${b.restSec}" oninput="blocs[${i}].restSec=+this.value||0"/>
+        </div>
+        `:''}
+      </div>
+      ${b.type==='work'?`
+      <div class="bloc-row">
+        <div style="flex:1">
+          <label class="lbl">Cadence</label>
+          <input class="inp" value="${b.cad||''}" placeholder="ex: 28 / Max / Course" oninput="blocs[${i}].cad=this.value"/>
+        </div>
+        <div style="flex:1">
+          <label class="lbl">Intensité</label>
+          <input class="inp" value="${b.intensity||''}" placeholder="ex: B1 / Seuil / 1:52" oninput="blocs[${i}].intensity=this.value"/>
+        </div>
+      </div>
+      `:''}
+    </div>
+  `).join('');
+}
+
+// ── Templates ──
+const TEMPLATES = {
+  b1_60: {
+    title:'B1 continu 60\'',
+    blocs:[{name:'Échauffement',durMin:10,durSec:0,reps:1,restMin:0,restSec:0,type:'work',cad:'18',intensity:'B1 léger'},
+           {name:'B1 continu',durMin:40,durSec:0,reps:1,restMin:0,restSec:0,type:'work',cad:'18',intensity:'B1 FC Z1'},
+           {name:'Retour au calme',durMin:10,durSec:0,reps:1,restMin:0,restSec:0,type:'work',cad:'16',intensity:'Très léger'}]
+  },
+  frac_4x6: {
+    title:'4 × 6\' r5\'',
+    blocs:[{name:'Échauffement',durMin:15,durSec:0,reps:1,restMin:0,restSec:0,type:'work',cad:'18',intensity:'B1'},
+           {name:'Fraction 6\'',durMin:6,durSec:0,reps:4,restMin:5,restSec:0,type:'work',cad:'Max',intensity:'Allure 1000m'},
+           {name:'Retour calme',durMin:10,durSec:0,reps:1,restMin:0,restSec:0,type:'work',cad:'16',intensity:'B1'}]
+  },
+  vitesse_10x250: {
+    title:'10 × 250m ~1\'45 r1\'',
+    blocs:[{name:'Échauffement',durMin:15,durSec:0,reps:1,restMin:0,restSec:0,type:'work',cad:'18',intensity:'B1'},
+           {name:'Sprint 250m',durMin:1,durSec:45,reps:10,restMin:1,restSec:0,type:'work',cad:'Course',intensity:'Vitesse max'},
+           {name:'Retour calme',durMin:8,durSec:0,reps:1,restMin:0,restSec:0,type:'work',cad:'16',intensity:'B1'}]
+  },
+  pyramide: {
+    title:'3×(1000+500+500)',
+    blocs:[{name:'Échauffement',durMin:15,durSec:0,reps:1,restMin:0,restSec:0,type:'work',cad:'18',intensity:'B1'},
+           {name:'1000m allure course',durMin:4,durSec:0,reps:3,restMin:1,restSec:0,type:'work',cad:'Course',intensity:'Allure 1000m'},
+           {name:'500m allure course',durMin:2,durSec:0,reps:3,restMin:1,restSec:0,type:'work',cad:'Course',intensity:'Allure 1000m'},
+           {name:'500m allure course',durMin:2,durSec:0,reps:3,restMin:5,restSec:0,type:'work',cad:'Course',intensity:'Allure 1000m'},
+           {name:'Retour calme',durMin:10,durSec:0,reps:1,restMin:0,restSec:0,type:'work',cad:'16',intensity:'B1'}]
+  },
+  recup: {
+    title:'Récupération active 40\'',
+    blocs:[{name:'Récup active',durMin:40,durSec:0,reps:1,restMin:0,restSec:0,type:'work',cad:'Libre',intensity:'FC libre Z1'}]
+  },
+  custom: {title:'Séance personnalisée', blocs:[{name:'',durMin:6,durSec:0,reps:1,restMin:1,restSec:0,type:'work',cad:'',intensity:''}]}
+};
+
+function loadTemplate(key){
+  const t = TEMPLATES[key];
+  blocs = t.blocs.map(b=>({...b}));
+  document.getElementById('session-title').value = t.title;
+  renderBlocs();
+  showTab('builder');
+}
+
+// ── Build séquence & démarrer ──
+function buildAndStart(){
+  const title = document.getElementById('session-title').value || 'Séance';
+  sequence = [];
+
+  blocs.forEach(b=>{
+    const durS = (b.durMin||0)*60 + (b.durSec||0);
+    const restS = (b.restMin||0)*60 + (b.restSec||0);
+    const reps = b.reps||1;
+
+    for(let r=1;r<=reps;r++){
+      const suffix = reps>1 ? ` #${r}/${reps}` : '';
+      const meta = [b.cad?'Cad. '+b.cad:'', b.intensity||''].filter(Boolean).join(' · ');
+
+      sequence.push({
+        name: (b.name||'Travail')+suffix,
+        durS,
+        type: b.type,
+        color: b.type==='work'?'#0ea5e9':'#f59e0b',
+        meta,
+      });
+
+      if(b.type==='work' && restS>0 && r<reps){
+        sequence.push({
+          name: 'Récup'+suffix,
+          durS: restS,
+          type: 'rest',
+          color: '#f59e0b',
+          meta: '',
+        });
+      }
+      // Repos après dernier si reps>1
+      if(b.type==='work' && restS>0 && r===reps && reps>1){
+        // pas de repos après la dernière répétition du dernier bloc
+      }
+    }
+    // Repos entre blocs différents
+    const restS2 = b.type==='work' ? (b.restMin||0)*60+(b.restSec||0) : 0;
+    if(b.type==='work' && restS2>0 && b.reps<=1){
+      sequence.push({name:'Récupération',durS:restS2,type:'rest',color:'#f59e0b',meta:''});
+    }
+  });
+
+  document.getElementById('session-name').textContent = title;
+  curIdx = 0;
+  remaining = sequence[0]?.durS || 0;
+  running = false;
+  clearInterval(interval);
+  renderSteps();
+  updateDisplay();
+  showTab('timer');
+  document.getElementById('btn-play').textContent = '▶ Démarrer';
+  document.getElementById('btn-play').className = 'btn-big btn-play';
+}
+
+// ── Timer ──
+function togglePlay(){
+  if(!sequence.length){showTab('builder');return}
+  if(running){
+    running=false;
+    clearInterval(interval);
+    document.getElementById('btn-play').textContent='▶ Reprendre';
+    document.getElementById('btn-play').className='btn-big btn-play';
+  }else{
+    if(curIdx>=sequence.length){resetTimer();return}
+    running=true;
+    document.getElementById('btn-play').textContent='⏸ Pause';
+    document.getElementById('btn-play').className='btn-big btn-stop';
+    interval=setInterval(tick,1000);
+    beep(660,0.2);
+  }
+}
+
+function tick(){
+  remaining--;
+  if(remaining<=3&&remaining>0){beep(880,0.1,0.2)}
+  if(remaining<=0){
+    nextStep();
+  }
+  updateDisplay();
+}
+
+function nextStep(){
+  clearInterval(interval);
+  curIdx++;
+  if(curIdx>=sequence.length){
+    // Fin
+    running=false;
+    tripleBeep();
+    if(navigator.vibrate)navigator.vibrate([200,100,200,100,200]);
+    document.getElementById('btn-play').textContent='✓ Terminé';
+    document.getElementById('btn-play').className='btn-big btn-play';
+    document.getElementById('ring-time').textContent='00:00';
+    document.getElementById('ring-label').textContent='Terminé !';
+    document.getElementById('cur-name').textContent='Séance terminée 🎉';
+    document.getElementById('cur-meta').textContent='';
+    document.getElementById('next-txt').textContent='—';
+    renderSteps();
+    return;
+  }
+  remaining = sequence[curIdx].durS;
+  longBeep();
+  if(navigator.vibrate)navigator.vibrate([100,50,100]);
+  renderSteps();
+  updateDisplay();
+  if(running){
+    interval=setInterval(tick,1000);
+  }
+}
+
+function skipStep(){
+  if(!sequence.length)return;
+  clearInterval(interval);
+  nextStep();
+  if(running) interval=setInterval(tick,1000);
+}
+
+function resetTimer(){
+  clearInterval(interval);
+  running=false;
+  curIdx=0;
+  remaining=sequence[0]?.durS||0;
+  document.getElementById('btn-play').textContent='▶ Démarrer';
+  document.getElementById('btn-play').className='btn-big btn-play';
+  renderSteps();
+  updateDisplay();
+}
+
+// ── Affichage ──
+function updateDisplay(){
+  if(!sequence.length){
+    document.getElementById('ring-time').textContent='--:--';
+    document.getElementById('ring-label').textContent='Configurez une séance';
+    return;
+  }
+  const cur = sequence[curIdx];
+  const next = sequence[curIdx+1];
+  const total = cur?.durS||1;
+  const pct = Math.max(0,Math.min(1, remaining/total));
+  const circ = 603;
+  const offset = circ*(1-pct);
+
+  const ring = document.getElementById('ring');
+  ring.style.strokeDashoffset = offset;
+  ring.style.stroke = cur?.color||'#0ea5e9';
+
+  document.getElementById('ring-time').textContent = fmtS(remaining);
+  document.getElementById('ring-time').style.color = cur?.color||'#0ea5e9';
+  document.getElementById('ring-label').textContent = cur?.type==='rest'?'Récupération':'Travail';
+  document.getElementById('ring-phase').textContent = `${curIdx+1}/${sequence.length}`;
+
+  document.getElementById('cur-name').textContent = cur?.name||'—';
+  document.getElementById('cur-name').style.color = cur?.color||'#f1f5f9';
+  document.getElementById('cur-meta').textContent = cur?.meta||'';
+  document.getElementById('next-txt').textContent = next?`${next.name} · ${fmtS(next.durS)}`:'Fin de séance';
+}
+
+function renderSteps(){
+  const row = document.getElementById('steps-row');
+  row.innerHTML = sequence.map((s,i)=>{
+    let cls = i<curIdx?'step done':i===curIdx?'step cur':s.type==='rest'?'step rest':'step';
+    return `<div class="${cls}" title="${s.name}"></div>`;
+  }).join('');
+  // Scroll au step courant
+  setTimeout(()=>{
+    const cur = row.children[curIdx];
+    if(cur) cur.scrollIntoView({inline:'center',behavior:'smooth'});
+  },50);
+}
+
+// ── Init ──
+renderBlocs();
+updateDisplay();
+// Charger le template pyramide par défaut
+loadTemplate('pyramide');
+buildAndStart();
+showTab('timer');
+document.getElementById('btn-play').textContent='▶ Démarrer';
+</script>
+</body>
+</html>

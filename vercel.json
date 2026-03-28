@@ -1,6 +1,10 @@
 {
   "rewrites": [
     {
+      "source": "/timer",
+      "destination": "/timer.html"
+    },
+    {
       "source": "/speedcoach",
       "destination": "/speedcoach.html"
     },
