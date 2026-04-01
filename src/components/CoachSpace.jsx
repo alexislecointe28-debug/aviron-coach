@@ -1259,12 +1259,15 @@ export default function CoachSpace({ currentUser, onLogout }) {
                     return{...cr,members,avgW,avgT,avgWpkg,avgAge};
                   });
 
+                  const avgPoids = cr => {
+                    const ws = cr.members.map(a=>a.weight).filter(Boolean);
+                    return ws.length ? Math.round(ws.reduce((s,w)=>s+w,0)/ws.length) : null;
+                  };
                   const rows=[
                     {label:"Watts moy.",fn:c=>c.avgW?c.avgW+"W":"—",bfn:c=>c.avgW||0,lower:false,col:"#0ea5e9"},
                     {label:"2000m moy.",fn:c=>c.avgT?Math.floor(c.avgT/60)+":"+(c.avgT%60<10?"0":"")+c.avgT%60:"—",bfn:c=>c.avgT||9999,lower:true,col:"#4ade80"},
                     {label:"W/kg moy.",fn:c=>c.avgWpkg||"—",bfn:c=>parseFloat(c.avgWpkg)||0,lower:false,col:"#a78bfa"},
-                    {label:"Rameurs",fn:c=>c.members.length,bfn:c=>c.members.length,lower:false,col:"#f97316"},
-                    {label:"Âge moy.",fn:c=>c.avgAge?c.avgAge+" ans":"—",bfn:c=>c.avgAge||0,lower:false,col:"#f59e0b"},
+                    {label:"Poids moy.",fn:c=>avgPoids(c)?avgPoids(c)+" kg":"—",bfn:c=>avgPoids(c)||0,lower:false,col:"#f59e0b"},
                   ];
 
                   return(
