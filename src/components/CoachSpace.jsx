@@ -192,10 +192,13 @@ export default function CoachSpace({ currentUser, onLogout }) {
 
   const [editPerf,setEditPerf] = useState(null);
   async function addPerf() {
+    if(!newPerf.athleteId) return setToast({m:"Sélectionne un athlète",t:"error"});
+    if(!newPerf.date) return setToast({m:"La date est obligatoire",t:"error"});
+    if(!newPerf.time) return setToast({m:"Le temps est obligatoire",t:"error"});
     try {
       const watts = concept2WattsFast(newPerf.time, newPerf.distance_type||"2000m");
-      await api.createPerf({athlete_id:+newPerf.athleteId,date:newPerf.date,time:newPerf.time,watts:watts||0,spm:0,hr:+newPerf.hr,rpe:+newPerf.rpe,distance:+newPerf.distance,distance_type:newPerf.distance_type||"2000m"});
-      setToast({m:"Performance ajoutée v",t:"success"}); load();
+      await api.createPerf({athlete_id:+newPerf.athleteId,date:newPerf.date,time:newPerf.time,watts:watts||0,spm:0,hr:+newPerf.hr||null,rpe:+newPerf.rpe||null,distance:+newPerf.distance||null,distance_type:newPerf.distance_type||"2000m"});
+      setToast({m:"Performance ajoutée ✓",t:"success"}); load();
       setNP({athleteId:"",date:"",time:"",hr:"",rpe:"",distance:""}); setShowAddPerf(false);
     } catch(e){setToast({m:"Erreur "+e.message,t:"error"});}
   }
