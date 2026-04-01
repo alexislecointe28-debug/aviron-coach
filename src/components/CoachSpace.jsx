@@ -1189,76 +1189,52 @@ export default function CoachSpace({ currentUser, onLogout }) {
             <div style={{display:"flex",gap:6}}>{"500m 1000m 2000m".split(" ").map(t=><button key={t} onClick={()=>setCompareType(t)} style={{padding:"6px 14px",borderRadius:8,border:`1px solid ${compareType===t?"#22d3ee":"#1e293b"}`,background:compareType===t?"#22d3ee20":"transparent",color:compareType===t?"#22d3ee":"#5a7a9a",fontSize:12,cursor:"pointer",fontWeight:compareType===t?700:400}}>{t}</button>)}</div>
           </div>
           {/* Sélectionnés */}
+          {/* Sélection athlètes — recherche + liste déroulante */}
+          <div style={{display:"flex",gap:8,alignItems:"center",marginBottom:10}}>
+            <input placeholder="🔍 Rechercher un athlète..."
+              value={compareSearch} onChange={e=>setCompareSearch(e.target.value)}
+              style={{flex:1,background:"#182030",border:"1px solid #334155",borderRadius:8,color:"#f1f5f9",padding:"8px 12px",fontSize:13}}/>
+            <select
+              value=""
+              onChange={e=>{
+                const id=+e.target.value;
+                if(!id||compareIds.includes(id)||compareIds.length>=4)return;
+                setCompareIds(p=>[...p,id]);
+                setCompareSearch("");
+                e.target.value="";
+              }}
+              style={{background:"#1e293b",border:"1px solid #334155",borderRadius:8,color:"#94a3b8",padding:"8px 10px",fontSize:13,cursor:"pointer",maxWidth:180}}>
+              <option value="">+ Ajouter...</option>
+              {athletes
+                .filter(a=>!compareIds.includes(a.id)&&(!compareSearch||a.name.toLowerCase().includes(compareSearch.toLowerCase())))
+                .map(a=><option key={a.id} value={a.id}>{a.name} ({a.category})</option>)
+              }
+            </select>
+          </div>
+
+          {/* Athlètes sélectionnés */}
           {compareIds.length>0&&(
-            <div style={{display:"flex",gap:6,flexWrap:"wrap",marginBottom:10}}>
+            <div style={{display:"flex",gap:6,flexWrap:"wrap",marginBottom:16}}>
               {compareIds.map((id,i)=>{
                 const a=athletes.find(x=>x.id===id);if(!a)return null;
                 const col=["#22d3ee","#a78bfa","#f97316","#4ade80"][i]||"#22d3ee";
                 return(
                   <div key={id} onClick={()=>setCompareIds(p=>p.filter(x=>x!==id))}
-                    style={{display:"flex",alignItems:"center",gap:5,background:col+"20",border:`1px solid ${col}50`,borderRadius:20,padding:"4px 12px",cursor:"pointer"}}>
+                    style={{display:"flex",alignItems:"center",gap:5,background:col+"20",border:`1px solid ${col}50`,borderRadius:20,padding:"5px 14px",cursor:"pointer"}}>
                     <span style={{color:col,fontSize:11,fontWeight:700}}>#{i+1}</span>
-                    <span style={{color:"#f1f5f9",fontSize:12,fontWeight:600}}>{a.name}</span>
-                    <span style={{color:col,fontSize:11}}>×</span>
+                    <span style={{color:"#f1f5f9",fontSize:13,fontWeight:600}}>{a.name}</span>
+                    <span style={{color:col,fontSize:12}}>×</span>
                   </div>
                 );
               })}
-              {compareIds.length>=2&&<span style={{color:"#475569",fontSize:11,alignSelf:"center"}}>{4-compareIds.length} place{4-compareIds.length>1?"s":""} restante{4-compareIds.length>1?"s":""}</span>}
+              {compareIds.length<4&&<span style={{color:"#334155",fontSize:11,alignSelf:"center",fontStyle:"italic"}}>
+                {4-compareIds.length} athlète{4-compareIds.length>1?"s":""} max encore
+              </span>}
             </div>
           )}
-
-          {/* Filtre catégorie — obligatoire si aucun filtre actif */}
-          {compareCat==="Tous"&&compareIds.length===0?(
-            <div style={{marginBottom:16}}>
-              <div style={{color:"#64748b",fontSize:12,marginBottom:8}}>Quelle catégorie ?</div>
-              <div style={{display:"flex",gap:6,flexWrap:"wrap"}}>
-                {[...new Set(athletes.map(a=>a.category).filter(Boolean))].map(c=>(
-                  <button key={c} onClick={()=>setCompareCat(c)}
-                    style={{padding:"7px 14px",borderRadius:8,border:"1px solid #334155",background:"#1e293b",color:"#94a3b8",fontSize:12,fontWeight:600,cursor:"pointer"}}>
-                    {c} <span style={{color:"#475569",fontSize:10}}>({athletes.filter(a=>a.category===c).length})</span>
-                  </button>
-                ))}
-              </div>
-            </div>
-          ):(
-            <div style={{marginBottom:16}}>
-              <div style={{display:"flex",gap:6,alignItems:"center",marginBottom:8}}>
-                {compareCat!=="Tous"&&(
-                  <button onClick={()=>setCompareCat("Tous")}
-                    style={{background:"#22d3ee20",border:"1px solid #22d3ee40",borderRadius:6,color:"#22d3ee",fontSize:11,fontWeight:700,padding:"4px 8px",cursor:"pointer"}}>
-                    {compareCat} ×
-                  </button>
-                )}
-                <input placeholder="🔍 Nom..." value={compareSearch} onChange={e=>setCompareSearch(e.target.value)}
-                  style={{flex:1,background:"#182030",border:"1px solid #334155",borderRadius:7,color:"#f1f5f9",padding:"5px 10px",fontSize:12}}/>
-              </div>
-              <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:5,marginBottom:24}}>
-                {athletes
-                  .filter(a=>{
-                    const matchCat=compareCat==="Tous"||a.category===compareCat;
-                    const matchSearch=!compareSearch||a.name.toLowerCase().includes(compareSearch.toLowerCase());
-                    return matchCat&&matchSearch;
-                  })
-                  .map(a=>{
-                    const on=compareIds.includes(a.id);
-                    const idx=compareIds.indexOf(a.id);
-                    const col=["#22d3ee","#a78bfa","#f97316","#4ade80"][idx]||"#22d3ee";
-                    const full=compareIds.length>=4&&!on;
-                    const {last}=aStats(a);
-                    return(
-                      <button key={a.id}
-                        onClick={()=>!full&&setCompareIds(prev=>prev.includes(a.id)?(prev.length>2?prev.filter(x=>x!==a.id):prev):prev.length<4?[...prev,a.id]:prev)}
-                        style={{padding:"6px 8px",borderRadius:8,cursor:full?"not-allowed":"pointer",opacity:full?0.3:1,border:"none",
-                          background:on?col+"25":"#1e293b",outline:on?`2px solid ${col}`:"none",textAlign:"left"}}>
-                        <div style={{fontSize:11,fontWeight:700,color:on?col:"#e2e8f0",whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>
-                          {on&&<span style={{marginRight:3}}>#{idx+1}</span>}{a.name}
-                        </div>
-                        {last&&<div style={{fontSize:9,color:on?col:"#475569",marginTop:1}}>{last.watts}W</div>}
-                      </button>
-                    );
-                  })
-                }
-              </div>
+          {compareIds.length===0&&(
+            <div style={{color:"#334155",fontSize:12,marginBottom:16,fontStyle:"italic"}}>
+              Recherche + sélectionne jusqu'à 4 athlètes pour les comparer
             </div>
           )}
           {compareIds.length>=2&&(()=>{
