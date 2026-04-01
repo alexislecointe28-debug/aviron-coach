@@ -31,6 +31,9 @@ export default function CoachSpace({ currentUser, onLogout }) {
   const [perfCat, setPerfCat] = useState("Tous");
   const [perfDist, setPerfDist] = useState("2000m");
   const [compareSearch, setCompareSearch] = useState("");
+  const [compareMode, setCompareMode] = useState("athletes"); // "athletes" | "crews"
+  const [compareCrewIds, setCompareCrewIds] = useState([]);
+  const [compareCrewSearch, setCompareCrewSearch] = useState("");
   const [compareCat, setCompareCat] = useState("Tous");
   const [rankMode,setRankMode] = useState("wpkg");
   const [dashDistType,setDashDistType] = useState("2000m");
@@ -1185,10 +1188,130 @@ export default function CoachSpace({ currentUser, onLogout }) {
         })()}
 
         {tab==="compare"&&(<div style={{...S.page,padding:isMobile?"16px 12px":"28px 32px"}}>
-          <div style={S.ph}><div><h1 style={S.ttl}>Comparer</h1><p style={S.sub}>2 à 4 athlètes</p></div>
-            <div style={{display:"flex",gap:6}}>{"500m 1000m 2000m".split(" ").map(t=><button key={t} onClick={()=>setCompareType(t)} style={{padding:"6px 14px",borderRadius:8,border:`1px solid ${compareType===t?"#22d3ee":"#1e293b"}`,background:compareType===t?"#22d3ee20":"transparent",color:compareType===t?"#22d3ee":"#5a7a9a",fontSize:12,cursor:"pointer",fontWeight:compareType===t?700:400}}>{t}</button>)}</div>
+          <div style={S.ph}>
+            <div><h1 style={S.ttl}>Comparer</h1><p style={S.sub}>2 à 4 {compareMode==="crews"?"équipages":"athlètes"}</p></div>
+            <div style={{display:"flex",gap:6,alignItems:"center"}}>
+              {compareMode==="athletes"&&["500m","1000m","2000m"].map(t=>(
+                <button key={t} onClick={()=>setCompareType(t)} style={{padding:"6px 14px",borderRadius:8,border:`1px solid ${compareType===t?"#22d3ee":"#1e293b"}`,background:compareType===t?"#22d3ee20":"transparent",color:compareType===t?"#22d3ee":"#5a7a9a",fontSize:12,cursor:"pointer",fontWeight:compareType===t?700:400}}>{t}</button>
+              ))}
+              <div style={{display:"flex",background:"#1e293b",borderRadius:8,padding:2,gap:2}}>
+                {[{v:"athletes",l:"👤 Athlètes"},{v:"crews",l:"🚣 Équipages"}].map(m=>(
+                  <button key={m.v} onClick={()=>{setCompareMode(m.v);setCompareCrewIds([]);setCompareIds([]);}}
+                    style={{padding:"5px 12px",borderRadius:6,border:"none",background:compareMode===m.v?"#0ea5e9":"transparent",color:compareMode===m.v?"#fff":"#64748b",fontSize:12,fontWeight:compareMode===m.v?700:500,cursor:"pointer",fontFamily:"inherit"}}>
+                    {m.l}
+                  </button>
+                ))}
+              </div>
+            </div>
           </div>
           {/* Sélectionnés */}
+          {/* ── MODE ÉQUIPAGES ── */}
+          {compareMode==="crews"&&(()=>{
+            const COLS=["#22d3ee","#a78bfa","#f97316","#4ade80"];
+            const selCrews = compareCrewIds.map(id=>crews.find(c=>c.id===id)).filter(Boolean);
+            return(
+              <div>
+                {/* Recherche + ajout */}
+                <div style={{display:"flex",gap:8,alignItems:"center",marginBottom:10}}>
+                  <input placeholder="🔍 Rechercher un équipage..."
+                    value={compareCrewSearch} onChange={e=>setCompareCrewSearch(e.target.value)}
+                    style={{flex:1,background:"#182030",border:"1px solid #334155",borderRadius:8,color:"#f1f5f9",padding:"8px 12px",fontSize:13}}/>
+                  <select value="" onChange={e=>{
+                    const id=+e.target.value;
+                    if(!id||compareCrewIds.includes(id)||compareCrewIds.length>=4)return;
+                    setCompareCrewIds(p=>[...p,id]);setCompareCrewSearch("");e.target.value="";
+                  }} style={{background:"#1e293b",border:"1px solid #334155",borderRadius:8,color:"#94a3b8",padding:"8px 10px",fontSize:13,cursor:"pointer"}}>
+                    <option value="">+ Ajouter...</option>
+                    {crews.filter(c=>!compareCrewIds.includes(c.id)&&(!compareCrewSearch||c.name.toLowerCase().includes(compareCrewSearch.toLowerCase())))
+                      .map(c=><option key={c.id} value={c.id}>{c.name} ({c.boat})</option>)}
+                  </select>
+                </div>
+
+                {/* Sélectionnés */}
+                {compareCrewIds.length>0&&(
+                  <div style={{display:"flex",gap:6,flexWrap:"wrap",marginBottom:16}}>
+                    {compareCrewIds.map((id,i)=>{
+                      const cr=crews.find(x=>x.id===id);if(!cr)return null;
+                      const col=COLS[i];
+                      return(
+                        <div key={id} onClick={()=>setCompareCrewIds(p=>p.filter(x=>x!==id))}
+                          style={{display:"flex",alignItems:"center",gap:5,background:col+"20",border:`1px solid ${col}50`,borderRadius:20,padding:"5px 14px",cursor:"pointer"}}>
+                          <span style={{color:col,fontSize:11,fontWeight:700}}>#{i+1}</span>
+                          <span style={{color:"#f1f5f9",fontSize:13,fontWeight:600}}>{cr.name}</span>
+                          <span style={{color:col,fontSize:12}}>×</span>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+
+                {/* Tableau comparaison équipages */}
+                {selCrews.length>=2&&(()=>{
+                  const crewStats = selCrews.map(cr=>{
+                    const members=getCrewMembersFor(cr.id);
+                    const watts=members.map(a=>{const{best}=aStats(a);return best?concept2WattsFast(best.time,"2000m"):null;}).filter(Boolean);
+                    const avgW=watts.length?Math.round(watts.reduce((s,w)=>s+w,0)/watts.length):null;
+                    const times=members.map(a=>{const{best}=aStats(a);if(!best)return null;const p=best.time.split(":");return parseInt(p[0])*60+parseFloat(p[1]);}).filter(Boolean);
+                    const avgT=times.length?Math.round(times.reduce((s,t)=>s+t,0)/times.length):null;
+                    const wpkgs=members.map(a=>{const{best}=aStats(a);if(!best||!a.weight)return null;return concept2WattsFast(best.time,"2000m")/a.weight;}).filter(Boolean);
+                    const avgWpkg=wpkgs.length?(wpkgs.reduce((s,v)=>s+v,0)/wpkgs.length).toFixed(2):null;
+                    const avgAge=members.length?Math.round(members.map(a=>a.date_naissance?calcRealAge(a.date_naissance):a.age).filter(Boolean).reduce((s,a,_,arr)=>s+a/arr.length,0)):null;
+                    return{...cr,members,avgW,avgT,avgWpkg,avgAge};
+                  });
+
+                  const rows=[
+                    {label:"Watts moy.",fn:c=>c.avgW?c.avgW+"W":"—",bfn:c=>c.avgW||0,lower:false,col:"#0ea5e9"},
+                    {label:"2000m moy.",fn:c=>c.avgT?Math.floor(c.avgT/60)+":"+(c.avgT%60<10?"0":"")+c.avgT%60:"—",bfn:c=>c.avgT||9999,lower:true,col:"#4ade80"},
+                    {label:"W/kg moy.",fn:c=>c.avgWpkg||"—",bfn:c=>parseFloat(c.avgWpkg)||0,lower:false,col:"#a78bfa"},
+                    {label:"Rameurs",fn:c=>c.members.length,bfn:c=>c.members.length,lower:false,col:"#f97316"},
+                    {label:"Âge moy.",fn:c=>c.avgAge?c.avgAge+" ans":"—",bfn:c=>c.avgAge||0,lower:false,col:"#f59e0b"},
+                  ];
+
+                  return(
+                    <div>
+                      <div style={{display:"grid",gridTemplateColumns:`130px repeat(${selCrews.length},1fr)`,gap:2,marginBottom:2}}>
+                        <div/>
+                        {crewStats.map((c,i)=>(
+                          <div key={c.id} style={{...S.card,textAlign:"center",borderTop:`3px solid ${COLS[i]}`,padding:"10px 8px"}}>
+                            <div style={{fontWeight:800,color:"#f1f5f9",fontSize:13,marginBottom:2}}>{c.name}</div>
+                            <div style={{color:"#64748b",fontSize:11}}>{c.boat} · {c.members.length} ram.</div>
+                          </div>
+                        ))}
+                      </div>
+                      {rows.map(row=>{
+                        const vals=crewStats.map(c=>row.bfn(c));
+                        const bestVal=row.lower?Math.min(...vals):Math.max(...vals);
+                        const barMax=row.lower?Math.max(...vals):bestVal;
+                        return(
+                          <div key={row.label} style={{display:"grid",gridTemplateColumns:`130px repeat(${selCrews.length},1fr)`,gap:2,marginBottom:2}}>
+                            <div style={{display:"flex",alignItems:"center",color:"#7a95b0",fontSize:12,fontWeight:600,paddingLeft:8}}>{row.label}</div>
+                            {crewStats.map((c,i)=>{
+                              const val=row.bfn(c),isBest=val===bestVal;
+                              const barVal=row.lower?barMax-val+Math.min(...vals):val;
+                              return(
+                                <div key={c.id} style={{...S.card,padding:"10px 12px",background:isBest?"#22d3ee08":"#182030"}}>
+                                  <div style={{display:"flex",alignItems:"center",gap:8}}>
+                                    <div style={{color:isBest?row.col:"#a8bfd4",fontWeight:isBest?900:600,fontSize:14,minWidth:70}}>{row.fn(c)}{isBest?" ★":""}</div>
+                                    <div style={{flex:1,height:5,background:"#263547",borderRadius:3,overflow:"hidden"}}>
+                                      <div style={{width:`${barMax?Math.min((barVal/barMax)*100,100):0}%`,height:"100%",background:COLS[i],borderRadius:3}}/>
+                                    </div>
+                                  </div>
+                                </div>
+                              );
+                            })}
+                          </div>
+                        );
+                      })}
+                    </div>
+                  );
+                })()}
+                {selCrews.length<2&&<div style={{color:"#334155",fontSize:12,fontStyle:"italic"}}>Sélectionne au moins 2 équipages</div>}
+              </div>
+            );
+          })()}
+
+          {/* ── MODE ATHLÈTES ── */}
+          {compareMode==="athletes"&&<div>
           {/* Sélection athlètes — recherche + liste déroulante */}
           <div style={{display:"flex",gap:8,alignItems:"center",marginBottom:10}}>
             <input placeholder="🔍 Rechercher un athlète..."
@@ -1287,6 +1410,7 @@ export default function CoachSpace({ currentUser, onLogout }) {
               </div>
             );
           })()}
+          </div>}
         </div>)}
 
         {tab==="crew"&&(<div style={{...S.page,padding:isMobile?"16px 12px":"28px 32px"}}>
