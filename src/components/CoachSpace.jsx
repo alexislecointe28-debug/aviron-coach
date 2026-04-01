@@ -210,17 +210,34 @@ export default function CoachSpace({ currentUser, onLogout }) {
     } catch(e){setToast({m:"Erreur",t:"error"});}
   }
   async function addAth() {
+    if(!newAth.name.trim()) return setToast({m:"Le nom est obligatoire",t:"error"});
     try {
       const av=newAth.name.split(" ").map(w=>w[0]).join("").slice(0,2).toUpperCase();
-      const computedAge = calcAgeFromDOB(newAth.date_naissance);
-      const computedCat = getCategoryFromAge(computedAge, newAth.genre);
+      const computedAge = newAth.date_naissance ? calcAgeFromDOB(newAth.date_naissance) : null;
+      const computedCat = computedAge ? getCategoryFromAge(computedAge, newAth.genre) : "Non renseigné";
       let photo_url = null;
       if(newAth.photo_file) {
         try { photo_url = await api.uploadPhoto(newAth.photo_file, `new_${Date.now()}`); } catch(e) { console.warn("Photo upload failed:", e); }
       }
-      await api.createAthlete({name:newAth.name,age:computedAge,category:computedCat,weight:+newAth.weight,genre:newAth.genre||"H",photo_url,date_naissance:newAth.date_naissance,avatar:av,crew_id:null,taille:newAth.taille?+newAth.taille:null,envergure:newAth.envergure?+newAth.envergure:null,longueur_bras:newAth.longueur_bras?+newAth.longueur_bras:null,largeur_epaules:newAth.largeur_epaules?+newAth.largeur_epaules:null,taille_assise:newAth.taille_assise?+newAth.taille_assise:null});
-      setToast({m:"Athlète ajouté v",t:"success"}); load();
-      setNA({name:"",date_naissance:"",genre:"H",weight:"",taille:"",envergure:"",longueur_bras:"",largeur_epaules:"",taille_assise:"",photo_file:null,photo_preview:null}); setShowAddAth(false);
+      await api.createAthlete({
+        name: newAth.name,
+        age: computedAge,
+        category: computedCat,
+        weight: newAth.weight ? +newAth.weight : null,
+        genre: newAth.genre||"H",
+        photo_url,
+        date_naissance: newAth.date_naissance || null,
+        avatar: av,
+        crew_id: null,
+        taille: newAth.taille?+newAth.taille:null,
+        envergure: newAth.envergure?+newAth.envergure:null,
+        longueur_bras: newAth.longueur_bras?+newAth.longueur_bras:null,
+        largeur_epaules: newAth.largeur_epaules?+newAth.largeur_epaules:null,
+        taille_assise: newAth.taille_assise?+newAth.taille_assise:null
+      });
+      setToast({m:"Athlète ajouté ✓",t:"success"}); load();
+      setNA({name:"",date_naissance:"",genre:"H",weight:"",taille:"",envergure:"",longueur_bras:"",largeur_epaules:"",taille_assise:"",photo_file:null,photo_preview:null});
+      setShowAddAth(false);
     } catch(e){setToast({m:"Erreur "+e.message,t:"error"});}
   }
   async function saveEditAth() {
