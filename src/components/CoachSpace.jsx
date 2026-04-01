@@ -1413,12 +1413,32 @@ export default function CoachSpace({ currentUser, onLogout }) {
                   const crewCatColor = crewCat ? (AGE_CAT_COLORS[crewCat] || "#94a3b8") : null;
                   const avgW = members.map(a=>{const{best}=aStats(a);return best?concept2WattsFast(best.time, best.distance_type||"2000m"):null;}).filter(Boolean);
                   const avgWatts = avgW.length ? Math.round(avgW.reduce((s,w)=>s+w,0)/avgW.length) : null;
+                  // Temps moyen 2000m
+                  const times2k = members.map(a=>{const{best}=aStats(a);if(!best)return null;const p=best.time.split(":");if(p.length<2)return null;return parseInt(p[0])*60+parseFloat(p[1]);}).filter(Boolean);
+                  const avgTimeSec = times2k.length ? Math.round(times2k.reduce((s,t)=>s+t,0)/times2k.length) : null;
+                  const avgTime2k = avgTimeSec ? Math.floor(avgTimeSec/60)+":"+(avgTimeSec%60<10?"0":""+avgTimeSec%60) : null;
+                  // W/kg moyen
+                  const wpkgVals = members.map(a=>{const{best}=aStats(a);if(!best||!a.weight)return null;return concept2WattsFast(best.time,"2000m")/a.weight;}).filter(Boolean);
+                  const avgWpkg = wpkgVals.length ? (wpkgVals.reduce((s,v)=>s+v,0)/wpkgVals.length).toFixed(2) : null;
                   return (<>
                     <div style={{color:"#7a95b0",fontSize:12,marginBottom:8,display:"flex",gap:12,flexWrap:"wrap"}}>
                       <span>{cr.boat} · {members.length} rameur{members.length>1?"s":""}</span>
                       {avgAge&&<span style={{color:"#f59e0b"}}>⌀ {avgAge} ans</span>}
                       {crewCat&&<span style={{fontSize:10,padding:"2px 8px",borderRadius:10,background:crewCatColor+"25",color:crewCatColor,fontWeight:700,border:"1px solid "+crewCatColor+"40"}}>{crewCat}</span>}
-                      {avgWatts&&<span style={{color:"#0ea5e9"}}>⌀ {avgWatts}W</span>}
+                    </div>
+                    <div style={{display:"flex",gap:8,flexWrap:"wrap",marginBottom:8}}>
+                      {avgWatts&&<div style={{background:"#0ea5e915",border:"1px solid #0ea5e930",borderRadius:8,padding:"6px 12px",textAlign:"center"}}>
+                        <div style={{color:"#0ea5e9",fontWeight:900,fontSize:16}}>{avgWatts}W</div>
+                        <div style={{color:"#475569",fontSize:9,textTransform:"uppercase",letterSpacing:1}}>Watts moy.</div>
+                      </div>}
+                      {avgTime2k&&<div style={{background:"#4ade8015",border:"1px solid #4ade8030",borderRadius:8,padding:"6px 12px",textAlign:"center"}}>
+                        <div style={{color:"#4ade80",fontWeight:900,fontSize:16}}>{avgTime2k}</div>
+                        <div style={{color:"#475569",fontSize:9,textTransform:"uppercase",letterSpacing:1}}>2000m moy.</div>
+                      </div>}
+                      {avgWpkg&&<div style={{background:"#a78bfa15",border:"1px solid #a78bfa30",borderRadius:8,padding:"6px 12px",textAlign:"center"}}>
+                        <div style={{color:"#a78bfa",fontWeight:900,fontSize:16}}>{avgWpkg}</div>
+                        <div style={{color:"#475569",fontSize:9,textTransform:"uppercase",letterSpacing:1}}>W/kg moy.</div>
+                      </div>}
                     </div>
                     <div style={{display:"flex",gap:6,flexWrap:"wrap"}}>{members.map(a=>{const{last,watts,wpkg}=aStats(a);const ageA=a.date_naissance?calcRealAge(a.date_naissance):a.age;return(<div key={a.id} style={{background:"#263547",borderRadius:8,padding:"5px 10px",display:"flex",alignItems:"center",gap:8}}><div style={{...S.av,width:26,height:26,fontSize:10}}>{a.avatar}</div><div><div style={{color:"#f1f5f9",fontSize:12,fontWeight:600}}>{a.name.split(" ")[0]}{ageA?<span style={{color:"#64748b",fontSize:10,marginLeft:4}}>{ageA}ans</span>:""}</div>{last&&<div style={{color:"#0ea5e9",fontSize:10}}>{watts||0}W · {wpkg}W/kg</div>}</div></div>);})}</div>
                   {/* Bateau physique assigné */}
