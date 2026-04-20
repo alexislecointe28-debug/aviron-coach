@@ -49,7 +49,7 @@ body{font-family:'Inter',sans-serif;background:#cbd5e1;padding:0}
 .toolbar h1{color:#38bdf8;font-size:13px;font-weight:700;letter-spacing:-.2px}
 .btn{background:#38bdf8;color:#0f172a;border:none;border-radius:6px;padding:7px 16px;font-size:12px;font-weight:700;cursor:pointer;font-family:'Inter',sans-serif}
 .wrap{padding:52px 16px 16px}
-.page{width:210mm;background:#fff;margin:0 auto 16px;box-shadow:0 8px 40px #0003;display:flex;flex-direction:column;font-size:8.5px}
+.page{width:297mm;background:#fff;margin:0 auto 16px;box-shadow:0 8px 40px #0003;display:flex;flex-direction:column;font-size:8.5px}
 .pb{page-break-after:always}
 
 /* Header */
@@ -106,7 +106,7 @@ body{font-family:'Inter',sans-serif;background:#cbd5e1;padding:0}
   .wrap{padding:0}
   .page{margin:0;box-shadow:none}
   .pb{page-break-after:always}
-  @page{size:A4 portrait;margin:0}
+  @page{size:A4 landscape;margin:0}
 }
 </style>
 </head>
